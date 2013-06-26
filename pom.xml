@@ -16,7 +16,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven</artifactId>
-  <version>0.9.0</version>
+  <version>0.9.1-SNAPSHOT</version>
   <name>hRaven Project</name>
   <description>
     hRaven collects run time data and statistics from map reduce jobs running on Hadoop clusters

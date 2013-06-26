@@ -21,12 +21,12 @@
   <parent>
     <groupId>com.twitter.hraven</groupId>
     <artifactId>hraven</artifactId>
-    <version>0.9.0</version>
+    <version>0.9.1-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven-etl</artifactId>
-  <version>0.9.0</version>
+  <version>0.9.1-SNAPSHOT</version>
   <name>hRaven - etl</name>
   <packaging>jar</packaging>
   <description>ETL map reduce jobs and supporting components for data loading</description>
@@ -166,13 +166,13 @@
     <dependency>
       <groupId>com.twitter.hraven</groupId>
       <artifactId>hraven-core</artifactId>
-      <version>0.9.0</version>
+      <version>0.9.1-SNAPSHOT</version>
     </dependency>
 
     <dependency>
       <groupId>com.twitter.hraven</groupId>
       <artifactId>hraven-core</artifactId>
-      <version>0.9.0</version>
+      <version>0.9.1-SNAPSHOT</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
