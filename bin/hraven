@@ -1,0 +1,194 @@
+#!/bin/bash
+#
+# Copyright 2013 Twitter, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+#
+# Sets up hraven classpath to run arbitrary classes/commands
+#
+# Environment variables:
+#
+#  HRAVEN_HOME      - Directory from which to run hraven. Defaults to parent directory of this script.
+# 
+#  HRAVEN_CONF_DIR  - Alternate configuration directory. Default is ${HRAVEN_HOME}/conf.
+#
+#  HRAVEN_CLASSPATH - Used to pick up the HBase jars. This must be set. 
+#                     For example:
+#                       export HRAVEN_CLASSPATH=`hbase classpath`
+#                     Or if you want to pick up the HBase version from a different cluster:
+#                       export HRAVEN_CLASSPATH=`hbase --config /etc/hbase/conf-hbase-dc1 classpath`
+#
+#  HRAVEN_HEAPSIZE  - The maximum amount of heap to use, in MB. 
+#                     Default is 1000.
+#
+#  HBASE_CONF_DIR   - Alternate directory from which to pick up hbase configurations. Default is ${HBASE_HOME}/conf.
+#                     All other hbase configurations can be set in the standard hbase manner, or supplied here instead.
+#
+
+# Default setting for heap size
+JAVA_HEAP_MAX=-Xmx1000m
+
+# Determine the bin directory
+bin=`dirname "$0"`
+bin=`cd "$bin">/dev/null; pwd`
+
+# Assume bin is within the home dir
+HRAVEN_HOME=${HRAVEN_HOME:-$bin/..}
+# suppress noisy logging
+export HBASE_ROOT_LOGGER=WARN,console
+
+# Allow running from a local build directory
+in_dev_env=false
+if [ -d "${HRAVEN_HOME}/target" ]; then
+  in_dev_env=true
+fi
+
+
+print_usage_and_exit() {
+  echo "Usage: hraven [--config confdir] <command>"
+  echo "where <command> is one of the following:"
+  echo
+  echo "rest       - run the REST server"
+  echo "classpath  - output the full hRaven classpath (with dependencies)"
+  echo "CLASSNAME  - run the main method on the class CLASSNAME"
+  echo ""
+  echo "For example:"
+  echo "$0 org.jruby.Main <path-to-ruby-script.rb>"
+  exit 1
+}
+
+#check to see if the conf dir is given as an optional argument
+if [ $# -gt 1 ]; then
+  if [ "--config" = "$1" ]; then
+    shift
+    confdir=$1
+	  shift
+	  HRAVEN_CONF_DIR=$confdir
+  fi
+fi
+
+# Respect conf dir if set, or else dedault
+HRAVEN_CONF_DIR=${HRAVEN_CONF_DIR:-${HRAVEN_HOME}/conf}
+
+# Check input arguments
+if [ $# -eq 0 ]; then
+  print_usage_and_exit
+fi
+
+# Extract the command
+COMMAND=$1
+shift
+
+# If --config was specified, but not an actual config directory.
+if [ "--config" = "$COMMAND" ]; then
+  print_usage_and_exit
+fi
+
+# Source the hraven-env.sh if present 
+if [ -f "${HRAVEN_CONF_DIR}/hraven-env.sh" ]; then
+  . "${HRAVEN_CONF_DIR}/hraven-env.sh"
+fi
+
+# Confirm that the hraven classpath is set.
+if [ "$HRAVEN_CLASSPATH" = "" ]; then
+  echo "HRAVEN_CLASSPATH environment variable is not set."
+  print_usage_and_exit
+fi
+
+MVN="mvn"
+if [ "$MAVEN_HOME" != "" ]; then
+  MVN=${MAVEN_HOME}/bin/mvn
+fi
+
+add_maven_deps_to_classpath() {
+  # Need to generate classpath from maven pom. This is costly so generate it
+  # and cache it. Save the file into our target dir so a mvn clean will get
+  # clean it up and force us create a new one.
+  f="${HRAVEN_HOME}/target/cached_classpath.txt"
+  if [ ! -f "${f}" ]
+  then
+    ${MVN} -f "${HRAVEN_HOME}/pom.xml" dependency:build-classpath -Dmdep.outputFile="${f}" &> /dev/null
+  fi
+  CLASSPATH=${CLASSPATH}:`cat "${f}"`
+}
+
+add_maven_main_classes_to_classpath() {
+  if [ -d "$HRAVEN_HOME/hraven-core/target/classes" ]; then
+    CLASSPATH=${CLASSPATH}:$HRAVEN_HOME/hraven-core/target/classes
+  fi
+  if [ -d "$HRAVEN_HOME/hraven-etl/target/classes" ]; then
+    CLASSPATH=${CLASSPATH}:$HRAVEN_HOME/hraven-etl/target/classes
+  fi
+}
+
+add_maven_test_classes_to_classpath() {
+  # For developers, add hbase classes to CLASSPATH
+  f="$HRAVEN_HOME/hraven-core/target/test-classes"
+  if [ -d "${f}" ]; then
+    CLASSPATH=${CLASSPATH}:${f}
+  fi
+}
+
+add_dist_classpath() {
+  # Add libs to CLASSPATH
+  for f in $HRAVEN_HOME/lib/*.jar; do
+    CLASSPATH=${CLASSPATH}:$f;
+  done
+}
+
+# respect HBASE_CONF_DIR if set
+CLASSPATH="${HRAVEN_CONF_DIR}:${HBASE_CONF_DIR}"
+
+# Add maven target directory
+if $in_dev_env; then
+  add_maven_deps_to_classpath
+  add_maven_main_classes_to_classpath
+  add_maven_test_classes_to_classpath
+else
+  add_dist_classpath
+fi
+
+# Add user-specified CLASSPATH last
+if [ "$HRAVEN_CLASSPATH" != "" ]; then
+  CLASSPATH=${CLASSPATH}:${HRAVEN_CLASSPATH}
+fi
+
+# Honor java home if set.
+if [ "$JAVA_HOME" = "" ]; then
+  JAVA=java
+else
+  JAVA=$JAVA_HOME/bin/java
+fi
+
+# check envvars which might override default args
+if [ "$HRAVEN_HEAPSIZE" != "" ]; then
+  JAVA_HEAP_MAX="-Xmx""$HRAVEN_HEAPSIZE""m"
+fi
+
+HRAVEN_OPTS="$HRAVEN_OPTS -Dhraven.log.dir=$HRAVEN_LOG_DIR"
+HRAVEN_OPTS="$HRAVEN_OPTS -Dhraven.log.file=$HRAVEN_LOGFILE"
+HRAVEN_OPTS="$HRAVEN_OPTS -Dhraven.root.logger=${HRAVEN_ROOT_LOGGER:-WARN,console}"
+
+if [ "$COMMAND" = "rest" ]; then
+  CLASS="com.twitter.hraven.rest.RestServer"
+elif [ "$COMMAND" = "classpath" ]; then
+  echo $CLASSPATH
+  exit 0
+else
+  CLASS="$COMMAND"
+fi
+
+# Do-it
+exec $JAVA $JAVA_HEAP_MAX $HRAVEN_OPTS -classpath "$CLASSPATH" $CLASS "$@"

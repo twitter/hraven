@@ -1,0 +1,73 @@
+# Copyright 2013 Twitter, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Running JRuby Scripts
+------------------------------
+JRuby scripts in this directory make use of either the hRaven java APIs
+or the HBase client java API directly.
+
+To run the scripts:
+
+1) Make sure the HRAVEN_CLASSPATH environment variable is set to include hbase,
+zookeeper and Hadoop jars. For example by running:
+
+   export HRAVEN_CLASSPATH=`hbase classpath`
+
+2) Run the ruby scripts from the bin directory:
+   cd hraven/bin
+   ./script_name.rb
+
+3) Or to run the script from a different directory you'll have to pass
+org.jruby.Main class and the qualified path to the ruby script:
+   somepath/hraven/bin/hraven org.jruby.Main somepath/hraven/bin/script_name.rb
+
+
+4) When you want to connect to a different HBase cluster, set the HBASE_CONF_DIR
+environment variable to the desired HBase configuration:
+
+   export HBASE_CONF_DIR=/etc/hbase/conf-hbase-dc1
+   cd hraven/bin
+   ./script_name.rb
+
+or all on one line without exporting the environment variable:
+
+   cd hraven/bin
+   HBASE_CONF_DIR=/etc/hbase/conf-hbase-dc1 ./script_name.rb
+
+
+Using the HBase Shell
+------------------------------
+The HBase shell for a specific cluster can be launched by pointing to
+the cluster's configuration, ie. to run a shell on the test cluster:
+
+    hbase --config /etc/hbase/conf-hbase-dc1 shell
+
+
+Since many of the table row keys contain encoded versions of the job
+ID, these can be difficult to access from the shell.  To assist with
+generating the encoded job IDs to use in the shell, run the script:
+
+    ./encode_job_id.rb [cluster] jobid
+
+For example:
+
+    $ ./encode_job_id.rb job_201204041958_222793
+    \x00\x00\x00.\xD8\xB2\x08\xE6\x00\x00\x00\x00\x00\x03fI
+
+Then copy and paste the result, for use in shell commands.  When using
+the byte encoded representation, the field _must_ be enclosed in double
+quotes to be handled correct in the JRuby interpreter that runs the
+HBase shell:
+
+    > get 'dev.job_history_raw', "cluster@dc1!\x00\x00\x00.\xD8\xB2\x08\xE6\x00\x00\x00\x00\x00\x03fI"

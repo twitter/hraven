@@ -1,0 +1,4 @@
+Meta VERSION="1" .
+Job JOBID="job_201205231531_256984" JOBNAME="pqrs:abc_something:xyz" USER="user1234" SUBMIT_TIME="1338958320124" JOBCONF="hdfs://something\.example\.com/user/user1234/\.staging/job_201205231531_256984/job\.xml" VIEW_JOB="*" MODIFY_JOB="*" JOB_QUEUE="default" .
+Job JOBID="job_201205231531_256984" JOB_PRIORITY="NORMAL" .
+Job JOBID="job_201205231531_256984" JOB_STATUS="RUNNING" .
