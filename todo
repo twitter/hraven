@@ -1,7 +1,0 @@
-Rename *Test to Test* so that maven runs the tests
-Do not use sysout but use log instead (should use log4J instead?)
-
-
-OpenSource issues to resolve:
-Headers on all files
-Strip cluster names out (how to do that effectively for ruby scripts ?!?) Leave cluster name, but rename smf1 to dc1, so exp@dc1, dw@dc1
