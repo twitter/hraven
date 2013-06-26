@@ -17,12 +17,12 @@
   <parent>
     <groupId>com.twitter.hraven</groupId>
     <artifactId>hraven</artifactId>
-    <version>0.9.1-SNAPSHOT</version> 
+    <version>0.9.1</version> 
     <relativePath>../</relativePath>
   </parent>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven-assembly</artifactId>
-  <version>0.9.1-SNAPSHOT</version>
+  <version>0.9.1</version>
   <name>hRaven-assembly</name>
   <description>hRaven - Assembly artifacts</description>
   <packaging>pom</packaging>
