@@ -19,6 +19,7 @@ import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.FlowQueueKey;
+import com.twitter.hraven.rest.PaginatedResult;
 import com.twitter.hraven.util.ByteUtil;
 
 import org.apache.hadoop.conf.Configuration;
@@ -30,7 +31,10 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -131,13 +135,55 @@ public class FlowQueueService {
     return flow;
   }
 
+  /**
+   * Returns the flows currently listed in the given {@link Flow.Status}
+   * @param cluster The cluster where flows have run
+   * @param status The flows' status
+   * @param limit Return up to this many Flow instances
+   * @return a list of up to {@code limit} Flows
+   * @throws IOException in the case of an error retrieving the data
+   */
   public List<Flow> getFlowsForStatus(String cluster, Flow.Status status, int limit)
-      throws IOException {
-    byte[] startRow = ByteUtil.join(Constants.SEP_BYTES,
-        Bytes.toBytes(cluster), status.code(), Constants.EMPTY_BYTES);
-    Scan scan = new Scan(startRow);
-    scan.setFilter(new WhileMatchFilter(new PrefixFilter(startRow)));
+    throws IOException {
+    return getFlowsForStatus(cluster, status, limit, null, null);
+  }
 
+  /**
+   * Returns the flows currently listed in the given {@link Flow.Status}
+   * @param cluster The cluster where flows have run
+   * @param status The flows' status
+   * @param limit Return up to this many Flow instances
+   * @param user Filter flows returned to only this user (if present)
+   * @param startRow Start results at this key.  Use this in combination with {@code limit} to
+   *                 support pagination through the results.
+   * @return a list of up to {@code limit} Flows
+   * @throws IOException in the case of an error retrieving the data
+   */
+  public List<Flow> getFlowsForStatus(String cluster, Flow.Status status, int limit,
+                                      String user, byte[] startRow)
+      throws IOException {
+    byte[] rowPrefix = ByteUtil.join(Constants.SEP_BYTES,
+        Bytes.toBytes(cluster), status.code(), Constants.EMPTY_BYTES);
+    if (startRow == null) {
+      startRow = rowPrefix;
+    }
+    Scan scan = new Scan(startRow);
+    FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+    // early out when prefix ends
+    filters.addFilter(new WhileMatchFilter(new PrefixFilter(rowPrefix)));
+    if (user != null) {
+      SingleColumnValueFilter userFilter = new SingleColumnValueFilter(
+          Constants.INFO_FAM_BYTES, USER_NAME_COL_BYTES,
+          CompareFilter.CompareOp.EQUAL, Bytes.toBytes(user)
+      );
+      userFilter.setFilterIfMissing(true);
+      filters.addFilter(userFilter);
+    }
+    scan.setFilter(filters);
+    // TODO: need to constrain this by timerange as well to prevent unlimited scans
+
+    // get back the results in a single response
+    scan.setCaching(limit);
     List<Flow> results = new ArrayList<Flow>(limit);
     ResultScanner scanner = null;
     try {
@@ -161,6 +207,33 @@ public class FlowQueueService {
     return results;
   }
 
+  /**
+   * Returns a page of flows for the given cluster and status
+   * @param cluster The cluster for the flows' execution
+   * @param status The flows' status
+   * @param limit Maximum number of flows to retrieve
+   * @param user Filter results to this user, if present
+   * @param startRow Start pagination with this row (inclusive), if present
+   * @return A page of Flow instances
+   * @throws IOException In the case of an error retrieving results
+   */
+  public PaginatedResult<Flow> getPaginatedFlowsForStatus(String cluster, Flow.Status status,
+                                                          int limit, String user, byte[] startRow)
+      throws IOException {
+    // retrieve one more flow than requested for pagination support
+    List<Flow> flows = getFlowsForStatus(cluster, status, limit+1, user, startRow);
+    PaginatedResult<Flow> result = new PaginatedResult<Flow>(limit);
+    if (flows.size() > limit) {
+      result.setValues(flows.subList(0, limit));
+      Flow lastFlow = flows.get(limit);
+      result.setNextStartRow(queueKeyConverter.toBytes(lastFlow.getQueueKey()));
+    } else {
+      result.setValues(flows);
+    }
+    return result;
+  }
+
+
   protected Flow createFlowFromResult(Result result) {
     if (result == null || result.isEmpty()) {
       return null;
@@ -173,7 +246,7 @@ public class FlowQueueService {
           result.getValue(Constants.INFO_FAM_BYTES, Constants.ROWKEY_COL_BYTES));
     }
     Flow flow = new Flow(flowKey);
-    flow.setFlowQueueKey(queueKey);
+    flow.setQueueKey(queueKey);
     if (result.containsColumn(Constants.INFO_FAM_BYTES, JOB_GRAPH_COL_BYTES)) {
       flow.setJobGraphJSON(
           Bytes.toString(result.getValue(Constants.INFO_FAM_BYTES, JOB_GRAPH_COL_BYTES)));
