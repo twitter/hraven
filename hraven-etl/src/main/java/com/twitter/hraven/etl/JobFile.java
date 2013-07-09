@@ -40,7 +40,7 @@ public class JobFile implements Writable {
   private static final Pattern CONF_PATTERN = Pattern
       .compile(Constants.JOB_CONF_FILE_END);
 
-  private static Log LOG = LogFactory.getLog(JobFilePreprocessor.class);
+  private static final Log LOG = LogFactory.getLog(JobFile.class);
   private String filename;
   private String jobid = null;
   private boolean isJobConfFile = false;
