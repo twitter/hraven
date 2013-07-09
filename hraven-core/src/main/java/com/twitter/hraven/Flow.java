@@ -186,7 +186,7 @@ public class Flow implements Comparable<Flow> {
     return queueKey;
   }
 
-  public void setFlowQueueKey(FlowQueueKey queueKey) {
+  public void setQueueKey(FlowQueueKey queueKey) {
     this.queueKey = queueKey;
   }
 
