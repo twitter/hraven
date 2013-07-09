@@ -19,6 +19,7 @@ import com.twitter.hraven.Flow;
 import com.twitter.hraven.FlowQueueKey;
 import com.twitter.hraven.datasource.FlowQueueService;
 
+import com.twitter.hraven.rest.PaginatedResult;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -28,9 +29,7 @@ import org.junit.Test;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  */
@@ -39,6 +38,7 @@ public class TestFlowQueueService {
   private static HBaseTestingUtility UTIL;
   private static final String TEST_CLUSTER = "test@test";
   private static final String TEST_USER = "testuser";
+  private static final String TEST_USER2 = "testuser2";
 
   @BeforeClass
   public static void setupBeforeClass() throws Exception {
@@ -57,23 +57,10 @@ public class TestFlowQueueService {
     FlowQueueService service = new FlowQueueService(UTIL.getConfiguration());
 
     // add a couple of test flows
-    FlowQueueKey key1 = new FlowQueueKey(TEST_CLUSTER, Flow.Status.RUNNING,
-        System.currentTimeMillis(), "flow1");
-    Flow flow1 = new Flow(null);
-    flow1.setJobGraphJSON("{}");
-    flow1.setFlowName("flow1");
-    flow1.setUserName(TEST_USER);
-    flow1.setProgress(10);
-    service.updateFlow(key1, flow1);
-
-    FlowQueueKey key2 = new FlowQueueKey(TEST_CLUSTER, Flow.Status.RUNNING,
-        System.currentTimeMillis(), "flow2");
-    Flow flow2 = new Flow(null);
-    flow2.setJobGraphJSON("{}");
-    flow2.setFlowName("flow2");
-    flow2.setUserName(TEST_USER);
-    flow2.setProgress(20);
-    service.updateFlow(key2, flow2);
+    Flow flow1 = createFlow(service, TEST_USER, 1);
+    FlowQueueKey key1 = flow1.getQueueKey();
+    Flow flow2 = createFlow(service, TEST_USER, 2);
+    FlowQueueKey key2 = flow2.getQueueKey();
 
     // read back one flow
     Flow flow1Retrieved = service.getFlowFromQueue(key1.getCluster(), key1.getTimestamp(),
@@ -108,6 +95,59 @@ public class TestFlowQueueService {
     assertFlowEquals(newKey1, flow1, result1);
     result2 = succeeded.get(0);
     assertFlowEquals(newKey2, flow2, result2);
+
+    // add flows from a second user
+    Flow flow3 = createFlow(service, TEST_USER2, 3);
+    FlowQueueKey key3 = flow3.getQueueKey();
+
+    // 3rd should be the only one running
+    running = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.RUNNING, 10);
+    assertNotNull(running);
+    assertEquals(1, running.size());
+    assertFlowEquals(key3, flow3, running.get(0));
+
+    // move flow3 to succeeded
+    FlowQueueKey newKey3 = new FlowQueueKey(key3.getCluster(), Flow.Status.SUCCEEDED,
+        key3.getTimestamp(), key3.getFlowId());
+    service.moveFlow(key3, newKey3);
+
+    succeeded = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED, 10);
+    assertNotNull(succeeded);
+    assertEquals(3, succeeded.size());
+    Flow result3 = succeeded.get(0);
+    assertFlowEquals(newKey3, flow3, result3);
+
+    // test filtering by user name
+    succeeded = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED, 10,
+        TEST_USER2, null);
+    assertNotNull(succeeded);
+    assertEquals(1, succeeded.size());
+    assertFlowEquals(newKey3, flow3, succeeded.get(0));
+
+    // test pagination
+    PaginatedResult<Flow> page1 = service.getPaginatedFlowsForStatus(
+        TEST_CLUSTER, Flow.Status.SUCCEEDED, 1, null, null);
+    List<Flow> pageValues = page1.getValues();
+    assertNotNull(pageValues);
+    assertNotNull(page1.getNextStartRow());
+    assertEquals(1, pageValues.size());
+    assertFlowEquals(newKey3, flow3, pageValues.get(0));
+    // page 2
+    PaginatedResult<Flow> page2 = service.getPaginatedFlowsForStatus(
+        TEST_CLUSTER, Flow.Status.SUCCEEDED, 1, null, page1.getNextStartRow());
+    pageValues = page2.getValues();
+    assertNotNull(pageValues);
+    assertNotNull(page2.getNextStartRow());
+    assertEquals(1, pageValues.size());
+    assertFlowEquals(newKey2, flow2, pageValues.get(0));
+    // page 3
+    PaginatedResult<Flow> page3 = service.getPaginatedFlowsForStatus(
+        TEST_CLUSTER, Flow.Status.SUCCEEDED, 1, null, page2.getNextStartRow());
+    pageValues = page3.getValues();
+    assertNotNull(pageValues);
+    assertNull(page3.getNextStartRow());
+    assertEquals(1, pageValues.size());
+    assertFlowEquals(newKey1, flow1, pageValues.get(0));
   }
 
   protected void assertFlowEquals(FlowQueueKey expectedKey, Flow expectedFlow, Flow resultFlow) {
@@ -119,5 +159,19 @@ public class TestFlowQueueService {
     assertEquals(expectedFlow.getFlowName(), resultFlow.getFlowName());
     assertEquals(expectedFlow.getUserName(), resultFlow.getUserName());
     assertEquals(expectedFlow.getProgress(), resultFlow.getProgress());
+  }
+
+  protected Flow createFlow(FlowQueueService service, String user, int cnt) throws Exception {
+    String flowName = "flow"+Integer.toString(cnt);
+    FlowQueueKey key = new FlowQueueKey(TEST_CLUSTER, Flow.Status.RUNNING,
+        System.currentTimeMillis(), flowName);
+    Flow flow = new Flow(null);
+    flow.setQueueKey(key);
+    flow.setJobGraphJSON("{}");
+    flow.setFlowName(flowName);
+    flow.setUserName(user);
+    flow.setProgress(10 * cnt);
+    service.updateFlow(key, flow);
+    return flow;
   }
 }
