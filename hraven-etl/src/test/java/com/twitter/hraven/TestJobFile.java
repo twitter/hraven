@@ -35,7 +35,7 @@ public class TestJobFile {
   final static String VALID_JOB_HISTORY_FILENAME2 = "hostname2.example.com_1334279672946_job_201204130114_0020_user1_JobConfParser";
   final static String VALID_JOB_HISTORY_FILENAME3 = "job_201306192220_0001_1371680576348_hadoop_word+count";
   final static String VALID_JOB_CONF_FILENAME3 = "job_201306192220_0001_1371680576348_hadoop_conf.xml";
-  final static String VALID_JOB_HISTORY_FILENAME4 = "job_201306192220_0001_1371680576348_hadoop_job12345";
+  final static String VALID_JOB_HISTORY_FILENAME4 = "job_201306192220_0001_1371680576348_hadoop_job_12345_12345";
 
   final static String INVALID_JOB_FILENAME = "jabbedabbedoo.txt";
 
