@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
@@ -35,8 +37,11 @@ public class JobFile implements Writable {
   private static final Pattern PATTERN = Pattern
       .compile(Constants.JOB_FILENAME_PATTERN_REGEX);
 
+  private static final Pattern CONF_PATTERN = Pattern
+      .compile(Constants.JOB_CONF_FILE_END);
+
+  private static final Log LOG = LogFactory.getLog(JobFile.class);
   private String filename;
-  private String jobTracker = null;
   private String jobid = null;
   private boolean isJobConfFile = false;
   private boolean isJobHistoryFile = false;
@@ -75,15 +80,19 @@ public class JobFile implements Writable {
       Matcher matcher = PATTERN.matcher(filename);
 
       if (matcher.matches()) {
-        jobTracker = matcher.group(1);
-        jobid = matcher.group(2);
-        String remainder = matcher.group(3);
-
-        if (Constants.JOB_CONF_FILE_END.equals(remainder)) {
-          isJobConfFile = true;
-        } else {
-          isJobHistoryFile = true;
-        }
+    	//  jobTracker = "";
+    	  jobid = matcher.group(1);
+    	  Matcher confMatcher = CONF_PATTERN.matcher(filename);
+    	  if (confMatcher.matches()) {
+        	isJobConfFile = true;
+        	LOG.debug("Job Conf file  " + filename);
+        	} else {
+        		isJobHistoryFile = true;
+        		LOG.debug("Job History file " + filename);
+        		}
+    	  }
+      else {
+          LOG.info(" file does not match any format: " + filename);
       }
     }
   }
@@ -101,13 +110,6 @@ public class JobFile implements Writable {
    */
   public String getJobid() {
     return jobid;
-  }
-
-  /**
-   * @return the jobtracker part or null if this is not a valid job file.
-   */
-  public String getJobTracker() {
-    return jobTracker;
   }
 
   /**
@@ -132,7 +134,6 @@ public class JobFile implements Writable {
   @Override
   public void write(DataOutput out) throws IOException {
     Text.writeString(out, filename);
-    Text.writeString(out, jobTracker);
     Text.writeString(out, jobid);
     out.writeBoolean(isJobConfFile);
     out.writeBoolean(isJobHistoryFile);
@@ -146,7 +147,6 @@ public class JobFile implements Writable {
   @Override
   public void readFields(DataInput in) throws IOException {
     this.filename = Text.readString(in);
-    this.jobTracker = Text.readString(in);
     this.jobid = Text.readString(in);
     this.isJobConfFile = in.readBoolean();
     this.isJobHistoryFile = in.readBoolean();
