@@ -82,8 +82,8 @@ public class JobFile implements Writable {
       if (matcher.matches()) {
     	//  jobTracker = "";
     	  jobid = matcher.group(1);
-    	  Matcher conf_matcher = CONF_PATTERN.matcher(filename);
-    	  if (conf_matcher.matches()) {
+    	  Matcher confMatcher = CONF_PATTERN.matcher(filename);
+    	  if (confMatcher.matches()) {
         	isJobConfFile = true;
         	LOG.debug("Job Conf file  " + filename);
         	} else {
