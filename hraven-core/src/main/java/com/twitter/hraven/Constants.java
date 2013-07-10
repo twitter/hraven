@@ -173,9 +173,6 @@ public class Constants {
   public static final byte[] MAX_JOB_ID_COLUMN_BYTES = Bytes
       .toBytes(MAX_JOB_ID_COLUMN);
 
-  // JobHistory related
-  public static final String JOB_CONF_FILE_END = "conf.xml";
-
   // job details related counter stats
   public static final String FILESYSTEM_COUNTERS = "FileSystemCounters";
   public static final String FILES_BYTES_READ = "FILE_BYTES_READ";
@@ -260,8 +257,17 @@ public class Constants {
    * For example,
    * cluster-jt.identifier.example.com_1333569494142_job_201204041958_150125_conf
    * .xml
+   * Regex should also be able to parse new format of history files since
+   * MAPREDUCE-323 ( as packaged in cdh3u5)
+   * For example: history filename is
+   * job_201306192120_0003_1371677828795_hadoop_word+count
+   * and conf file name is
+   * job_201306192120_0003_1371677828795_hadoop_conf.xml
    */
-  public static final String JOB_FILENAME_PATTERN_REGEX = "^([^_]*)_[^_]*_(job_[0-9]*_[0-9]*)_(.*)$";
+  public static final String JOB_FILENAME_PATTERN_REGEX = ".*(job_[0-9]*_[0-9]*)_([0-9]*[aA-zZ]_)*(.*)$";
+
+  // JobHistory file name parsing related
+  public static final String JOB_CONF_FILE_END = "(.*)(conf.xml)$";
 
   /**
    * Regex to parse pig logfile name such as
