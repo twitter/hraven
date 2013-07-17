@@ -1,4 +1,4 @@
 language: java
-script: mvn test -X
+script: umask 0022 && mvn test
 jdk:
   - openjdk7
