@@ -28,7 +28,6 @@ import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
-import org.apache.hadoop.mapred.JobHistoryCopy;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import com.twitter.hraven.Constants;
@@ -43,6 +42,8 @@ import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
+import com.twitter.hraven.etl.JobHistoryFileDecipherBase;
+import com.twitter.hraven.etl.JobHistoryFileDecipherFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
 
 /**
@@ -173,12 +174,30 @@ public class JobFileTableMapper extends
       InputStream jobHistoryInputStream = rawService
           .getJobHistoryInputStreamFromResult(value);
 
-      JobHistoryListener jobHistoryListener = new JobHistoryListener(jobKey);
+      JobHistoryFileDecipherFactory dFactory = new JobHistoryFileDecipherFactory();
 
-      JobHistoryCopy.parseHistoryFromIS(jobHistoryInputStream,
-          jobHistoryListener);
+      JobHistoryFileDecipherBase historyFileParser = dFactory
+    		  .createJobHistoryFileDecipher(jobHistoryInputStream, jobKey);
 
-      puts = jobHistoryListener.getJobPuts();
+      if (historyFileParser == null) {
+    	  throw new ProcessingException(
+    			  " Unable to get appropriate history file parser in JobHistoryDecipherFactory, "
+    					  + "cannot process this record!" + jobKey);
+      }
+
+      boolean isParseOk = historyFileParser.decipher(
+    		  jobHistoryInputStream, jobKey);
+      if (isParseOk == false) {
+    	  throw new ProcessingException(
+    			  " Unable to parse history file in function decipher, "
+    					  + "cannot process this record!" + jobKey);
+      }
+
+      puts = historyFileParser.getJobPuts();
+      if( puts == null ) {
+    	  throw new ProcessingException(
+    			  " Unable to get job puts for this record!" + jobKey);
+      }
       LOG.info("Writing " + puts.size() + " Job puts to "
           + Constants.HISTORY_TABLE);
 
@@ -190,7 +209,11 @@ public class JobFileTableMapper extends
         context.progress();
       }
 
-      puts = jobHistoryListener.getTaskPuts();
+      puts = historyFileParser.getTaskPuts();
+      if( puts == null ) {
+    	  throw new ProcessingException(
+    			  " Unable to get task puts for this record!" + jobKey);
+      }
       LOG.info("Writing " + puts.size() + " Job puts to "
           + Constants.HISTORY_TASK_TABLE);
 
