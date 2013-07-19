@@ -30,12 +30,11 @@ import com.twitter.hraven.JobKey;
 public interface JobHistoryFileParser {
 
 	/**
-	 * this method needs to be implemented by the sub classes this should parse
-	 * the history file and populate the puts
+	 * this method should parse the history file and populate the puts
 	 * 
 	 * @return true if file was parsed successfully false if it wasn't
 	 */
-	public abstract void parse(InputStream historyFile, JobKey jobKey);
+	public void parse(InputStream historyFile, JobKey jobKey);
 
 	/**
 	 * Return the generated list of job puts assembled when history file is
@@ -43,7 +42,7 @@ public interface JobHistoryFileParser {
 	 * 
 	 * @return a list of jobPuts
 	 */
-	public abstract List<Put> getJobPuts();
+	public List<Put> getJobPuts();
 
 	/**
 	 * Return the generated list of task puts assembled when history file is
@@ -51,6 +50,6 @@ public interface JobHistoryFileParser {
 	 * 
 	 * @return a list of taskPuts
 	 */
-	public abstract List<Put> getTaskPuts();
+	public List<Put> getTaskPuts();
 
 }
