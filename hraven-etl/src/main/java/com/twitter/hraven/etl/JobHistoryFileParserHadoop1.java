@@ -39,19 +39,9 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 
 	private JobHistoryListener jobHistoryListener = null;
 
-	/*
-	 * default constructor
-	 */
-	public JobHistoryFileParserHadoop1() {
-		super();
-	}
-
-	/*
-	 * (non-Javadoc)
+	/**
+	 * {@inheritDoc}
 	 * 
-	 * @see
-	 * com.twitter.hraven.etl.JobHistoryFileParserBase#parse(java.io.InputStream
-	 * , com.twitter.hraven.JobKey)
 	 */
 	@Override
 	public void parse(InputStream historyFile, JobKey jobKey)
@@ -63,7 +53,6 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 		} catch (IOException ioe) {
 			LOG.error(" Exception during parsing hadoop 1.0 file "
 					+ ioe.getMessage());
-			LOG.error(ioe.getStackTrace());
 			throw new ProcessingException(
 					" Unable to parse history file in function parse, "
 							+ "cannot process this record!" + jobKey
@@ -71,10 +60,8 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 		}
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.twitter.hraven.etl.JobHistoryFileParseBase#getJobPuts()
+	/**
+	 * {@inheritDoc}
 	 */
 	@Override
 	public List<Put> getJobPuts() {
@@ -84,10 +71,8 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 			return null;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.twitter.hraven.etl.JobHistoryFileParseBase#getTaskPuts()
+	/**
+	 * {@inheritDoc}
 	 */
 	@Override
 	public List<Put> getTaskPuts() {
