@@ -42,8 +42,8 @@ import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
-import com.twitter.hraven.etl.JobHistoryFileDecipherBase;
-import com.twitter.hraven.etl.JobHistoryFileDecipherFactory;
+import com.twitter.hraven.etl.JobHistoryFileParser;
+import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
 
 /**
@@ -174,24 +174,16 @@ public class JobFileTableMapper extends
       InputStream jobHistoryInputStream = rawService
           .getJobHistoryInputStreamFromResult(value);
 
-      JobHistoryFileDecipherFactory dFactory = new JobHistoryFileDecipherFactory();
-
-      JobHistoryFileDecipherBase historyFileParser = dFactory
-    		  .createJobHistoryFileDecipher(jobHistoryInputStream, jobKey);
+      JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
+    		  .createJobHistoryFileParser(jobHistoryInputStream);
 
       if (historyFileParser == null) {
     	  throw new ProcessingException(
-    			  " Unable to get appropriate history file parser in JobHistoryDecipherFactory, "
+    			  " Unable to get appropriate history file parser in JobHistoryParserFactory, "
     					  + "cannot process this record!" + jobKey);
       }
 
-      boolean isParseOk = historyFileParser.decipher(
-    		  jobHistoryInputStream, jobKey);
-      if (isParseOk == false) {
-    	  throw new ProcessingException(
-    			  " Unable to parse history file in function decipher, "
-    					  + "cannot process this record!" + jobKey);
-      }
+      historyFileParser.parse(jobHistoryInputStream, jobKey);
 
       puts = historyFileParser.getJobPuts();
       if( puts == null ) {
