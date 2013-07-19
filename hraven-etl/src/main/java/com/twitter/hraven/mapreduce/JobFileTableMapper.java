@@ -177,16 +177,10 @@ public class JobFileTableMapper extends
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
     		  .createJobHistoryFileParser(jobHistoryInputStream);
 
-      if (historyFileParser == null) {
-    	  throw new ProcessingException(
-    			  " Unable to get appropriate history file parser in JobHistoryParserFactory, "
-    					  + "cannot process this record!" + jobKey);
-      }
-
       historyFileParser.parse(jobHistoryInputStream, jobKey);
 
       puts = historyFileParser.getJobPuts();
-      if( puts == null ) {
+      if (puts == null) {
     	  throw new ProcessingException(
     			  " Unable to get job puts for this record!" + jobKey);
       }
@@ -202,7 +196,7 @@ public class JobFileTableMapper extends
       }
 
       puts = historyFileParser.getTaskPuts();
-      if( puts == null ) {
+      if (puts == null) {
     	  throw new ProcessingException(
     			  " Unable to get task puts for this record!" + jobKey);
       }
@@ -227,6 +221,10 @@ public class JobFileTableMapper extends
     } catch (ProcessingException pe) {
       LOG.error("Failed to process record "
           + (qualifiedJobId != null ? qualifiedJobId.toString() : ""), pe);
+      success = false;
+    } catch (IllegalArgumentException iae) {
+      LOG.error("Failed to process record "
+              + (qualifiedJobId != null ? qualifiedJobId.toString() : ""),iae);
       success = false;
     }
 

@@ -51,8 +51,7 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 			jobHistoryListener = new JobHistoryListener(jobKey);
 			JobHistoryCopy.parseHistoryFromIS(historyFile, jobHistoryListener);
 		} catch (IOException ioe) {
-			LOG.error(" Exception during parsing hadoop 1.0 file "
-					+ ioe.getMessage());
+			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
 			throw new ProcessingException(
 					" Unable to parse history file in function parse, "
 							+ "cannot process this record!" + jobKey
