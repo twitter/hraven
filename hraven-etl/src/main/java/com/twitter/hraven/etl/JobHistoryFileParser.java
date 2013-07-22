@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.util.List;
 import org.apache.hadoop.hbase.client.Put;
 import com.twitter.hraven.JobKey;
+import com.twitter.hraven.datasource.ProcessingException;
 
 /**
  * Interface for job history file parsing Should be implemented for parsing
@@ -32,7 +33,7 @@ public interface JobHistoryFileParser {
 	/**
 	 * this method should parse the history file and populate the puts
 	 * 
-	 * @return true if file was parsed successfully false if it wasn't
+	 * @throws ProcessingException
 	 */
 	public void parse(InputStream historyFile, JobKey jobKey);
 

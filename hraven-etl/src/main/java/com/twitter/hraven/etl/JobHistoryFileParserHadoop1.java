@@ -55,7 +55,7 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 			throw new ProcessingException(
 					" Unable to parse history file in function parse, "
 							+ "cannot process this record!" + jobKey
-							+ " error: " + ioe.getMessage());
+							+ " error: " , ioe);
 		}
 	}
 
@@ -64,10 +64,11 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 	 */
 	@Override
 	public List<Put> getJobPuts() {
-		if (jobHistoryListener != null)
+		if (jobHistoryListener != null) {
 			return jobHistoryListener.getJobPuts();
-		else
+		} else {
 			return null;
+		}
 	}
 
 	/**
@@ -75,9 +76,10 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 	 */
 	@Override
 	public List<Put> getTaskPuts() {
-		if (jobHistoryListener != null)
+		if (jobHistoryListener != null) {
 			return jobHistoryListener.getTaskPuts();
-		else
+		} else {
 			return null;
+		}
 	}
 }
