@@ -28,7 +28,6 @@ import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
-import org.apache.hadoop.mapred.JobHistoryCopy;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import com.twitter.hraven.Constants;
@@ -43,6 +42,8 @@ import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
+import com.twitter.hraven.etl.JobHistoryFileParser;
+import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
 
 /**
@@ -173,12 +174,16 @@ public class JobFileTableMapper extends
       InputStream jobHistoryInputStream = rawService
           .getJobHistoryInputStreamFromResult(value);
 
-      JobHistoryListener jobHistoryListener = new JobHistoryListener(jobKey);
+      JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
+    		  .createJobHistoryFileParser(jobHistoryInputStream);
 
-      JobHistoryCopy.parseHistoryFromIS(jobHistoryInputStream,
-          jobHistoryListener);
+      historyFileParser.parse(jobHistoryInputStream, jobKey);
 
-      puts = jobHistoryListener.getJobPuts();
+      puts = historyFileParser.getJobPuts();
+      if (puts == null) {
+    	  throw new ProcessingException(
+    			  " Unable to get job puts for this record!" + jobKey);
+      }
       LOG.info("Writing " + puts.size() + " Job puts to "
           + Constants.HISTORY_TABLE);
 
@@ -190,7 +195,11 @@ public class JobFileTableMapper extends
         context.progress();
       }
 
-      puts = jobHistoryListener.getTaskPuts();
+      puts = historyFileParser.getTaskPuts();
+      if (puts == null) {
+    	  throw new ProcessingException(
+    			  " Unable to get task puts for this record!" + jobKey);
+      }
       LOG.info("Writing " + puts.size() + " Job puts to "
           + Constants.HISTORY_TASK_TABLE);
 
@@ -212,6 +221,10 @@ public class JobFileTableMapper extends
     } catch (ProcessingException pe) {
       LOG.error("Failed to process record "
           + (qualifiedJobId != null ? qualifiedJobId.toString() : ""), pe);
+      success = false;
+    } catch (IllegalArgumentException iae) {
+      LOG.error("Failed to process record "
+              + (qualifiedJobId != null ? qualifiedJobId.toString() : ""),iae);
       success = false;
     }
 
