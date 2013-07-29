@@ -18,7 +18,6 @@ package com.twitter.hraven.etl;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import java.io.ByteArrayInputStream;
 import org.junit.Test;
 
 /**
@@ -32,10 +31,8 @@ public class TestJobHistoryFileParserFactory {
 
 		String jHist = "Meta VERSION=\"1\" .\n"
 				+ "Job JOBID=\"job_201301010000_12345\"";
-		byte[] fileContents = jHist.getBytes();
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(new ByteArrayInputStream(
-						fileContents));
+				.createJobHistoryFileParser(jHist);
 
 		assertNotNull(historyFileParser);
 
@@ -51,7 +48,6 @@ public class TestJobHistoryFileParserFactory {
 	 */
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateJobHistoryFileParserNullCreation() {
-
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
 				.createJobHistoryFileParser(null);
 		assertNull(historyFileParser);

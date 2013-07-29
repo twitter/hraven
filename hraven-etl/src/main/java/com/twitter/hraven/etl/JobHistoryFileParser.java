@@ -15,7 +15,6 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
-import java.io.InputStream;
 import java.util.List;
 import org.apache.hadoop.hbase.client.Put;
 import com.twitter.hraven.JobKey;
@@ -35,7 +34,7 @@ public interface JobHistoryFileParser {
 	 * 
 	 * @throws ProcessingException
 	 */
-	public void parse(InputStream historyFile, JobKey jobKey);
+	public void parse(String historyFileContents, JobKey jobKey);
 
 	/**
 	 * Return the generated list of job puts assembled when history file is

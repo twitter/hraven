@@ -16,9 +16,7 @@ limitations under the License.
 package com.twitter.hraven.mapreduce;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -29,7 +27,6 @@ import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
-
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobDesc;
 import com.twitter.hraven.JobDescFactory;
@@ -171,13 +168,11 @@ public class JobFileTableMapper extends
           jobDesc.getAppId(), jobDesc.getVersion(), submitTimeMillis);
       context.progress();
 
-      InputStream jobHistoryInputStream = rawService
-          .getJobHistoryInputStreamFromResult(value);
-
+      String historyFileContents = rawService.getRawJobHistory(qualifiedJobId);
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-    		  .createJobHistoryFileParser(jobHistoryInputStream);
+    		  .createJobHistoryFileParser(historyFileContents);
 
-      historyFileParser.parse(jobHistoryInputStream, jobKey);
+      historyFileParser.parse(historyFileContents, jobKey);
 
       puts = historyFileParser.getJobPuts();
       if (puts == null) {
