@@ -36,7 +36,15 @@ public enum JobHistoryKeys {
 	SPLITS, JOB_PRIORITY, HTTP_PORT, 
 	TRACKER_NAME, STATE_STRING, VERSION, 
 	MAP_COUNTERS, REDUCE_COUNTERS, 
-	VIEW_JOB, MODIFY_JOB, JOB_QUEUE;
+	VIEW_JOB, MODIFY_JOB, JOB_QUEUE,
+	// hadoop 2.0 related keys {@link JobHistoryParser}
+	UBERIZED, TOTAL_COUNTERS,
+	APPLICATION_ATTEMPT_ID, AM_START_TIME,
+	CONTAINER_ID, NODE_MANAGER_HOST,
+	NODE_MANAGER_PORT, NODE_MANAGER_HTTP_PORT,
+	SHUFFLE_PORT, TASK_STATE, TASK_COUNTERS,
+	TASK_ATTEMPT_COUNTERS,
+	TASK_START_TIME, TASK_FINISH_TIME;
 
 	/**
 	 * Job history key names as bytes
@@ -94,6 +102,18 @@ public enum JobHistoryKeys {
 		KEY_TYPES.put(VIEW_JOB, String.class);
 		KEY_TYPES.put(MODIFY_JOB, String.class);
 		KEY_TYPES.put(JOB_QUEUE, String.class);
+		KEY_TYPES.put(TOTAL_COUNTERS, String.class);
+		KEY_TYPES.put(UBERIZED, String.class);
+		KEY_TYPES.put(APPLICATION_ATTEMPT_ID, String.class);
+		KEY_TYPES.put(AM_START_TIME, Long.class);
+		KEY_TYPES.put(CONTAINER_ID, String.class);
+		KEY_TYPES.put(NODE_MANAGER_HOST, String.class);
+		KEY_TYPES.put(NODE_MANAGER_PORT, Integer.class);
+		KEY_TYPES.put(NODE_MANAGER_HTTP_PORT, Integer.class);
+		KEY_TYPES.put(SHUFFLE_PORT, Integer.class);
+		KEY_TYPES.put(TASK_STATE, String.class);
+		KEY_TYPES.put(TASK_START_TIME, Long.class);
+		KEY_TYPES.put(TASK_FINISH_TIME, Long.class);
 	}
 
 }
