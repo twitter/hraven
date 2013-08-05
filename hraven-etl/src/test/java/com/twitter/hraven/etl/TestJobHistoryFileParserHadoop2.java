@@ -42,14 +42,14 @@ public class TestJobHistoryFileParserHadoop2 {
 	public void testCreateJobHistoryFileParserCorrectCreation() throws IOException {
 
 		final String  JOB_HISTORY_FILE_NAME = "src/test/resources/job_1329348432655_0001-1329348443227-user-Sleep+job-1329348468601-10-1-SUCCEEDED-default.jhist";
+
 		File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
 		byte [] contents = Files.toByteArray(jobHistoryfile);
 		String fileContents = Bytes.toString(contents);
-		
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
 				.createJobHistoryFileParser(fileContents);
 		assertNotNull(historyFileParser);
-		
+
 		// confirm that we get back an object that can parse hadoop 2.0 files
 		assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
 
@@ -58,13 +58,13 @@ public class TestJobHistoryFileParserHadoop2 {
 		historyFileParser.parse(fileContents, jobKey);
 
 		List<Put> jobPuts = historyFileParser.getJobPuts();
-		assertEquals(jobPuts.size(), 1);
+		assertEquals(4, jobPuts.size());
 
 		JobKeyConverter jobKeyConv = new JobKeyConverter();
 		assertEquals("cluster1!user!Sleep!1!job_1329348432655_0001", jobKeyConv.fromBytes(jobPuts.get(0).getRow()).toString());
 
 		List<Put> taskPuts = historyFileParser.getTaskPuts();		
-		assertEquals(taskPuts.size(), 23);
+		assertEquals(taskPuts.size(), 45);
 		
 		TaskKeyConverter taskKeyConv = new TaskKeyConverter();
 
@@ -97,5 +97,6 @@ public class TestJobHistoryFileParserHadoop2 {
 			tKey = taskKeyConv.fromBytes(p.getRow()).toString();
 			assertTrue(putRowKeys.contains(tKey));
 		}
+
 	}
 }

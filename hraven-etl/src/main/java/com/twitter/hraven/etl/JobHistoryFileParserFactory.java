@@ -33,8 +33,8 @@ public class JobHistoryFileParserFactory {
 	 * and hence we need a replica
 	 */
 	public static final String HADOOP2_VERSION_STRING = "Avro-Json";
-	private static final short HISTORY_FILE_VERSION1 = 1;
-	private static final short HISTORY_FILE_VERSION2 = 2;
+	private static final int HISTORY_FILE_VERSION1 = 1;
+	private static final int HISTORY_FILE_VERSION2 = 2;
 
 	/**
 	 * determines the verison of hadoop that the history file belongs to
@@ -50,13 +50,22 @@ public class JobHistoryFileParserFactory {
 	 *         .issuetabpanels:comment-tabpanel#comment-12763160
 	 * 
 	 */
-	public static short getVersion(String historyFileContents) {
-		String versionPart = historyFileContents.substring(0, 9);
+	public static int getVersion(String historyFileContents) {
+		String versionPart = getVersionStringFromFile(historyFileContents);
 		if (StringUtils.equalsIgnoreCase(versionPart, HADOOP2_VERSION_STRING)) {
 			return HISTORY_FILE_VERSION2;
 		} else {
 			return HISTORY_FILE_VERSION1;
 		}
+	}
+
+	/**
+	 * method to return the version string that's inside the history file
+	 *
+	 * @return versionString
+	 */
+	private static String getVersionStringFromFile(String contents) {
+		return contents.substring(0, 9);
 	}
 
 	/**
@@ -81,7 +90,7 @@ public class JobHistoryFileParserFactory {
 					"Job history file contents should not be null");
 		}
 
-		short version = getVersion(historyFileContents);
+		int version = getVersion(historyFileContents);
 
 		switch (version) {
 		case 1:
@@ -90,28 +99,23 @@ public class JobHistoryFileParserFactory {
 		case 2:
 			return new JobHistoryFileParserHadoop2();
 
-			/*
-			 * right now, the default won't be in any code path but as we add
-			 * support for post MAPREDUCE-1016 and Hadoop 2.0 this would be
-			 * relevant
-			 */
 		default:
 			throw new IllegalArgumentException(" Unknown format of job history file: "
-							+ historyFileContents.substring(0, 9));
+							+ getVersionStringFromFile(historyFileContents));
 		}
 	}
 
 	/**
 	 * @return HISTORY_FILE_VERSION1
 	 */
-	public static short getHistoryFileVersion1() {
+	public static int getHistoryFileVersion1() {
 		return HISTORY_FILE_VERSION1;
 	}
 
 	/**
 	 * @return HISTORY_FILE_VERSION2
 	 */
-	public static short getHistoryFileVersion2() {
+	public static int getHistoryFileVersion2() {
 		return HISTORY_FILE_VERSION2;
 	}
 }
