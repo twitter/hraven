@@ -1,5 +1,5 @@
 /*
-Copyright 2013 Twitter, Inc.
+	Copyright 2013 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -72,34 +72,34 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 
 	private static final Log LOG = LogFactory.getLog(JobHistoryFileParserHadoop2.class);
 
-	  private Schema schema;
-	  private Decoder decoder;
-	  private DatumReader<GenericRecord> reader;
+	private Schema schema;
+	private Decoder decoder;
+	private DatumReader<GenericRecord> reader;
 
-	  private static final String TYPE = "type";
-	  private static final String EVENT = "event";
-	  private static final String NAME = "name";
-	  private static final String FIELDS = "fields";
-	  private static final String COUNTS = "counts";
-	  private static final String GROUPS = "groups";
-	  private static final String VALUE = "value";
-	  private static final String TASKID = "taskid";
-	  private static final String APPLICATION_ATTEMPTID= "applicationAttemptId";
-	  private static final String ATTEMPTID= "attemptId";
+	private static final String TYPE = "type";
+	private static final String EVENT = "event";
+	private static final String NAME = "name";
+	private static final String FIELDS = "fields";
+	private static final String COUNTS = "counts";
+	private static final String GROUPS = "groups";
+	private static final String VALUE = "value";
+	private static final String TASKID = "taskid";
+	private static final String APPLICATION_ATTEMPTID= "applicationAttemptId";
+	private static final String ATTEMPTID= "attemptId";
 
-	  private static final String TYPE_INT ="int";
-	  private static final String TYPE_BOOLEAN ="boolean";
-	  private static final String TYPE_LONG ="long";
-	  private static final String TYPE_STRING ="String";
-	  /** only acls in the job history file seem to be of this type: map of strings */
-	  private static final String TYPE_MAP_STRINGS ="{\"type\":\"map\",\"values\":\"string\"}";
-	  /**
-	   * vMemKbytes, clockSplit, physMemKbytes, cpuUsages are arrays of ints
-	   * See MAPREDUCE-5432
-	   */
-	  private static final String TYPE_ARRAY_INTS = "{\"type\":\"array\",\"items\":\"int\"}";
-	  /** this is part of {@link  org.apache.hadoop.mapreduce.jobhistory.TaskFailedEvent.java} */
-	  private static final String NULL_STRING = "[\"null\",\"string\"]";
+	private static final String TYPE_INT ="int";
+	private static final String TYPE_BOOLEAN ="boolean";
+	private static final String TYPE_LONG ="long";
+	private static final String TYPE_STRING ="String";
+	/** only acls in the job history file seem to be of this type: map of strings */
+	private static final String TYPE_MAP_STRINGS ="{\"type\":\"map\",\"values\":\"string\"}";
+	/**
+	 * vMemKbytes, clockSplit, physMemKbytes, cpuUsages are arrays of ints
+	 * See MAPREDUCE-5432
+	 */
+	private static final String TYPE_ARRAY_INTS = "{\"type\":\"array\",\"items\":\"int\"}";
+	/** this is part of {@link  org.apache.hadoop.mapreduce.jobhistory.TaskFailedEvent.java} */
+	private static final String NULL_STRING = "[\"null\",\"string\"]";
 
 	public static enum Hadoop2RecordType {
 		JobFinished, JobInfoChange, JobInited, AMStarted,
@@ -162,7 +162,6 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
     	eventRecordNames.put("JOB_FAILED", Hadoop2RecordType.JobUnsuccessfulCompletion);
     	eventRecordNames.put("JOB_PRIORITY_CHANGED", Hadoop2RecordType.JobPriorityChange);
     	eventRecordNames.put("JOB_FINISHED", Hadoop2RecordType.JobFinished);
-
 
     	/**
     	 * populate the hash set for counter names
@@ -508,7 +507,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 	 * 
 	 * @param {@link Put} p
 	 * @param {@link Constants} family
-	 * @param {@link JobHistoryKeys} key
+	 * @param String key
 	 * @param long value
 	 */
 	private void populatePut(Put p, byte[] family, String key,
@@ -525,7 +524,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 	 * 
 	 * @param {@link Put} p
 	 * @param {@link Constants} family
-	 * @param {@link JobHistoryKeys} key
+	 * @param String key
 	 * @param int value
 	 */
 	private void populatePut(Put p, byte[] family, String key, int value) {
@@ -556,8 +555,10 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 	 * 
 	 * @param {@link Put} p
 	 * @param {@link Constants} family
-	 * @param {@link JobHistoryKeys} key
-	 * @param {@link Counters} c
+	 * @param String key
+	 * @param String groupName
+	 * @param String counterName
+	 * @param long counterValue
 	 */
 	private void populatePut(Put p, byte[] family, String key,
 			String groupName, String counterName, Long counterValue) {
