@@ -58,8 +58,6 @@ import com.twitter.hraven.datasource.TaskKeyConverter;
 public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 
 	private JobKey jobKey;
-	@SuppressWarnings("unused")
-	private String jobId;
 	/** Job ID, minus the leading "job_" */
 	private String jobNumber = "";
 	private byte[] jobKeyBytes;
@@ -78,30 +76,30 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 	  private Decoder decoder;
 	  private DatumReader<GenericRecord> reader;
 
-	  private final String TYPE = "type";
-	  private final String EVENT = "event";
-	  private final String NAME = "name";
-	  private final String FIELDS = "fields";
-	  private final String COUNTS = "counts";
-	  private final String GROUPS = "groups";
-	  private final String VALUE = "value";
-	  private final String TASKID = "taskid";
-	  private final String APPLICATION_ATTEMPTID= "applicationAttemptId";
-	  private final String ATTEMPTID= "attemptId";
+	  private static final String TYPE = "type";
+	  private static final String EVENT = "event";
+	  private static final String NAME = "name";
+	  private static final String FIELDS = "fields";
+	  private static final String COUNTS = "counts";
+	  private static final String GROUPS = "groups";
+	  private static final String VALUE = "value";
+	  private static final String TASKID = "taskid";
+	  private static final String APPLICATION_ATTEMPTID= "applicationAttemptId";
+	  private static final String ATTEMPTID= "attemptId";
 
-	  private final String TYPE_INT ="int";
-	  private final String TYPE_BOOLEAN ="boolean";
-	  private final String TYPE_LONG ="long";
-	  private final String TYPE_STRING ="String";
+	  private static final String TYPE_INT ="int";
+	  private static final String TYPE_BOOLEAN ="boolean";
+	  private static final String TYPE_LONG ="long";
+	  private static final String TYPE_STRING ="String";
 	  /** only acls in the job history file seem to be of this type: map of strings */
-	  private final String TYPE_MAP_STRINGS ="{\"type\":\"map\",\"values\":\"string\"}";
+	  private static final String TYPE_MAP_STRINGS ="{\"type\":\"map\",\"values\":\"string\"}";
 	  /**
 	   * vMemKbytes, clockSplit, physMemKbytes, cpuUsages are arrays of ints
 	   * See MAPREDUCE-5432
 	   */
-	  private final String TYPE_ARRAY_INTS = "{\"type\":\"array\",\"items\":\"int\"}";
+	  private static final String TYPE_ARRAY_INTS = "{\"type\":\"array\",\"items\":\"int\"}";
 	  /** this is part of {@link  org.apache.hadoop.mapreduce.jobhistory.TaskFailedEvent.java} */
-	  private final String NULL_STRING = "[\"null\",\"string\"]";
+	  private static final String NULL_STRING = "[\"null\",\"string\"]";
 
 	public static enum Hadoop2RecordType {
 		JobFinished, JobInfoChange, JobInited, AMStarted,
@@ -116,9 +114,9 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 		counters, mapCounters, reduceCounters, totalCounters
 	}
 
-	public final Set<String> counterNames = new HashSet<String>();
+	private final Set<String> counterNames = new HashSet<String>();
 	private Map<Hadoop2RecordType, Map<String,String>> fieldTypes = new HashMap<Hadoop2RecordType, Map<String,String>>();
-    public final Map<String, Hadoop2RecordType> eventRecordNames = new HashMap<String, Hadoop2RecordType>();
+    private final Map<String, Hadoop2RecordType> eventRecordNames = new HashMap<String, Hadoop2RecordType>();
 
     /**
      * constructor
@@ -209,8 +207,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 				while ((record = reader.read(null, decoder)) != null) {
 					if(record.get(TYPE) != null) {
 						recType = eventRecordNames.get(record.get(TYPE).toString());
-					}
-					else {
+					} else {
 						throw new ProcessingException("expected one of "
 								+ Arrays.asList(Hadoop2RecordType.values())
 								+ " \n but not found, cannot process this record! "
@@ -360,40 +357,38 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 	private void processAllTypes(Put p, Hadoop2RecordType recType,
 			JSONObject eventDetails, String key) throws JSONException {
 
-		if(counterNames.contains(key)) {
-    		processCounters(p, eventDetails, key);
-    	} else {
-
-		String type = fieldTypes.get(recType).get(key);
-
-		if (type.equalsIgnoreCase(TYPE_STRING)) {
-			String value = eventDetails.getString(key);
-			populatePut(p, Constants.INFO_FAM_BYTES, key, value);
-		} else if (type.equalsIgnoreCase(TYPE_LONG)) {
-			long value = eventDetails.getLong(key);
-			populatePut(p, Constants.INFO_FAM_BYTES, key, value);
-		} else if (type.equalsIgnoreCase(TYPE_INT)) {
-			int value = eventDetails.getInt(key);
-			populatePut(p, Constants.INFO_FAM_BYTES, key, value);
-		} else if (type.equalsIgnoreCase(TYPE_BOOLEAN)) {
-			boolean value = eventDetails.getBoolean(key);
-			populatePut(p, Constants.INFO_FAM_BYTES, key,
-					Boolean.toString(value));
-		} else if (type.equalsIgnoreCase(TYPE_ARRAY_INTS)) {
-			String value = eventDetails.getString(key);
-			populatePut(p, Constants.INFO_FAM_BYTES, key, value);
-		} else if (type.equalsIgnoreCase(NULL_STRING)) {
-			// usually seen in FAILED tasks
-			String value = eventDetails.getString(key);
-			populatePut(p, Constants.INFO_FAM_BYTES, key, value);
-		} else if (type.equalsIgnoreCase(TYPE_MAP_STRINGS)) {
-			JSONObject ms = new JSONObject(eventDetails.get(key).toString());
-			populatePut(p, Constants.INFO_FAM_BYTES, key, ms.toString());
+		if (counterNames.contains(key)) {
+			processCounters(p, eventDetails, key);
 		} else {
-			throw new ProcessingException("Encountered a new type " + type
-					+ " unable to complete processing "+ this.jobKey);
+			String type = fieldTypes.get(recType).get(key);
+			if (type.equalsIgnoreCase(TYPE_STRING)) {
+				String value = eventDetails.getString(key);
+				populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+			} else if (type.equalsIgnoreCase(TYPE_LONG)) {
+				long value = eventDetails.getLong(key);
+				populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+			} else if (type.equalsIgnoreCase(TYPE_INT)) {
+				int value = eventDetails.getInt(key);
+				populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+			} else if (type.equalsIgnoreCase(TYPE_BOOLEAN)) {
+				boolean value = eventDetails.getBoolean(key);
+				populatePut(p, Constants.INFO_FAM_BYTES, key,
+						Boolean.toString(value));
+			} else if (type.equalsIgnoreCase(TYPE_ARRAY_INTS)) {
+				String value = eventDetails.getString(key);
+				populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+			} else if (type.equalsIgnoreCase(NULL_STRING)) {
+				// usually seen in FAILED tasks
+				String value = eventDetails.getString(key);
+				populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+			} else if (type.equalsIgnoreCase(TYPE_MAP_STRINGS)) {
+				JSONObject ms = new JSONObject(eventDetails.get(key).toString());
+				populatePut(p, Constants.INFO_FAM_BYTES, key, ms.toString());
+			} else {
+				throw new ProcessingException("Encountered a new type " + type
+						+ " unable to complete processing " + this.jobKey);
+			}
 		}
-	  }
 	}
 
 	/**
@@ -503,7 +498,6 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 	 * @param id
 	 */
 	private void setJobId(String id) {
-		this.jobId = id;
 		if (id != null && id.startsWith("job_") && id.length() > 4) {
 			this.jobNumber = id.substring(4);
 		}
