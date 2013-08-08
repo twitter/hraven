@@ -85,10 +85,10 @@ public class JobFile implements Writable {
     	  Matcher confMatcher = CONF_PATTERN.matcher(filename);
     	  if (confMatcher.matches()) {
         	isJobConfFile = true;
-        	LOG.debug("Job Conf file  " + filename);
+        	LOG.debug("Job Conf file  " + filename + " with job id: " + jobid);
         	} else {
         		isJobHistoryFile = true;
-        		LOG.debug("Job History file " + filename);
+        		LOG.debug("Job History file " + filename + " with job id: " + jobid);
         		}
     	  }
       else {
