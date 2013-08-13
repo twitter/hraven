@@ -168,7 +168,7 @@ public class JobFileTableMapper extends
           jobDesc.getAppId(), jobDesc.getVersion(), submitTimeMillis);
       context.progress();
 
-      String historyFileContents = rawService.getRawJobHistory(qualifiedJobId);
+      byte[] historyFileContents = rawService.getRawJobHistoryBytes(qualifiedJobId);
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
     		  .createJobHistoryFileParser(historyFileContents);
 

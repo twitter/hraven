@@ -32,7 +32,7 @@ public class TestJobHistoryFileParserFactory {
 		String jHist = "Meta VERSION=\"1\" .\n"
 				+ "Job JOBID=\"job_201301010000_12345\"";
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(jHist);
+				.createJobHistoryFileParser(jHist.getBytes());
 
 		assertNotNull(historyFileParser);
 

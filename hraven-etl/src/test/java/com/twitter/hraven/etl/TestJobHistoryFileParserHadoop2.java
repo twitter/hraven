@@ -12,9 +12,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import com.google.common.io.Files;
+import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.TaskKeyConverter;
@@ -38,16 +38,15 @@ public class TestJobHistoryFileParserHadoop2 {
 
     File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
     byte[] contents = Files.toByteArray(jobHistoryfile);
-    String fileContents = Bytes.toString(contents);
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(fileContents);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
     assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
 
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
-    historyFileParser.parse(fileContents, jobKey);
+    historyFileParser.parse(contents, jobKey);
 
     List<Put> jobPuts = historyFileParser.getJobPuts();
     assertEquals(4, jobPuts.size());

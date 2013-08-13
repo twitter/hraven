@@ -101,21 +101,6 @@ public class Constants {
   public static final byte[] REDUCE_COUNTER_COLUMN_PREFIX_BYTES = Bytes
       .toBytes(REDUCE_COUNTER_COLUMN_PREFIX);
 
-  /** Column qualifier prefix to namespace total-specific counter data */
-  public static final String TOTAL_COUNTER_COLUMN_PREFIX = "gt";
-  public static final byte[] TOTAL_COUNTER_COLUMN_PREFIX_BYTES = Bytes
-      .toBytes(TOTAL_COUNTER_COLUMN_PREFIX);
-
-  /** Column qualifier prefix to namespace task -specific counter data */
-  public static final String TASK_COUNTER_COLUMN_PREFIX = "gt";
-  public static final byte[] TASK_COUNTER_COLUMN_PREFIX_BYTES = Bytes
-      .toBytes(TASK_COUNTER_COLUMN_PREFIX);
-
-  /** Column qualifier prefix to namespace task attempt-specific counter data */
-  public static final String TASK_ATTEMPT_COUNTER_COLUMN_PREFIX = "gt";
-  public static final byte[] TASK_ATTEMPT_COUNTER_COLUMN_PREFIX_BYTES = Bytes
-      .toBytes(TASK_ATTEMPT_COUNTER_COLUMN_PREFIX);
-
   public static final String JOBCONF_COL = "jobconf";
   public static final byte[] JOBCONF_COL_BYTES = Bytes.toBytes(JOBCONF_COL);
 

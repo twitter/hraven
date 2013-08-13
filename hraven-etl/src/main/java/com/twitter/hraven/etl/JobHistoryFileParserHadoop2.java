@@ -36,6 +36,7 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
+import com.google.common.collect.Maps;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
@@ -95,104 +96,118 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
   private static final String NULL_STRING = "[\"null\",\"string\"]";
 
   public static enum Hadoop2RecordType {
-    JobFinished, JobInfoChange, JobInited, AMStarted, JobPriorityChange, JobStatusChanged,
-    JobSubmitted, JobUnsuccessfulCompletion, MapAttemptFinished, ReduceAttemptFinished,
-    TaskAttemptFinished, TaskAttemptStarted, TaskAttemptUnsuccessfulCompletion, TaskFailed,
-    TaskFinished, TaskStarted, TaskUpdated
-  }
-
-  public static enum CounterTypes {
-    counters, mapCounters, reduceCounters, totalCounters
-  }
-
-  private static final Set<String> counterNames = new HashSet<String>();
-  private static final Map<String, Hadoop2RecordType> eventRecordNames =
-      new HashMap<String, Hadoop2RecordType>();
-  private Map<Hadoop2RecordType, Map<String, String>> fieldTypes =
-      new HashMap<Hadoop2RecordType, Map<String, String>>();
-  private static Map<String, String> oldToNewMapping = new HashMap<String, String>();
-
-  /**
-   * constructor populates the counterNames hash set and the fieldTypes map
-   */
-  JobHistoryFileParserHadoop2() {
     /**
      * populating this map since the symbols and key to get the types of fields the symbol denotes
      * the record in the file (like JOB_SUBMITTED) and it's value in the map (like JobSubmitted)
      * helps us get the types of fields that that record contains (this type information is present
      * in the schema)
      */
-    eventRecordNames.put("JOB_SUBMITTED", Hadoop2RecordType.JobSubmitted);
-    eventRecordNames.put("JOB_INITED", Hadoop2RecordType.JobInited);
-    eventRecordNames.put("AM_STARTED", Hadoop2RecordType.AMStarted);
-    eventRecordNames.put("CLEANUP_ATTEMPT_KILLED",
-      Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("CLEANUP_ATTEMPT_FAILED",
-      Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("CLEANUP_ATTEMPT_FINISHED", Hadoop2RecordType.TaskAttemptFinished);
-    eventRecordNames.put("CLEANUP_ATTEMPT_STARTED", Hadoop2RecordType.TaskAttemptStarted);
-    eventRecordNames.put("SETUP_ATTEMPT_KILLED",
-      Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("SETUP_ATTEMPT_FAILED",
-      Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("SETUP_ATTEMPT_STARTED", Hadoop2RecordType.TaskAttemptStarted);
-    eventRecordNames.put("REDUCE_ATTEMPT_KILLED",
-      Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("REDUCE_ATTEMPT_FAILED",
-      Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("REDUCE_ATTEMPT_FINISHED", Hadoop2RecordType.ReduceAttemptFinished);
-    eventRecordNames.put("REDUCE_ATTEMPT_STARTED", Hadoop2RecordType.TaskAttemptStarted);
-    eventRecordNames.put("MAP_ATTEMPT_KILLED", Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("MAP_ATTEMPT_FAILED", Hadoop2RecordType.TaskAttemptUnsuccessfulCompletion);
-    eventRecordNames.put("MAP_ATTEMPT_FINISHED", Hadoop2RecordType.MapAttemptFinished);
-    eventRecordNames.put("MAP_ATTEMPT_STARTED", Hadoop2RecordType.TaskAttemptStarted);
-    eventRecordNames.put("TASK_UPDATED", Hadoop2RecordType.TaskUpdated);
-    eventRecordNames.put("TASK_FAILED", Hadoop2RecordType.TaskFailed);
-    eventRecordNames.put("TASK_FINISHED", Hadoop2RecordType.TaskFinished);
-    eventRecordNames.put("TASK_STARTED", Hadoop2RecordType.TaskStarted);
-    eventRecordNames.put("JOB_INFO_CHANGED", Hadoop2RecordType.JobInfoChange);
-    eventRecordNames.put("JOB_KILLED", Hadoop2RecordType.JobUnsuccessfulCompletion);
-    eventRecordNames.put("JOB_STATUS_CHANGED", Hadoop2RecordType.JobStatusChanged);
-    eventRecordNames.put("JOB_FAILED", Hadoop2RecordType.JobUnsuccessfulCompletion);
-    eventRecordNames.put("JOB_PRIORITY_CHANGED", Hadoop2RecordType.JobPriorityChange);
-    eventRecordNames.put("JOB_FINISHED", Hadoop2RecordType.JobFinished);
+    JobFinished("JOB_FINISHED"),
+    JobInfoChange("JOB_INFO_CHANGED"),
+    JobInited("JOB_INITED"),
+    AMStarted("AM_STARTED"),
+    JobPriorityChange("JOB_PRIORITY_CHANGED"),
+    JobStatusChanged("JOB_STATUS_CHANGED"),
+    JobSubmitted("JOB_SUBMITTED"),
+    JobUnsuccessfulCompletion("JOB_KILLED","JOB_FAILED"),
+    MapAttemptFinished("MAP_ATTEMPT_FINISHED"),
+    ReduceAttemptFinished("REDUCE_ATTEMPT_FINISHED"),
+    TaskAttemptFinished("CLEANUP_ATTEMPT_FINISHED"),
+    TaskAttemptStarted("CLEANUP_ATTEMPT_STARTED",
+      "SETUP_ATTEMPT_STARTED",
+      "REDUCE_ATTEMPT_STARTED",
+      "MAP_ATTEMPT_STARTED"),
+    TaskAttemptUnsuccessfulCompletion("CLEANUP_ATTEMPT_KILLED",
+      "CLEANUP_ATTEMPT_FAILED",
+      "SETUP_ATTEMPT_KILLED",
+      "SETUP_ATTEMPT_FAILED",
+      "REDUCE_ATTEMPT_KILLED",
+      "REDUCE_ATTEMPT_FAILED",
+      "MAP_ATTEMPT_KILLED",
+      "MAP_ATTEMPT_FAILED"),
+    TaskFailed("TASK_FAILED"),
+    TaskFinished("TASK_FINISHED"),
+    TaskStarted("TASK_STARTED"),
+    TaskUpdated("TASK_UPDATED");
 
+    private final String[] recordNames;
+
+    private Hadoop2RecordType(String... recordNames) {
+      if (recordNames != null) {
+        this.recordNames = recordNames;
+      } else {
+        this.recordNames = new String[0];
+      }
+    }
+
+    public String[] getRecordNames() {
+      return recordNames;
+    }
+  }
+
+  private static Map<String,Hadoop2RecordType> EVENT_RECORD_NAMES = Maps.newHashMap();
+  static {
+    for (Hadoop2RecordType t : Hadoop2RecordType.values()) {
+      for (String name : t.getRecordNames()) {
+        EVENT_RECORD_NAMES.put(name, t);
+      }
+    }
+  }
+
+  public static enum CounterTypes {
+    counters, mapCounters, reduceCounters, totalCounters
+  }
+
+  private static final Set<String> COUNTER_NAMES = new HashSet<String>();
+  private Map<Hadoop2RecordType, Map<String, String>> fieldTypes =
+      new HashMap<Hadoop2RecordType, Map<String, String>>();
+  private static Map<String, String> OLD_TO_NEW_MAPPING = new HashMap<String, String>();
+
+  /**
+   * constructor populates the COUNTER_NAMES hash set and the fieldTypes map
+   */
+  JobHistoryFileParserHadoop2() {
     /**
      * populate the hash set for counter names
      */
     for (CounterTypes ct : CounterTypes.values()) {
-      counterNames.add(ct.toString());
+      COUNTER_NAMES.add(ct.toString());
     }
 
-    oldToNewMapping.put("startTime", JobHistoryKeys.START_TIME.toString());
-    oldToNewMapping.put("finishTime", JobHistoryKeys.FINISH_TIME.toString());
-    oldToNewMapping.put("submitTime", JobHistoryKeys.SUBMIT_TIME.toString());
-    oldToNewMapping.put("launchTime", JobHistoryKeys.LAUNCH_TIME.toString());
-    oldToNewMapping.put("totalMaps", JobHistoryKeys.TOTAL_MAPS.toString());
-    oldToNewMapping.put("totalReduces", JobHistoryKeys.TOTAL_REDUCES.toString());
-    oldToNewMapping.put("failedMaps", JobHistoryKeys.FAILED_MAPS.toString());
-    oldToNewMapping.put("failedReduces", JobHistoryKeys.FAILED_REDUCES.toString());
-    oldToNewMapping.put("finishedMaps", JobHistoryKeys.FINISHED_MAPS.toString());
-    oldToNewMapping.put("finishedReduces", JobHistoryKeys.FINISHED_REDUCES.toString());
-    oldToNewMapping.put("jobStatus", JobHistoryKeys.JOB_STATUS.toString());
-    oldToNewMapping.put("taskType", JobHistoryKeys.TASK_TYPE.toString());
-    oldToNewMapping.put("jobConfPath", JobHistoryKeys.JOBCONF.toString());
-    oldToNewMapping.put("taskStatus", JobHistoryKeys.TASK_STATUS.toString());
-    oldToNewMapping.put("shuffleFinishTime", JobHistoryKeys.SHUFFLE_FINISHED.toString());
-    oldToNewMapping.put("sortFinishTime", JobHistoryKeys.SORT_FINISHED.toString());
-    oldToNewMapping.put("splitLocations", JobHistoryKeys.SPLITS.toString());
-    oldToNewMapping.put("httpPort", JobHistoryKeys.HTTP_PORT.toString());
-    oldToNewMapping.put("trackerName", JobHistoryKeys.TRACKER_NAME.toString());
-    oldToNewMapping.put("state", JobHistoryKeys.STATE_STRING.toString());
-    oldToNewMapping.put("jobQueueName", JobHistoryKeys.JOB_QUEUE.toString());
-
+    OLD_TO_NEW_MAPPING.put("startTime", JobHistoryKeys.START_TIME.toString());
+    OLD_TO_NEW_MAPPING.put("finishTime", JobHistoryKeys.FINISH_TIME.toString());
+    OLD_TO_NEW_MAPPING.put("submitTime", JobHistoryKeys.SUBMIT_TIME.toString());
+    OLD_TO_NEW_MAPPING.put("launchTime", JobHistoryKeys.LAUNCH_TIME.toString());
+    OLD_TO_NEW_MAPPING.put("totalMaps", JobHistoryKeys.TOTAL_MAPS.toString());
+    OLD_TO_NEW_MAPPING.put("totalReduces", JobHistoryKeys.TOTAL_REDUCES.toString());
+    OLD_TO_NEW_MAPPING.put("failedMaps", JobHistoryKeys.FAILED_MAPS.toString());
+    OLD_TO_NEW_MAPPING.put("failedReduces", JobHistoryKeys.FAILED_REDUCES.toString());
+    OLD_TO_NEW_MAPPING.put("finishedMaps", JobHistoryKeys.FINISHED_MAPS.toString());
+    OLD_TO_NEW_MAPPING.put("finishedReduces", JobHistoryKeys.FINISHED_REDUCES.toString());
+    OLD_TO_NEW_MAPPING.put("jobStatus", JobHistoryKeys.JOB_STATUS.toString());
+    OLD_TO_NEW_MAPPING.put("taskType", JobHistoryKeys.TASK_TYPE.toString());
+    OLD_TO_NEW_MAPPING.put("jobConfPath", JobHistoryKeys.JOBCONF.toString());
+    OLD_TO_NEW_MAPPING.put("taskStatus", JobHistoryKeys.TASK_STATUS.toString());
+    OLD_TO_NEW_MAPPING.put("shuffleFinishTime", JobHistoryKeys.SHUFFLE_FINISHED.toString());
+    OLD_TO_NEW_MAPPING.put("sortFinishTime", JobHistoryKeys.SORT_FINISHED.toString());
+    OLD_TO_NEW_MAPPING.put("splitLocations", JobHistoryKeys.SPLITS.toString());
+    OLD_TO_NEW_MAPPING.put("httpPort", JobHistoryKeys.HTTP_PORT.toString());
+    OLD_TO_NEW_MAPPING.put("trackerName", JobHistoryKeys.TRACKER_NAME.toString());
+    OLD_TO_NEW_MAPPING.put("state", JobHistoryKeys.STATE_STRING.toString());
+    OLD_TO_NEW_MAPPING.put("jobQueueName", JobHistoryKeys.JOB_QUEUE.toString());
+    OLD_TO_NEW_MAPPING.put("jobid", JobHistoryKeys.JOBID.toString());
+    OLD_TO_NEW_MAPPING.put("jobName", JobHistoryKeys.JOBNAME.toString());
+    OLD_TO_NEW_MAPPING.put("userName", JobHistoryKeys.USER.toString());
+    OLD_TO_NEW_MAPPING.put("taskid", JobHistoryKeys.TASKID.toString());
+    OLD_TO_NEW_MAPPING.put("attemptId", JobHistoryKeys.TASK_ATTEMPT_ID.toString());
+    OLD_TO_NEW_MAPPING.put("hostname", JobHistoryKeys.HOSTNAME.toString());
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void parse(String historyFileContents, JobKey jobKey) throws ProcessingException {
+  public void parse(byte[] historyFileContents, JobKey jobKey) throws ProcessingException {
 
     this.jobKey = jobKey;
     this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
@@ -200,7 +215,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 
     try {
       FSDataInputStream in =
-          new FSDataInputStream(new ByteArrayWrapper(historyFileContents.getBytes()));
+          new FSDataInputStream(new ByteArrayWrapper(historyFileContents));
 
       /** first line is the version, ignore it */
       String versionIgnore = in.readLine();
@@ -220,7 +235,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
       try {
         while ((record = reader.read(null, decoder)) != null) {
           if (record.get(TYPE) != null) {
-            recType = eventRecordNames.get(record.get(TYPE).toString());
+            recType = EVENT_RECORD_NAMES.get(record.get(TYPE).toString());
           } else {
             throw new ProcessingException("expected one of "
                 + Arrays.asList(Hadoop2RecordType.values())
@@ -252,11 +267,13 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
     } catch (JSONException jse) {
       throw new ProcessingException(" Unable to parse history file in function parse, "
           + "cannot process this record! " + jobKey + " error: ", jse);
+    } catch (IllegalArgumentException iae) {
+      throw new ProcessingException(" Unable to parse history file in function parse, "
+          + "cannot process this record! " + jobKey + " error: ", iae);
     }
 
     LOG.info("For " + this.jobKey + " #jobPuts " + jobPuts.size() + " #taskPuts: "
         + taskPuts.size());
-    printAllPuts();
   }
 
   /**
@@ -328,7 +345,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
       processAllTypes(Put p, Hadoop2RecordType recType, JSONObject eventDetails, String key)
           throws JSONException {
 
-    if (counterNames.contains(key)) {
+    if (COUNTER_NAMES.contains(key)) {
       processCounters(p, eventDetails, key);
     } else {
       String type = fieldTypes.get(recType).get(key);
@@ -466,11 +483,13 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
   }
 
   /**
-   * maintains compatibility between hadoop 1.0 keys and hadoop 2.0 keys
+   * maintains compatibility between hadoop 1.0 keys and hadoop 2.0 keys.
+   * It also confirms that this key exists in JobHistoryKeys enum
+   * @throws IllegalArgumentException NullPointerException
    */
-  private String getKey(String key) {
-    return (oldToNewMapping.containsKey(key) ? oldToNewMapping.get(key).toLowerCase() : key
-        .toLowerCase());
+  private String getKey(String key)  throws IllegalArgumentException {
+    String checkKey = OLD_TO_NEW_MAPPING.containsKey(key) ? OLD_TO_NEW_MAPPING.get(key) : key ;
+    return (JobHistoryKeys.valueOf(checkKey).toString().toLowerCase());
   }
 
   /**
@@ -533,6 +552,9 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
     try {
       switch (JobHistoryKeys.valueOf(JobHistoryKeys.class, key)) {
       case COUNTERS:
+      case TOTAL_COUNTERS:
+      case TASK_COUNTERS:
+      case TASK_ATTEMPT_COUNTERS:
         counterPrefix = Bytes.add(Constants.COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
         break;
       case MAP_COUNTERS:
@@ -541,16 +563,6 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
       case REDUCE_COUNTERS:
         counterPrefix =
             Bytes.add(Constants.REDUCE_COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
-        break;
-      case TOTAL_COUNTERS:
-        counterPrefix = Bytes.add(Constants.TOTAL_COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
-        break;
-      case TASK_COUNTERS:
-        counterPrefix = Bytes.add(Constants.TASK_COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
-        break;
-      case TASK_ATTEMPT_COUNTERS:
-        counterPrefix =
-            Bytes.add(Constants.TASK_ATTEMPT_COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
         break;
       default:
         throw new IllegalArgumentException("Unknown counter type " + key.toString());

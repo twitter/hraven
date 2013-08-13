@@ -324,6 +324,24 @@ public class JobHistoryRawService {
   }
 
   /**
+   * Returns the raw job history file as a byte array stored for the given cluster and job ID.
+   * @param jobId the cluster and job ID to look up
+   * @return the stored job history file contents or {@code null} if no corresponding record was found
+   * @throws IOException
+   */
+  public byte[] getRawJobHistoryBytes(QualifiedJobId jobId) throws IOException {
+    byte[] historyData = null;
+    byte[] rowKey = idConv.toBytes(jobId);
+    Get get = new Get(rowKey);
+    get.addColumn(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
+    Result result = rawTable.get(get);
+    if (result != null && !result.isEmpty()) {
+      historyData = result.getValue(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
+    }
+    return historyData;
+  }
+
+  /**
    * @param result
    *          from the {@link Scan} from
    *          {@link #getHistoryRawTableScan(String, String, String, boolean, boolean, boolean)}

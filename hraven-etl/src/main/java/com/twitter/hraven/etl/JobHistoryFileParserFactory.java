@@ -22,6 +22,7 @@ public class JobHistoryFileParserFactory {
    * VERSION variable there becomes package-level visible and hence we need a replica
    */
   public static final String HADOOP2_VERSION_STRING = "Avro-Json";
+  private static final int HADOOP2_VERSION_LENGTH = 9;
   private static final int HISTORY_FILE_VERSION1 = 1;
   private static final int HISTORY_FILE_VERSION2 = 2;
 
@@ -33,7 +34,7 @@ public class JobHistoryFileParserFactory {
    *         focusedCommentId=12763160& \ page=com.atlassian.jira.plugin.system
    *         .issuetabpanels:comment-tabpanel#comment-12763160
    */
-  public static int getVersion(String historyFileContents) {
+  public static int getVersion(byte[] historyFileContents) {
     String versionPart = getVersionStringFromFile(historyFileContents);
     if (StringUtils.equalsIgnoreCase(versionPart, HADOOP2_VERSION_STRING)) {
       return HISTORY_FILE_VERSION2;
@@ -46,8 +47,13 @@ public class JobHistoryFileParserFactory {
    * method to return the version string that's inside the history file
    * @return versionString
    */
-  private static String getVersionStringFromFile(String contents) {
-    return contents.substring(0, 9);
+  private static String getVersionStringFromFile(byte[] contents) {
+    
+    if(contents.length > HADOOP2_VERSION_LENGTH) {
+      // the first 10 bytes contain Avro-Json
+      return new String(contents, 0, HADOOP2_VERSION_LENGTH);
+    }
+    throw new IllegalArgumentException(" Unknown format of job history file: " + contents);
   }
 
   /**
@@ -58,7 +64,7 @@ public class JobHistoryFileParserFactory {
    * @return an object of {@link JobHistoryParseHadoop1} that can parse Hadoop 1.0 (pre
    *         MAPREDUCE-1016) generated job history files Or return null if either input is null
    */
-  public static JobHistoryFileParser createJobHistoryFileParser(String historyFileContents)
+  public static JobHistoryFileParser createJobHistoryFileParser(byte[] historyFileContents)
       throws IllegalArgumentException {
 
     if (historyFileContents == null) {
