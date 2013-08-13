@@ -18,8 +18,9 @@ package com.twitter.hraven.etl;
 import org.apache.commons.lang.StringUtils;
 
 /**
- * Deal with {@link JobHistoryFileParser} implementations. Creates an appropriate Job History File
- * Parser Object based on the type of job history file
+ * Deal with {@link JobHistoryFileParser} implementations.
+ * Creates an appropriate Job History File Parser Object based
+ * on the type of job history file
  */
 public class JobHistoryFileParserFactory {
 
@@ -35,8 +36,11 @@ public class JobHistoryFileParserFactory {
 
   /**
    * determines the verison of hadoop that the history file belongs to
-   * @return returns 1 for hadoop 1 (pre MAPREDUCE-1016) returns 2 for newer job history files (newer
-   *         job history files have "AVRO-JSON" as the signature at the start of the file,
+   *
+   * @return 
+   * returns 1 for hadoop 1 (pre MAPREDUCE-1016)
+   * returns 2 for newer job history files
+   *         (newer job history files have "AVRO-JSON" as the signature at the start of the file,
    *         REFERENCE: https://issues.apache.org/jira/browse/MAPREDUCE-1016? \
    *         focusedCommentId=12763160& \ page=com.atlassian.jira.plugin.system
    *         .issuetabpanels:comment-tabpanel#comment-12763160
@@ -64,18 +68,21 @@ public class JobHistoryFileParserFactory {
   }
 
   /**
-   * creates an instance of {@link JobHistoryParseHadoop1} to be later enhanced to return either
-   * {@link JobHistoryParseHadoop1} or an object that can parse post MAPREDUCE-1016 job history
-   * files
-   * @param historyFile : input stream to the history file contents
-   * @return an object of {@link JobHistoryParseHadoop1} that can parse Hadoop 1.0 (pre
-   *         MAPREDUCE-1016) generated job history files Or return null if either input is null
+   * creates an instance of {@link JobHistoryParseHadoop1}
+   * or
+   * {@link JobHistoryParseHadoop2} that can parse post MAPREDUCE-1016 job history files
+   *
+   * @param historyFile: input stream to the history file contents
+   *
+   * @return an object that can parse job history files
+   * Or return null if either input is null
    */
-  public static JobHistoryFileParser createJobHistoryFileParser(byte[] historyFileContents)
-      throws IllegalArgumentException {
+  public static JobHistoryFileParser createJobHistoryFileParser(
+      byte[] historyFileContents) throws IllegalArgumentException {
 
     if (historyFileContents == null) {
-      throw new IllegalArgumentException("Job history file contents should not be null");
+      throw new IllegalArgumentException(
+          "Job history input stream should not be null");
     }
 
     int version = getVersion(historyFileContents);
@@ -88,8 +95,8 @@ public class JobHistoryFileParserFactory {
       return new JobHistoryFileParserHadoop2();
 
     default:
-      throw new IllegalArgumentException(" Unknown format of job history file: "
-          + getVersionStringFromFile(historyFileContents));
+      throw new IllegalArgumentException(
+          " Unknown format of job history file ");
     }
   }
 
