@@ -68,6 +68,13 @@ public enum JobHistoryKeys {
 	// hadoop 2.0 related keys {@link JobHistoryParser}
   applicationAttemptId(String.class),
   containerId(String.class),
+  successfulAttemptId(String.class),
+  workflowId(String.class),
+  workflowName(String.class),
+  workflowNodeName(String.class),
+  workflowAdjacencies(String.class),
+  locality(String.class),
+  avataar(String.class),
   nodeManagerHost(String.class),
   nodeManagerPort(Integer.class),
   nodeManagerHttpPort(Integer.class),

@@ -285,7 +285,14 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
     JSONObject j1 = new JSONObject(schema);
     JSONArray fields = j1.getJSONArray(FIELDS);
 
+    String fieldName;
+    String fieldTypeValue;
+    Object recName;
+
     for (int k = 0; k < fields.length(); k++) {
+      if (fields.get(k) == null) {
+        continue;
+      }
       JSONObject allEvents = new JSONObject(fields.get(k).toString());
       Object name = allEvents.get(NAME);
       if (name != null) {
@@ -296,10 +303,24 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
             JSONArray types = actual.getJSONArray(FIELDS);
             Map<String, String> typeDetails = new HashMap<String, String>();
             for (int j = 0; j < types.length(); j++) {
-              typeDetails.put(types.getJSONObject(j).getString(NAME), types.getJSONObject(j)
-                  .getString(TYPE));
+              if (types.getJSONObject(j) == null ) {
+                continue;
+              }
+              fieldName = types.getJSONObject(j).getString(NAME);
+              fieldTypeValue = types.getJSONObject(j).getString(TYPE);
+              if ((fieldName != null) && (fieldTypeValue != null)) {
+                typeDetails.put(fieldName, fieldTypeValue);
+              }
             }
-            fieldTypes.put(Hadoop2RecordType.valueOf(actual.get(NAME).toString()), typeDetails);
+
+            recName = actual.get(NAME);
+            if (recName != null) {
+              /* the next statement may throw an IllegalArgumentException if
+               * it finds a new string that's not part of the Hadoop2RecordType enum
+               * that way we know what types of events we are parsing
+               */
+              fieldTypes.put(Hadoop2RecordType.valueOf(recName.toString()), typeDetails);
+            }
           }
         }
       }
