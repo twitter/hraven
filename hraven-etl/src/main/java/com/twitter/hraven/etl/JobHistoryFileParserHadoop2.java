@@ -161,7 +161,6 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
   private static final Set<String> COUNTER_NAMES = new HashSet<String>();
   private Map<Hadoop2RecordType, Map<String, String>> fieldTypes =
       new HashMap<Hadoop2RecordType, Map<String, String>>();
-  private static Map<String, String> OLD_TO_NEW_MAPPING = new HashMap<String, String>();
 
   /**
    * constructor populates the COUNTER_NAMES hash set and the fieldTypes map
@@ -173,34 +172,6 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
     for (CounterTypes ct : CounterTypes.values()) {
       COUNTER_NAMES.add(ct.toString());
     }
-
-    OLD_TO_NEW_MAPPING.put("startTime", JobHistoryKeys.START_TIME.toString());
-    OLD_TO_NEW_MAPPING.put("finishTime", JobHistoryKeys.FINISH_TIME.toString());
-    OLD_TO_NEW_MAPPING.put("submitTime", JobHistoryKeys.SUBMIT_TIME.toString());
-    OLD_TO_NEW_MAPPING.put("launchTime", JobHistoryKeys.LAUNCH_TIME.toString());
-    OLD_TO_NEW_MAPPING.put("totalMaps", JobHistoryKeys.TOTAL_MAPS.toString());
-    OLD_TO_NEW_MAPPING.put("totalReduces", JobHistoryKeys.TOTAL_REDUCES.toString());
-    OLD_TO_NEW_MAPPING.put("failedMaps", JobHistoryKeys.FAILED_MAPS.toString());
-    OLD_TO_NEW_MAPPING.put("failedReduces", JobHistoryKeys.FAILED_REDUCES.toString());
-    OLD_TO_NEW_MAPPING.put("finishedMaps", JobHistoryKeys.FINISHED_MAPS.toString());
-    OLD_TO_NEW_MAPPING.put("finishedReduces", JobHistoryKeys.FINISHED_REDUCES.toString());
-    OLD_TO_NEW_MAPPING.put("jobStatus", JobHistoryKeys.JOB_STATUS.toString());
-    OLD_TO_NEW_MAPPING.put("taskType", JobHistoryKeys.TASK_TYPE.toString());
-    OLD_TO_NEW_MAPPING.put("jobConfPath", JobHistoryKeys.JOBCONF.toString());
-    OLD_TO_NEW_MAPPING.put("taskStatus", JobHistoryKeys.TASK_STATUS.toString());
-    OLD_TO_NEW_MAPPING.put("shuffleFinishTime", JobHistoryKeys.SHUFFLE_FINISHED.toString());
-    OLD_TO_NEW_MAPPING.put("sortFinishTime", JobHistoryKeys.SORT_FINISHED.toString());
-    OLD_TO_NEW_MAPPING.put("splitLocations", JobHistoryKeys.SPLITS.toString());
-    OLD_TO_NEW_MAPPING.put("httpPort", JobHistoryKeys.HTTP_PORT.toString());
-    OLD_TO_NEW_MAPPING.put("trackerName", JobHistoryKeys.TRACKER_NAME.toString());
-    OLD_TO_NEW_MAPPING.put("state", JobHistoryKeys.STATE_STRING.toString());
-    OLD_TO_NEW_MAPPING.put("jobQueueName", JobHistoryKeys.JOB_QUEUE.toString());
-    OLD_TO_NEW_MAPPING.put("jobid", JobHistoryKeys.JOBID.toString());
-    OLD_TO_NEW_MAPPING.put("jobName", JobHistoryKeys.JOBNAME.toString());
-    OLD_TO_NEW_MAPPING.put("userName", JobHistoryKeys.USER.toString());
-    OLD_TO_NEW_MAPPING.put("taskid", JobHistoryKeys.TASKID.toString());
-    OLD_TO_NEW_MAPPING.put("attemptId", JobHistoryKeys.TASK_ATTEMPT_ID.toString());
-    OLD_TO_NEW_MAPPING.put("hostname", JobHistoryKeys.HOSTNAME.toString());
   }
 
   /**
@@ -504,13 +475,15 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
   }
 
   /**
-   * maintains compatibility between hadoop 1.0 keys and hadoop 2.0 keys.
-   * It also confirms that this key exists in JobHistoryKeys enum
+   * maintains compatibility between hadoop 1.0 keys and hadoop 2.0 keys. It also confirms that this
+   * key exists in JobHistoryKeys enum
    * @throws IllegalArgumentException NullPointerException
    */
-  private String getKey(String key)  throws IllegalArgumentException {
-    String checkKey = OLD_TO_NEW_MAPPING.containsKey(key) ? OLD_TO_NEW_MAPPING.get(key) : key ;
-    return (JobHistoryKeys.valueOf(checkKey).toString().toLowerCase());
+  private String getKey(String key) throws IllegalArgumentException {
+    String checkKey =
+        JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.containsKey(key) ? JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING
+            .get(key) : key;
+    return (JobHistoryKeys.valueOf(checkKey).toString());
   }
 
   /**
@@ -524,8 +497,30 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 
     byte[] valueBytes = null;
     valueBytes = (value != 0L) ? Bytes.toBytes(value) : Constants.ZERO_LONG_BYTES;
-    byte[] qualifier = Bytes.toBytes(getKey(key));
+    byte[] qualifier = Bytes.toBytes(getKey(key).toLowerCase());
     p.add(family, qualifier, valueBytes);
+  }
+
+  /**
+   * gets the int values as ints or longs some keys in 2.0 are now int, they were longs in 1.0 this
+   * will maintain compatiblity between 1.0 and 2.0 by casting those ints to long
+   *
+   * keeping this function package level visible (unit testing)
+   * @throws IllegalArgumentException if new key is encountered
+   */
+   byte[] getValue(String key, int value) {
+    byte[] valueBytes = null;
+    Class<?> clazz = JobHistoryKeys.KEY_TYPES.get(JobHistoryKeys.valueOf(key));
+    if (clazz == null) {
+      throw new IllegalArgumentException(" unknown key " + key + " encountered while parsing "
+          + this.jobKey);
+    }
+    if (Long.class.equals(clazz)) {
+      valueBytes = (value != 0L) ? Bytes.toBytes(new Long(value)) : Constants.ZERO_LONG_BYTES;
+    } else {
+      valueBytes = (value != 0) ? Bytes.toBytes(value) : Constants.ZERO_INT_BYTES;
+    }
+    return valueBytes;
   }
 
   /**
@@ -537,9 +532,9 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
    */
   private void populatePut(Put p, byte[] family, String key, int value) {
 
-    byte[] valueBytes = null;
-    valueBytes = (value != 0) ? Bytes.toBytes(value) : Constants.ZERO_INT_BYTES;
-    byte[] qualifier = Bytes.toBytes(getKey(key));
+    String jobHistoryKey = getKey(key);
+    byte[] valueBytes = getValue(jobHistoryKey, value);
+    byte[] qualifier = Bytes.toBytes(jobHistoryKey.toLowerCase());
     p.add(family, qualifier, valueBytes);
   }
 
@@ -553,7 +548,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
   private void populatePut(Put p, byte[] family, String key, String value) {
     byte[] valueBytes = null;
     valueBytes = Bytes.toBytes(value);
-    byte[] qualifier = Bytes.toBytes(getKey(key));
+    byte[] qualifier = Bytes.toBytes(getKey(key).toLowerCase());
     p.add(family, qualifier, valueBytes);
   }
 

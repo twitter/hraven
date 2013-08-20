@@ -225,10 +225,10 @@ public class JobFileTableMapper extends
 
     if (success) {
       // Update counter to indicate failure.
-      context.getCounter(ProcessingCounter.RAW_ROW_SUCCESS_COUNT).increment(1);
+      HadoopCompat.incrementCounter(context.getCounter(ProcessingCounter.RAW_ROW_SUCCESS_COUNT), 1);
     } else {
       // Update counter to indicate failure.
-      context.getCounter(ProcessingCounter.RAW_ROW_ERROR_COUNT).increment(1);
+      HadoopCompat.incrementCounter(context.getCounter(ProcessingCounter.RAW_ROW_ERROR_COUNT),1);
     }
 
     // Indicate that we processed the RAW successfully so that we can skip it

@@ -12,8 +12,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import com.google.common.io.Files;
+import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.TaskKeyConverter;
@@ -90,6 +92,43 @@ public class TestJobHistoryFileParserHadoop2 {
       tKey = taskKeyConv.fromBytes(p.getRow()).toString();
       assertTrue(putRowKeys.contains(tKey));
     }
+  }
 
+  /**
+   * To ensure we write these keys as Longs, not as ints
+   */
+  @Test
+  public void testLongExpGetValuesIntBytes() {
+
+    String[] keysToBeChecked = {"totalMaps", "totalReduces", "finishedMaps",
+                                 "finishedReduces", "failedMaps", "failedReduces"};
+    byte[] byteValue = null;
+    int intValue10 = 10;
+    long longValue10 = 10L;
+
+    JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2();
+
+    for(String key: keysToBeChecked) {
+      byteValue = jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);
+      assertEquals(Bytes.toLong(byteValue), longValue10);
+     }
+  }
+
+  /**
+   * To ensure we write these keys as ints
+   */
+  @Test
+  public void testIntExpGetValuesIntBytes() {
+
+    String[] keysToBeChecked = {"httpPort"};
+    byte[] byteValue = null;
+    int intValue10 = 10;
+
+    JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2();
+
+    for(String key: keysToBeChecked) {
+      byteValue = jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);
+      assertEquals(Bytes.toInt(byteValue), intValue10);
+     }
   }
 }

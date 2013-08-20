@@ -3,6 +3,7 @@ package com.twitter.hraven;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Maps;
@@ -26,77 +27,80 @@ import com.google.common.collect.Maps;
  */
 
 public enum JobHistoryKeys {
-	JOBTRACKERID(String.class),
-	START_TIME(Long.class),
-	FINISH_TIME(Long.class),
-	JOBID(String.class),
-	JOBNAME(String.class),
-	USER(String.class),
-	JOBCONF(String.class),
-	SUBMIT_TIME(Long.class),
-	LAUNCH_TIME(Long.class),
-	TOTAL_MAPS(Long.class),
-	TOTAL_REDUCES(Long.class),
-	FAILED_MAPS(Long.class),
-	FAILED_REDUCES(Long.class),
-	FINISHED_MAPS(Long.class),
-	FINISHED_REDUCES(Long.class),
-	JOB_STATUS(String.class),
-	TASKID(String.class),
-	HOSTNAME(String.class),
-	TASK_TYPE(String.class),
-	ERROR(String.class),
-	TASK_ATTEMPT_ID(String.class),
-	TASK_STATUS(String.class),
-	COPY_PHASE(String.class),
-	SORT_PHASE(String.class),
-	REDUCE_PHASE(String.class),
-	SHUFFLE_FINISHED(Long.class),
-	SORT_FINISHED(Long.class),
-	COUNTERS(String.class),
-	SPLITS(String.class),
-	JOB_PRIORITY(String.class),
-	HTTP_PORT(Integer.class),
-	TRACKER_NAME(String.class),
-	STATE_STRING(String.class),
-	VERSION(String.class),
-	MAP_COUNTERS(String.class),
-	REDUCE_COUNTERS(String.class),
-	VIEW_JOB(String.class),
-	MODIFY_JOB(String.class),
-	JOB_QUEUE(String.class),
+	JOBTRACKERID(String.class, null),
+	START_TIME(Long.class, "startTime"),
+	FINISH_TIME(Long.class, "finishTime"),
+	JOBID(String.class, "jobid"),
+	JOBNAME(String.class, "jobName"),
+	USER(String.class, "userName"),
+	JOBCONF(String.class, "jobConfPath"),
+	SUBMIT_TIME(Long.class, "submitTime"),
+	LAUNCH_TIME(Long.class, "launchTime"),
+	TOTAL_MAPS(Long.class, "totalMaps"),
+	TOTAL_REDUCES(Long.class, "totalReduces"),
+	FAILED_MAPS(Long.class, "failedMaps"),
+	FAILED_REDUCES(Long.class, "failedReduces"),
+	FINISHED_MAPS(Long.class, "finishedMaps"),
+	FINISHED_REDUCES(Long.class, "finishedReduces"),
+	JOB_STATUS(String.class, "jobStatus"),
+	TASKID(String.class, "taskid"),
+	HOSTNAME(String.class, "hostname"),
+	TASK_TYPE(String.class, "taskType"),
+	ERROR(String.class, "error"),
+	TASK_ATTEMPT_ID(String.class, "attemptId"),
+	TASK_STATUS(String.class, "taskStatus"),
+	COPY_PHASE(String.class, null),
+	SORT_PHASE(String.class, null),
+	REDUCE_PHASE(String.class, null),
+	SHUFFLE_FINISHED(Long.class, "shuffleFinishTime"),
+	SORT_FINISHED(Long.class, "sortFinishTime"),
+	COUNTERS(String.class, null),
+	SPLITS(String.class, "splitLocations"),
+	JOB_PRIORITY(String.class, null),
+	HTTP_PORT(Integer.class, "httpPort"),
+	TRACKER_NAME(String.class, "trackerName"),
+	STATE_STRING(String.class, "state"),
+	VERSION(String.class, null),
+	MAP_COUNTERS(String.class, null),
+	REDUCE_COUNTERS(String.class, null),
+	VIEW_JOB(String.class, null),
+	MODIFY_JOB(String.class, null),
+	JOB_QUEUE(String.class, "jobQueueName"),
 	// hadoop 2.0 related keys {@link JobHistoryParser}
-  applicationAttemptId(String.class),
-  containerId(String.class),
-  successfulAttemptId(String.class),
-  workflowId(String.class),
-  workflowName(String.class),
-  workflowNodeName(String.class),
-  workflowAdjacencies(String.class),
-  locality(String.class),
-  avataar(String.class),
-  nodeManagerHost(String.class),
-  nodeManagerPort(Integer.class),
-  nodeManagerHttpPort(Integer.class),
-  acls(String.class),
-  uberized(String.class),
-  shufflePort(Integer.class),
-  mapFinishTime(Long.class),
-  port(Integer.class),
-  rackname(String.class),
-  clockSplits(String.class),
-  cpuUsages(String.class),
-  physMemKbytes(String.class),
-  vMemKbytes(String.class),
-  status(String.class),
-  TOTAL_COUNTERS(String.class),
-  TASK_COUNTERS(String.class),
-  TASK_ATTEMPT_COUNTERS(String.class);
+  applicationAttemptId(String.class, null),
+  containerId(String.class, null),
+  successfulAttemptId(String.class, null),
+  failedDueToAttempt(String.class, null),
+  workflowId(String.class, null),
+  workflowName(String.class, null),
+  workflowNodeName(String.class, null),
+  workflowAdjacencies(String.class, null),
+  locality(String.class, null),
+  avataar(String.class, null),
+  nodeManagerHost(String.class, null),
+  nodeManagerPort(Integer.class, null),
+  nodeManagerHttpPort(Integer.class, null),
+  acls(String.class, null),
+  uberized(String.class, null),
+  shufflePort(Integer.class, null),
+  mapFinishTime(Long.class, null),
+  port(Integer.class, null),
+  rackname(String.class, null),
+  clockSplits(String.class, null),
+  cpuUsages(String.class, null),
+  physMemKbytes(String.class, null),
+  vMemKbytes(String.class, null),
+  status(String.class, null),
+  TOTAL_COUNTERS(String.class, null),
+  TASK_COUNTERS(String.class, null),
+  TASK_ATTEMPT_COUNTERS(String.class, null);
 
   private final Class<?> className;
+  private final String mapping;
 
-  private JobHistoryKeys(Class<?> className) {
+  private JobHistoryKeys(Class<?> className, String mapping) {
     this.className = className;
+    this.mapping = mapping;
     }
 
   public Class<?> getClassName() {
@@ -112,6 +116,19 @@ public enum JobHistoryKeys {
       KEY_TYPES.put(t, t.getClassName());
     }
   }
+
+  /**
+   * Mapping the keys in 2.0 job history files to 1.0 key names
+   */
+  public static Map<String, String> HADOOP2_TO_HADOOP1_MAPPING = Maps.newHashMap();
+  static {
+    for (JobHistoryKeys t : JobHistoryKeys.values()) {
+      if (StringUtils.isNotEmpty(t.mapping)) {
+        HADOOP2_TO_HADOOP1_MAPPING.put(t.mapping,t.toString());
+      }
+    }
+  }
+
 
 	/**
 	 * Job history key names as bytes

@@ -193,7 +193,7 @@ public class JobHistoryRawService {
     }
     scan.setStartRow(startRow);
 
-    LOG.info("Starting raw table scan at " + Bytes.toStringBinary(startRow));
+    LOG.info("Starting raw table scan at " + Bytes.toStringBinary(startRow) + " " + idConv.fromBytes(startRow));
 
     FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
 
@@ -210,7 +210,7 @@ public class JobHistoryRawService {
       InclusiveStopFilter inclusiveStopFilter = new InclusiveStopFilter(lastRow);
       filters.addFilter(inclusiveStopFilter);
       LOG.info("Stopping raw table scan (stop filter) at "
-          + Bytes.toStringBinary(lastRow));
+          + Bytes.toStringBinary(lastRow) + " " + idConv.fromBytes(lastRow));
 
       // Add one to the jobSequence of the maximum JobId.
       JobId maximumJobId = new JobId(maxJobId);

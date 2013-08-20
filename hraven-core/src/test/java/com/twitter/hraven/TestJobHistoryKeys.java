@@ -23,19 +23,14 @@ public class TestJobHistoryKeys {
       VIEW_JOB, MODIFY_JOB, JOB_QUEUE,
       // hadoop 2.0 related keys {@link JobHistoryParser}
       applicationAttemptId, containerId, nodeManagerHost,
-      successfulAttemptId,
-      workflowId,
-      workflowName,
-      workflowNodeName,
-      workflowAdjacencies,
-      locality,
-      avataar,
-      nodeManagerPort, nodeManagerHttpPort, acls,
-      uberized, shufflePort, mapFinishTime, port,
-      rackname, clockSplits, cpuUsages,
-      physMemKbytes, vMemKbytes, status,
-      TOTAL_COUNTERS, TASK_COUNTERS,
-      TASK_ATTEMPT_COUNTERS;
+      successfulAttemptId, failedDueToAttempt,
+      workflowId, workflowName, workflowNodeName,
+      workflowAdjacencies, locality, avataar,
+      nodeManagerPort, nodeManagerHttpPort,
+      acls, uberized, shufflePort, mapFinishTime,
+      port, rackname, clockSplits, cpuUsages,
+      physMemKbytes, vMemKbytes, status, TOTAL_COUNTERS,
+      TASK_COUNTERS, TASK_ATTEMPT_COUNTERS;
   }
   
   @Test
