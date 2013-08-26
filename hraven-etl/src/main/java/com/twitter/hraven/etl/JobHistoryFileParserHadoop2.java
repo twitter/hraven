@@ -145,33 +145,37 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
     }
   }
 
-  private static Map<String,Hadoop2RecordType> EVENT_RECORD_NAMES = Maps.newHashMap();
-  static {
-    for (Hadoop2RecordType t : Hadoop2RecordType.values()) {
-      for (String name : t.getRecordNames()) {
-        EVENT_RECORD_NAMES.put(name, t);
-      }
-    }
-  }
-
   public static enum CounterTypes {
     counters, mapCounters, reduceCounters, totalCounters
   }
-
+  private static Map<String,Hadoop2RecordType> EVENT_RECORD_NAMES = Maps.newHashMap();
   private static final Set<String> COUNTER_NAMES = new HashSet<String>();
   private Map<Hadoop2RecordType, Map<String, String>> fieldTypes =
       new HashMap<Hadoop2RecordType, Map<String, String>>();
 
   /**
-   * constructor populates the COUNTER_NAMES hash set and the fieldTypes map
+   * populates the COUNTER_NAMES hash set and EVENT_RECORD_NAMES hash map
    */
-  JobHistoryFileParserHadoop2() {
+  static {
     /**
      * populate the hash set for counter names
      */
     for (CounterTypes ct : CounterTypes.values()) {
       COUNTER_NAMES.add(ct.toString());
     }
+
+    /**
+     * populate the hash map of EVENT_RECORD_NAMES
+     */
+    for (Hadoop2RecordType t : Hadoop2RecordType.values()) {
+      for (String name : t.getRecordNames()) {
+        EVENT_RECORD_NAMES.put(name, t);
+      }
+    }
+
+  }
+
+  JobHistoryFileParserHadoop2() {
   }
 
   /**

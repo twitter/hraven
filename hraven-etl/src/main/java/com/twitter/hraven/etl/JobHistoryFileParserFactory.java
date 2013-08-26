@@ -30,7 +30,9 @@ public class JobHistoryFileParserFactory {
    * VERSION variable there becomes package-level visible and hence we need a replica
    */
   public static final String HADOOP2_VERSION_STRING = "Avro-Json";
+  public static final String HADOOP1_VERSION_STRING = "Meta VERSION=\"1\" .";
   private static final int HADOOP2_VERSION_LENGTH = 9;
+  private static final int HADOOP1_VERSION_LENGTH = 18;
   private static final int HISTORY_FILE_VERSION1 = 1;
   private static final int HISTORY_FILE_VERSION2 = 2;
 
@@ -44,27 +46,27 @@ public class JobHistoryFileParserFactory {
    *         REFERENCE: https://issues.apache.org/jira/browse/MAPREDUCE-1016? \
    *         focusedCommentId=12763160& \ page=com.atlassian.jira.plugin.system
    *         .issuetabpanels:comment-tabpanel#comment-12763160
+   * 
+   * @throws IllegalArgumentException if neither match
    */
   public static int getVersion(byte[] historyFileContents) {
-    String versionPart = getVersionStringFromFile(historyFileContents);
-    if (StringUtils.equalsIgnoreCase(versionPart, HADOOP2_VERSION_STRING)) {
-      return HISTORY_FILE_VERSION2;
-    } else {
-      return HISTORY_FILE_VERSION1;
+    if(historyFileContents.length > HADOOP2_VERSION_LENGTH) {
+      // the first 10 bytes in a hadoop2.0 history file contain Avro-Json
+      String version2Part =  new String(historyFileContents, 0, HADOOP2_VERSION_LENGTH);
+      if (StringUtils.equalsIgnoreCase(version2Part, HADOOP2_VERSION_STRING)) {
+        return HISTORY_FILE_VERSION2;
+      } else {
+        if(historyFileContents.length > HADOOP1_VERSION_LENGTH) {
+          // the first 18 bytes in a hadoop1.0 history file contain Meta VERSION="1" .
+          String version1Part =  new String(historyFileContents, 0, HADOOP1_VERSION_LENGTH);
+          if (StringUtils.equalsIgnoreCase(version1Part, HADOOP1_VERSION_STRING)) {
+            return HISTORY_FILE_VERSION1;
+          }
+        }
+      }
     }
-  }
-
-  /**
-   * method to return the version string that's inside the history file
-   * @return versionString
-   */
-  private static String getVersionStringFromFile(byte[] contents) {
-    
-    if(contents.length > HADOOP2_VERSION_LENGTH) {
-      // the first 10 bytes contain Avro-Json
-      return new String(contents, 0, HADOOP2_VERSION_LENGTH);
-    }
-    throw new IllegalArgumentException(" Unknown format of job history file: " + contents);
+    // throw an exception if we did not find any matching version
+    throw new IllegalArgumentException(" Unknown format of job history file: " + historyFileContents);
   }
 
   /**
@@ -72,7 +74,7 @@ public class JobHistoryFileParserFactory {
    * or
    * {@link JobHistoryParseHadoop2} that can parse post MAPREDUCE-1016 job history files
    *
-   * @param historyFile: input stream to the history file contents
+   * @param historyFile: history file contents
    *
    * @return an object that can parse job history files
    * Or return null if either input is null
@@ -82,7 +84,7 @@ public class JobHistoryFileParserFactory {
 
     if (historyFileContents == null) {
       throw new IllegalArgumentException(
-          "Job history input stream should not be null");
+          "Job history contents should not be null");
     }
 
     int version = getVersion(historyFileContents);
