@@ -63,7 +63,7 @@ public class TestJobHistoryFileParserFactory {
   }
 
   /**
-   * confirm that exception is thrown on null input
+   * confirm that exception is thrown on incorrect input
    */
   @Test(expected = IllegalArgumentException.class)
   public void testGetVersionIncorrect2() {
@@ -74,7 +74,7 @@ public class TestJobHistoryFileParserFactory {
   }
 
   /**
-   * confirm that exception is thrown on null input
+   * confirm that exception is thrown on incorrect input
    */
   @Test(expected = IllegalArgumentException.class)
   public void testGetVersionIncorrect1() {
