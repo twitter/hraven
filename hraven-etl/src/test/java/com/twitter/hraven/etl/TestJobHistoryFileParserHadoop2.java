@@ -65,27 +65,27 @@ public class TestJobHistoryFileParserHadoop2 {
         new HashSet<String>(Arrays.asList(
           "cluster1!user!Sleep!1!job_1329348432655_0001!AM_appattempt_1329348432655_0001_000001",
           "cluster1!user!Sleep!1!job_1329348432655_0001!r_000000",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_r_000000_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!r_000000_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000000",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000000_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000000_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000009",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000009_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000009_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000008",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000008_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000008_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000007",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000007_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000007_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000006",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000006_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000006_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000005",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000005_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000005_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000004",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000004_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000004_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000003",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000003_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000003_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000002",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000002_0",
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000002_0",
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000001",
-          "cluster1!user!Sleep!1!job_1329348432655_0001!attempt_1329348432655_0001_m_000001_0"));
+          "cluster1!user!Sleep!1!job_1329348432655_0001!m_000001_0"));
 
     String tKey;
     for (Put p : taskPuts) {

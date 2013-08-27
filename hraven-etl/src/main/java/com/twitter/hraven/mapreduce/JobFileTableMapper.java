@@ -20,6 +20,7 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -168,7 +169,16 @@ public class JobFileTableMapper extends
           jobDesc.getAppId(), jobDesc.getVersion(), submitTimeMillis);
       context.progress();
 
-      byte[] historyFileContents = rawService.getRawJobHistoryBytes(qualifiedJobId);
+      KeyValue keyValue = value.getColumnLatest(Constants.RAW_FAM_BYTES,
+       Constants.JOBHISTORY_COL_BYTES);
+
+      byte[] historyFileContents = null;
+      if (keyValue == null) {
+        throw new MissingColumnInResultException(Constants.RAW_FAM_BYTES,
+          Constants.JOBHISTORY_COL_BYTES);
+      } else {
+        historyFileContents = keyValue.getValue();
+      }
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
     		  .createJobHistoryFileParser(historyFileContents);
 

@@ -63,7 +63,7 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
 
   private static final String AM_ATTEMPT_PREFIX = "AM_";
   private static final String TASK_PREFIX = "task_";
-  private static final String TASK_ATTEMPT_PREFIX = "taskAttempt_";
+  private static final String TASK_ATTEMPT_PREFIX = "attempt_";
 
   private static final Log LOG = LogFactory.getLog(JobHistoryFileParserHadoop2.class);
 
@@ -643,16 +643,8 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
   /**
    * utitlity function for printing all puts
    */
-  public void printAllPuts() {
-    printAllJobPuts();
-    printAllTaskPuts();
-  }
-
-  /**
-   * utitlity function for printing all Job puts
-   */
-  public void printAllJobPuts() {
-    for (Put p1 : jobPuts) {
+  public void printAllPuts(List<Put> p) {
+    for (Put p1 : p) {
       Map<byte[], List<KeyValue>> d = p1.getFamilyMap();
       for (byte[] k : d.keySet()) {
         System.out.println(" k " + Bytes.toString(k));
@@ -660,30 +652,9 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
       for (List<KeyValue> lkv : d.values()) {
         for (KeyValue kv : lkv) {
           System.out.println("\n row: " + taskKeyConv.fromBytes(kv.getRow())
-          // + "\n family " + Bytes.toString(kv.getFamily())
               + "\n " + Bytes.toString(kv.getQualifier()) + ": " + Bytes.toString(kv.getValue()));
         }
       }
     }
   }
-
-  /**
-   * utitlity function for printing all Task puts
-   */
-  public void printAllTaskPuts() {
-    for (Put p1 : taskPuts) {
-      Map<byte[], List<KeyValue>> d = p1.getFamilyMap();
-      for (byte[] k : d.keySet()) {
-        System.out.println(" k " + Bytes.toString(k));
-      }
-      for (List<KeyValue> lkv : d.values()) {
-        for (KeyValue kv : lkv) {
-          System.out.println("\n row: " + taskKeyConv.fromBytes(kv.getRow())
-          // + "\n family " + Bytes.toString(kv.getFamily())
-              + "\n " + Bytes.toString(kv.getQualifier()) + ": " + Bytes.toString(kv.getValue()));
-        }
-      }
-    }
-  }
-
 }
