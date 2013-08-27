@@ -15,68 +15,104 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
-import java.io.InputStream;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Deal with {@link JobHistoryFileParser} implementations.
+ * Creates an appropriate Job History File Parser Object based
+ * on the type of job history file
  */
 public class JobHistoryFileParserFactory {
 
-	/**
-	 * determines the verison of hadoop that the history file belongs to
-	 * 
-	 * @return currently returns 1 for hadoop 1 (pre MAPREDUCE-1016) for newer
-	 *         job history files, this method will look at the history file and
-	 *         return values appropriately
-	 * 
-	 *         (newer job history files have "AVRO-JSON" as the signature at the
-	 *         start of the file, REFERENCE:
-	 *         https://issues.apache.org/jira/browse/MAPREDUCE-1016? \
-	 *         focusedCommentId=12763160& \
-	 *         page=com.atlassian.jira.plugin.system
-	 *         .issuetabpanels:comment-tabpanel#comment-12763160
-	 * 
-	 */
-	public static int getVersion(InputStream historyFile) {
-		return 1;
-	}
+  /**
+   * NOTE that this version string is a replica of
+   * {@link org.apache.hadoop.mapreduce.jobhistory.EventWriter} Since that class is not public, the
+   * VERSION variable there becomes package-level visible and hence we need a replica
+   */
+  public static final String HADOOP2_VERSION_STRING = "Avro-Json";
+  public static final String HADOOP1_VERSION_STRING = "Meta VERSION=\"1\" .";
+  private static final int HADOOP2_VERSION_LENGTH = 9;
+  private static final int HADOOP1_VERSION_LENGTH = 18;
+  private static final int HISTORY_FILE_VERSION1 = 1;
+  private static final int HISTORY_FILE_VERSION2 = 2;
 
-	/**
-	 * creates an instance of {@link JobHistoryParseHadoop1}
-	 * 
-	 * to be later enhanced to return either {@link JobHistoryParseHadoop1} or
-	 * an object that can parse post MAPREDUCE-1016 job history files
-	 * 
-	 * @param historyFile
-	 *            : input stream to the history file contents
-	 * 
-	 * @return an object of {@link JobHistoryParseHadoop1} that can parse Hadoop
-	 *         1.0 (pre MAPREDUCE-1016) generated job history files Or return
-	 *         null if either input is null
-	 * 
-	 */
-	public static JobHistoryFileParser createJobHistoryFileParser(
-			InputStream historyFile) throws IllegalArgumentException {
+  /**
+   * determines the verison of hadoop that the history file belongs to
+   *
+   * @return 
+   * returns 1 for hadoop 1 (pre MAPREDUCE-1016)
+   * returns 2 for newer job history files
+   *         (newer job history files have "AVRO-JSON" as the signature at the start of the file,
+   *         REFERENCE: https://issues.apache.org/jira/browse/MAPREDUCE-1016? \
+   *         focusedCommentId=12763160& \ page=com.atlassian.jira.plugin.system
+   *         .issuetabpanels:comment-tabpanel#comment-12763160
+   * 
+   * @throws IllegalArgumentException if neither match
+   */
+  public static int getVersion(byte[] historyFileContents) {
+    if(historyFileContents.length > HADOOP2_VERSION_LENGTH) {
+      // the first 10 bytes in a hadoop2.0 history file contain Avro-Json
+      String version2Part =  new String(historyFileContents, 0, HADOOP2_VERSION_LENGTH);
+      if (StringUtils.equalsIgnoreCase(version2Part, HADOOP2_VERSION_STRING)) {
+        return HISTORY_FILE_VERSION2;
+      } else {
+        if(historyFileContents.length > HADOOP1_VERSION_LENGTH) {
+          // the first 18 bytes in a hadoop1.0 history file contain Meta VERSION="1" .
+          String version1Part =  new String(historyFileContents, 0, HADOOP1_VERSION_LENGTH);
+          if (StringUtils.equalsIgnoreCase(version1Part, HADOOP1_VERSION_STRING)) {
+            return HISTORY_FILE_VERSION1;
+          }
+        }
+      }
+    }
+    // throw an exception if we did not find any matching version
+    throw new IllegalArgumentException(" Unknown format of job history file: " + historyFileContents);
+  }
 
-		if (historyFile == null) {
-			throw new IllegalArgumentException(
-					"Job history input stream should not be null");
-		}
+  /**
+   * creates an instance of {@link JobHistoryParseHadoop1}
+   * or
+   * {@link JobHistoryParseHadoop2} that can parse post MAPREDUCE-1016 job history files
+   *
+   * @param historyFile: history file contents
+   *
+   * @return an object that can parse job history files
+   * Or return null if either input is null
+   */
+  public static JobHistoryFileParser createJobHistoryFileParser(
+      byte[] historyFileContents) throws IllegalArgumentException {
 
-		int version = getVersion(historyFile);
+    if (historyFileContents == null) {
+      throw new IllegalArgumentException(
+          "Job history contents should not be null");
+    }
 
-		switch (version) {
-		case 1:
-			return new JobHistoryFileParserHadoop1();
+    int version = getVersion(historyFileContents);
 
-			/*
-			 * right now, the default won't be in any code path but as we add
-			 * support for post MAPREDUCE-1016 and Hadoop 2.0 this would be
-			 * relevant
-			 */
-		default:
-			throw new IllegalArgumentException(
-					" Unknown format of job history file");
-		}
-	}
+    switch (version) {
+    case 1:
+      return new JobHistoryFileParserHadoop1();
+
+    case 2:
+      return new JobHistoryFileParserHadoop2();
+
+    default:
+      throw new IllegalArgumentException(
+          " Unknown format of job history file ");
+    }
+  }
+
+  /**
+   * @return HISTORY_FILE_VERSION1
+   */
+  public static int getHistoryFileVersion1() {
+    return HISTORY_FILE_VERSION1;
+  }
+
+  /**
+   * @return HISTORY_FILE_VERSION2
+   */
+  public static int getHistoryFileVersion2() {
+    return HISTORY_FILE_VERSION2;
+  }
 }

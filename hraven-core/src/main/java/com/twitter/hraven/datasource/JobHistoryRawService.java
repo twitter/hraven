@@ -193,7 +193,7 @@ public class JobHistoryRawService {
     }
     scan.setStartRow(startRow);
 
-    LOG.info("Starting raw table scan at " + Bytes.toStringBinary(startRow));
+    LOG.info("Starting raw table scan at " + Bytes.toStringBinary(startRow) + " " + idConv.fromBytes(startRow));
 
     FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
 
@@ -210,7 +210,7 @@ public class JobHistoryRawService {
       InclusiveStopFilter inclusiveStopFilter = new InclusiveStopFilter(lastRow);
       filters.addFilter(inclusiveStopFilter);
       LOG.info("Stopping raw table scan (stop filter) at "
-          + Bytes.toStringBinary(lastRow));
+          + Bytes.toStringBinary(lastRow) + " " + idConv.fromBytes(lastRow));
 
       // Add one to the jobSequence of the maximum JobId.
       JobId maximumJobId = new JobId(maxJobId);
@@ -319,6 +319,24 @@ public class JobHistoryRawService {
     if (result != null && !result.isEmpty()) {
       historyData = Bytes.toString(
           result.getValue(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES));
+    }
+    return historyData;
+  }
+
+  /**
+   * Returns the raw job history file as a byte array stored for the given cluster and job ID.
+   * @param jobId the cluster and job ID to look up
+   * @return the stored job history file contents or {@code null} if no corresponding record was found
+   * @throws IOException
+   */
+  public byte[] getRawJobHistoryBytes(QualifiedJobId jobId) throws IOException {
+    byte[] historyData = null;
+    byte[] rowKey = idConv.toBytes(jobId);
+    Get get = new Get(rowKey);
+    get.addColumn(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
+    Result result = rawTable.get(get);
+    if (result != null && !result.isEmpty()) {
+      historyData = result.getValue(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
     }
     return historyData;
   }

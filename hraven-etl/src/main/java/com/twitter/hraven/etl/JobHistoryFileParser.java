@@ -35,7 +35,7 @@ public interface JobHistoryFileParser {
 	 * 
 	 * @throws ProcessingException
 	 */
-	public void parse(InputStream historyFile, JobKey jobKey);
+	public void parse(byte[] historyFile, JobKey jobKey);
 
 	/**
 	 * Return the generated list of job puts assembled when history file is

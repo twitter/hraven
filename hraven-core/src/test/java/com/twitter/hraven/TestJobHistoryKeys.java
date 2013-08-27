@@ -8,19 +8,29 @@ import org.junit.Test;
 public class TestJobHistoryKeys {
   
   private enum test_keys {
-      JOBTRACKERID, START_TIME, FINISH_TIME, 
-      JOBID, JOBNAME, USER, JOBCONF, SUBMIT_TIME, 
-      LAUNCH_TIME, TOTAL_MAPS, TOTAL_REDUCES, 
-      FAILED_MAPS, FAILED_REDUCES, 
-      FINISHED_MAPS, FINISHED_REDUCES, 
-      JOB_STATUS, TASKID, HOSTNAME, TASK_TYPE, 
-      ERROR, TASK_ATTEMPT_ID, TASK_STATUS, 
-      COPY_PHASE, SORT_PHASE, REDUCE_PHASE, 
+      JOBTRACKERID, START_TIME, FINISH_TIME,
+      JOBID, JOBNAME, USER, JOBCONF, SUBMIT_TIME,
+      LAUNCH_TIME, TOTAL_MAPS, TOTAL_REDUCES,
+      FAILED_MAPS, FAILED_REDUCES,
+      FINISHED_MAPS, FINISHED_REDUCES,
+      JOB_STATUS, TASKID, HOSTNAME, TASK_TYPE,
+      ERROR, TASK_ATTEMPT_ID, TASK_STATUS,
+      COPY_PHASE, SORT_PHASE, REDUCE_PHASE,
       SHUFFLE_FINISHED, SORT_FINISHED, COUNTERS,
-      SPLITS, JOB_PRIORITY, HTTP_PORT, 
-      TRACKER_NAME, STATE_STRING, VERSION, 
-      MAP_COUNTERS, REDUCE_COUNTERS, 
-      VIEW_JOB, MODIFY_JOB, JOB_QUEUE;
+      SPLITS, JOB_PRIORITY, HTTP_PORT,
+      TRACKER_NAME, STATE_STRING, VERSION,
+      MAP_COUNTERS, REDUCE_COUNTERS,
+      VIEW_JOB, MODIFY_JOB, JOB_QUEUE,
+      // hadoop 2.0 related keys {@link JobHistoryParser}
+      applicationAttemptId, containerId, nodeManagerHost,
+      successfulAttemptId, failedDueToAttempt,
+      workflowId, workflowName, workflowNodeName,
+      workflowAdjacencies, locality, avataar,
+      nodeManagerPort, nodeManagerHttpPort,
+      acls, uberized, shufflePort, mapFinishTime,
+      port, rackname, clockSplits, cpuUsages,
+      physMemKbytes, vMemKbytes, status, TOTAL_COUNTERS,
+      TASK_COUNTERS, TASK_ATTEMPT_COUNTERS;
   }
   
   @Test

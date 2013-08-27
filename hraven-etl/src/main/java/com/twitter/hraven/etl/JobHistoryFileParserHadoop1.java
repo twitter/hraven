@@ -15,8 +15,8 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -44,12 +44,12 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 	 * 
 	 */
 	@Override
-	public void parse(InputStream historyFile, JobKey jobKey)
+	public void parse(byte[] historyFile, JobKey jobKey)
 			throws ProcessingException {
 
 		try {
 			jobHistoryListener = new JobHistoryListener(jobKey);
-			JobHistoryCopy.parseHistoryFromIS(historyFile, jobHistoryListener);
+			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 		} catch (IOException ioe) {
 			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
 			throw new ProcessingException(

@@ -16,12 +16,11 @@ limitations under the License.
 package com.twitter.hraven.mapreduce;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -29,7 +28,6 @@ import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
-
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobDesc;
 import com.twitter.hraven.JobDescFactory;
@@ -171,13 +169,20 @@ public class JobFileTableMapper extends
           jobDesc.getAppId(), jobDesc.getVersion(), submitTimeMillis);
       context.progress();
 
-      InputStream jobHistoryInputStream = rawService
-          .getJobHistoryInputStreamFromResult(value);
+      KeyValue keyValue = value.getColumnLatest(Constants.RAW_FAM_BYTES,
+       Constants.JOBHISTORY_COL_BYTES);
 
+      byte[] historyFileContents = null;
+      if (keyValue == null) {
+        throw new MissingColumnInResultException(Constants.RAW_FAM_BYTES,
+          Constants.JOBHISTORY_COL_BYTES);
+      } else {
+        historyFileContents = keyValue.getValue();
+      }
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-    		  .createJobHistoryFileParser(jobHistoryInputStream);
+    		  .createJobHistoryFileParser(historyFileContents);
 
-      historyFileParser.parse(jobHistoryInputStream, jobKey);
+      historyFileParser.parse(historyFileContents, jobKey);
 
       puts = historyFileParser.getJobPuts();
       if (puts == null) {
@@ -230,10 +235,10 @@ public class JobFileTableMapper extends
 
     if (success) {
       // Update counter to indicate failure.
-      context.getCounter(ProcessingCounter.RAW_ROW_SUCCESS_COUNT).increment(1);
+      HadoopCompat.incrementCounter(context.getCounter(ProcessingCounter.RAW_ROW_SUCCESS_COUNT), 1);
     } else {
       // Update counter to indicate failure.
-      context.getCounter(ProcessingCounter.RAW_ROW_ERROR_COUNT).increment(1);
+      HadoopCompat.incrementCounter(context.getCounter(ProcessingCounter.RAW_ROW_ERROR_COUNT),1);
     }
 
     // Indicate that we processed the RAW successfully so that we can skip it

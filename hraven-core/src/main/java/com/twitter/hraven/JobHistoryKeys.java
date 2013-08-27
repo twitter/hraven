@@ -3,7 +3,10 @@ package com.twitter.hraven;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import com.google.common.collect.Maps;
 
 /**
  * Contains the extract of the keys enum from
@@ -24,19 +27,108 @@ import org.apache.hadoop.hbase.util.Bytes;
  */
 
 public enum JobHistoryKeys {
-	JOBTRACKERID, START_TIME, FINISH_TIME, 
-	JOBID, JOBNAME, USER, JOBCONF, SUBMIT_TIME, 
-	LAUNCH_TIME, TOTAL_MAPS, TOTAL_REDUCES, 
-	FAILED_MAPS, FAILED_REDUCES, 
-	FINISHED_MAPS, FINISHED_REDUCES, 
-	JOB_STATUS, TASKID, HOSTNAME, TASK_TYPE, 
-	ERROR, TASK_ATTEMPT_ID, TASK_STATUS, 
-	COPY_PHASE, SORT_PHASE, REDUCE_PHASE, 
-	SHUFFLE_FINISHED, SORT_FINISHED, COUNTERS,
-	SPLITS, JOB_PRIORITY, HTTP_PORT, 
-	TRACKER_NAME, STATE_STRING, VERSION, 
-	MAP_COUNTERS, REDUCE_COUNTERS, 
-	VIEW_JOB, MODIFY_JOB, JOB_QUEUE;
+	JOBTRACKERID(String.class, null),
+	START_TIME(Long.class, "startTime"),
+	FINISH_TIME(Long.class, "finishTime"),
+	JOBID(String.class, "jobid"),
+	JOBNAME(String.class, "jobName"),
+	USER(String.class, "userName"),
+	JOBCONF(String.class, "jobConfPath"),
+	SUBMIT_TIME(Long.class, "submitTime"),
+	LAUNCH_TIME(Long.class, "launchTime"),
+	TOTAL_MAPS(Long.class, "totalMaps"),
+	TOTAL_REDUCES(Long.class, "totalReduces"),
+	FAILED_MAPS(Long.class, "failedMaps"),
+	FAILED_REDUCES(Long.class, "failedReduces"),
+	FINISHED_MAPS(Long.class, "finishedMaps"),
+	FINISHED_REDUCES(Long.class, "finishedReduces"),
+	JOB_STATUS(String.class, "jobStatus"),
+	TASKID(String.class, "taskid"),
+	HOSTNAME(String.class, "hostname"),
+	TASK_TYPE(String.class, "taskType"),
+	ERROR(String.class, "error"),
+	TASK_ATTEMPT_ID(String.class, "attemptId"),
+	TASK_STATUS(String.class, "taskStatus"),
+	COPY_PHASE(String.class, null),
+	SORT_PHASE(String.class, null),
+	REDUCE_PHASE(String.class, null),
+	SHUFFLE_FINISHED(Long.class, "shuffleFinishTime"),
+	SORT_FINISHED(Long.class, "sortFinishTime"),
+	COUNTERS(String.class, null),
+	SPLITS(String.class, "splitLocations"),
+	JOB_PRIORITY(String.class, null),
+	HTTP_PORT(Integer.class, "httpPort"),
+	TRACKER_NAME(String.class, "trackerName"),
+	STATE_STRING(String.class, "state"),
+	VERSION(String.class, null),
+	MAP_COUNTERS(String.class, null),
+	REDUCE_COUNTERS(String.class, null),
+	VIEW_JOB(String.class, null),
+	MODIFY_JOB(String.class, null),
+	JOB_QUEUE(String.class, "jobQueueName"),
+	// hadoop 2.0 related keys {@link JobHistoryParser}
+  applicationAttemptId(String.class, null),
+  containerId(String.class, null),
+  successfulAttemptId(String.class, null),
+  failedDueToAttempt(String.class, null),
+  workflowId(String.class, null),
+  workflowName(String.class, null),
+  workflowNodeName(String.class, null),
+  workflowAdjacencies(String.class, null),
+  locality(String.class, null),
+  avataar(String.class, null),
+  nodeManagerHost(String.class, null),
+  nodeManagerPort(Integer.class, null),
+  nodeManagerHttpPort(Integer.class, null),
+  acls(String.class, null),
+  uberized(String.class, null),
+  shufflePort(Integer.class, null),
+  mapFinishTime(Long.class, null),
+  port(Integer.class, null),
+  rackname(String.class, null),
+  clockSplits(String.class, null),
+  cpuUsages(String.class, null),
+  physMemKbytes(String.class, null),
+  vMemKbytes(String.class, null),
+  status(String.class, null),
+  TOTAL_COUNTERS(String.class, null),
+  TASK_COUNTERS(String.class, null),
+  TASK_ATTEMPT_COUNTERS(String.class, null);
+
+  private final Class<?> className;
+  private final String mapping;
+
+  private JobHistoryKeys(Class<?> className, String mapping) {
+    this.className = className;
+    this.mapping = mapping;
+    }
+
+  public Class<?> getClassName() {
+    return className;
+  }
+
+  /**
+   * Data types represented by each of the defined job history field names
+   */
+  public static Map<JobHistoryKeys, Class<?>> KEY_TYPES = Maps.newHashMap();
+  static {
+    for (JobHistoryKeys t : JobHistoryKeys.values()) {
+      KEY_TYPES.put(t, t.getClassName());
+    }
+  }
+
+  /**
+   * Mapping the keys in 2.0 job history files to 1.0 key names
+   */
+  public static Map<String, String> HADOOP2_TO_HADOOP1_MAPPING = Maps.newHashMap();
+  static {
+    for (JobHistoryKeys t : JobHistoryKeys.values()) {
+      if (StringUtils.isNotEmpty(t.mapping)) {
+        HADOOP2_TO_HADOOP1_MAPPING.put(t.mapping,t.toString());
+      }
+    }
+  }
+
 
 	/**
 	 * Job history key names as bytes
@@ -48,52 +140,4 @@ public enum JobHistoryKeys {
 	    KEYS_TO_BYTES.put(k, Bytes.toBytes(k.toString().toLowerCase()));
 	  }
 	}
-
-	/**
-	 * Data types represented by each of the defined job history field names
-	 */
-	@SuppressWarnings("rawtypes")
-	public static Map<JobHistoryKeys, Class> KEY_TYPES = new HashMap<JobHistoryKeys, Class>();
-	static {
-		KEY_TYPES.put(JOBTRACKERID, String.class);
-		KEY_TYPES.put(START_TIME, Long.class);
-		KEY_TYPES.put(FINISH_TIME, Long.class);
-		KEY_TYPES.put(JOBID, String.class);
-		KEY_TYPES.put(JOBNAME, String.class);
-		KEY_TYPES.put(USER, String.class);
-		KEY_TYPES.put(JOBCONF, String.class);
-		KEY_TYPES.put(SUBMIT_TIME, Long.class);
-		KEY_TYPES.put(LAUNCH_TIME, Long.class);
-		KEY_TYPES.put(TOTAL_MAPS, Long.class);
-		KEY_TYPES.put(TOTAL_REDUCES, Long.class);
-		KEY_TYPES.put(FAILED_MAPS, Long.class);
-		KEY_TYPES.put(FAILED_REDUCES, Long.class);
-		KEY_TYPES.put(FINISHED_MAPS, Long.class);
-		KEY_TYPES.put(FINISHED_REDUCES, Long.class);
-		KEY_TYPES.put(JOB_STATUS, String.class);
-		KEY_TYPES.put(TASKID, String.class);
-		KEY_TYPES.put(HOSTNAME, String.class);
-		KEY_TYPES.put(TASK_TYPE, String.class);
-		KEY_TYPES.put(ERROR, String.class);
-		KEY_TYPES.put(TASK_ATTEMPT_ID, String.class);
-		KEY_TYPES.put(TASK_STATUS, String.class);
-		KEY_TYPES.put(COPY_PHASE, String.class);
-		KEY_TYPES.put(SORT_PHASE, String.class);
-		KEY_TYPES.put(REDUCE_PHASE, String.class);
-		KEY_TYPES.put(SHUFFLE_FINISHED, Long.class);
-		KEY_TYPES.put(SORT_FINISHED, Long.class);
-		KEY_TYPES.put(COUNTERS, String.class);
-		KEY_TYPES.put(SPLITS, String.class);
-		KEY_TYPES.put(JOB_PRIORITY, String.class);
-		KEY_TYPES.put(HTTP_PORT, Integer.class);
-		KEY_TYPES.put(TRACKER_NAME, String.class);
-		KEY_TYPES.put(STATE_STRING, String.class);
-		KEY_TYPES.put(VERSION, String.class);
-		KEY_TYPES.put(MAP_COUNTERS, String.class);
-		KEY_TYPES.put(REDUCE_COUNTERS, String.class);
-		KEY_TYPES.put(VIEW_JOB, String.class);
-		KEY_TYPES.put(MODIFY_JOB, String.class);
-		KEY_TYPES.put(JOB_QUEUE, String.class);
-	}
-
 }
