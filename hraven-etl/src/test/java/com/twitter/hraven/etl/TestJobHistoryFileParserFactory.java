@@ -15,10 +15,10 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import java.io.ByteArrayInputStream;
 import org.junit.Test;
 
 /**
@@ -32,10 +32,8 @@ public class TestJobHistoryFileParserFactory {
 
 		String jHist = "Meta VERSION=\"1\" .\n"
 				+ "Job JOBID=\"job_201301010000_12345\"";
-		byte[] fileContents = jHist.getBytes();
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(new ByteArrayInputStream(
-						fileContents));
+				.createJobHistoryFileParser(jHist.getBytes());
 
 		assertNotNull(historyFileParser);
 
@@ -47,11 +45,48 @@ public class TestJobHistoryFileParserFactory {
 	}
 
 	/**
+	 * check the versions in history files across hadoop 1 and hadoop 2
+	 */
+  @Test
+  public void testGetVersion() {
+    String jHist1 = "Meta VERSION=\"1\" .\n" + "Job JOBID=\"job_201301010000_12345\"";
+    int version1 = JobHistoryFileParserFactory.getVersion(jHist1.getBytes());
+    // confirm that we get back hadoop 1.0 version
+    assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion1(), version1);
+
+    String jHist2 = "Avro-Json\n"
+            + "{\"type\":\"record\",\"name\":\"Event\", "
+            + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\",\"fields\":[]\"";
+    int version2 = JobHistoryFileParserFactory.getVersion(jHist2.getBytes());
+    // confirm that we get back hadoop 2.0 version
+    assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion2(), version2);
+  }
+
+  /**
+   * confirm that exception is thrown on incorrect input
+   */
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetVersionIncorrect2() {
+    String jHist2 =
+        "Avro-HELLO-Json\n" + "{\"type\":\"record\",\"name\":\"Event\", "
+            + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\",\"fields\":[]\"";
+    JobHistoryFileParserFactory.getVersion(jHist2.getBytes());
+  }
+
+  /**
+   * confirm that exception is thrown on incorrect input
+   */
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetVersionIncorrect1() {
+    String jHist1 = "Meta HELLO VERSION=\"1\" .\n" + "Job JOBID=\"job_201301010000_12345\"";
+    JobHistoryFileParserFactory.getVersion(jHist1.getBytes());
+  }
+
+  /**
 	 * confirm that exception is thrown on null input
 	 */
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateJobHistoryFileParserNullCreation() {
-
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
 				.createJobHistoryFileParser(null);
 		assertNull(historyFileParser);

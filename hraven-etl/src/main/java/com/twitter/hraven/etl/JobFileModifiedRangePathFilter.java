@@ -17,6 +17,8 @@ package com.twitter.hraven.etl;
 
 import java.io.IOException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -45,6 +47,7 @@ public class JobFileModifiedRangePathFilter extends JobFilePathFilter {
    * The configuration of this processing job (not the files we are processing).
    */
   private final Configuration myConf;
+  private static Log LOG = LogFactory.getLog(JobFileModifiedRangePathFilter.class);
 
   /**
    * Constructs a filter that accepts only JobFiles with lastModification time
@@ -100,7 +103,6 @@ public class JobFileModifiedRangePathFilter extends JobFilePathFilter {
         FileSystem fs = path.getFileSystem(myConf);
         FileStatus fileStatus = fs.getFileStatus(path);
         long fileModificationTimeMillis = fileStatus.getModificationTime();
-
         return accept(fileModificationTimeMillis);
       } catch (IOException e) {
         throw new ImportException("Cannot determine file modification time of "
@@ -108,6 +110,7 @@ public class JobFileModifiedRangePathFilter extends JobFilePathFilter {
       }
     } else {
       // Reject anything that does not match a job conf filename.
+      LOG.info(" Not a valid job conf / job history file "+ path.getName());
       return false;
     }
   }

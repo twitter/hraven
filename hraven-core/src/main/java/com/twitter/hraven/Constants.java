@@ -263,8 +263,10 @@ public class Constants {
    * job_201306192120_0003_1371677828795_hadoop_word+count
    * and conf file name is
    * job_201306192120_0003_1371677828795_hadoop_conf.xml
+   * in hadoop 2.0, job history file names are named as
+   * job_1374258111572_0003-1374260622449-userName1-TeraGen-1374260635219-2-0-SUCCEEDED-default.jhist
    */
-  public static final String JOB_FILENAME_PATTERN_REGEX = ".*(job_[0-9]*_[0-9]*)_([0-9]*[aA-zZ]_)*(.*)$";
+  public static final String JOB_FILENAME_PATTERN_REGEX = ".*(job_[0-9]*_[0-9]*)(-|_)([0-9]*[aA-zZ]*)*(.*)$";
 
   // JobHistory file name parsing related
   public static final String JOB_CONF_FILE_END = "(.*)(conf.xml)$";
