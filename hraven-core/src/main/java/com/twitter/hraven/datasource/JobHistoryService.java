@@ -59,11 +59,14 @@ public class JobHistoryService {
   private final JobKeyConverter jobKeyConv = new JobKeyConverter();
   private final TaskKeyConverter taskKeyConv = new TaskKeyConverter();
 
+  private final int defaultScannerCaching;
+
   public JobHistoryService(Configuration myConf) throws IOException {
     this.myConf = myConf;
     this.historyTable = new HTable(myConf, Constants.HISTORY_TABLE_BYTES);
     this.taskTable = new HTable(myConf, Constants.HISTORY_TASK_TABLE_BYTES);
     this.idService = new JobHistoryByIdService(this.myConf);
+    this.defaultScannerCaching = myConf.getInt("hbase.client.scanner.caching", 100);
   }
 
   /**
@@ -212,6 +215,9 @@ public class JobHistoryService {
         + Constants.SEP + appId + Constants.SEP);
     Scan scan = new Scan();
     scan.setStartRow(rowPrefix);
+    // using a large scanner caching value with a small limit can mean we scan a lot more data than
+    // necessary, so lower the caching for low limits
+    scan.setCaching(Math.min(limit, defaultScannerCaching));
     // require that all rows match the prefix we're looking for
     Filter prefixFilter = new WhileMatchFilter(new PrefixFilter(rowPrefix));
     // if version is passed, restrict the rows returned to that version
