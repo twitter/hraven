@@ -16,7 +16,9 @@ limitations under the License.
 package com.twitter.hraven;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -24,8 +26,8 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 @JsonSerialize(
   include=JsonSerialize.Inclusion.NON_NULL
 )
-public class CounterMap {
-  private Map<String,Map<String,Counter>> internalMap = new HashMap<String,Map<String,Counter>>();
+public class CounterMap implements Iterable<Counter> {
+  private final Map<String,Map<String,Counter>> internalMap = new HashMap<String,Map<String,Counter>>();
 
   public Set<String> getGroups() {
     return internalMap.keySet();
@@ -44,12 +46,57 @@ public class CounterMap {
     return null;
   }
 
-  public void add(Counter counter) {
+  public Counter add(Counter counter) {
     Map<String,Counter> groupCounters = internalMap.get(counter.getGroup());
     if (groupCounters == null) {
       groupCounters = new HashMap<String, Counter>();
       internalMap.put(counter.getGroup(), groupCounters);
     }
-    groupCounters.put(counter.getKey(), counter);
+    return groupCounters.put(counter.getKey(), counter);
+  }
+
+  public void addAll(Iterable<Counter> counters) {
+    if (counters != null) {
+      for (Counter c : counters) {
+        add(c);
+      }
+    }
+  }
+
+  /**
+   * Returns an iterator over all the contained {@link Counter} instances for all groups.
+   * Note that the {@code remove()} operation <emphasis>is not supported</emphasis> in the returned
+   * {@code Iterator}.
+   * @return
+   */
+  @Override
+  public Iterator<Counter> iterator() {
+    return new Iterator<Counter>() {
+      private Iterator<Map.Entry<String,Map<String,Counter>>> groupIter =
+          internalMap.entrySet().iterator();
+      private Iterator<Map.Entry<String,Counter>> currentGroupIter = null;
+
+      @Override
+      public boolean hasNext() {
+        // advance current group if necessary
+        if ((currentGroupIter == null || !currentGroupIter.hasNext()) && groupIter.hasNext()) {
+          currentGroupIter = groupIter.next().getValue().entrySet().iterator();
+        }
+        return currentGroupIter != null && currentGroupIter.hasNext();
+      }
+
+      @Override
+      public Counter next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException("No more elements in iterator");
+        }
+        return currentGroupIter.next().getValue();
+      }
+
+      @Override
+      public void remove() {
+        throw new UnsupportedOperationException("remove() is not supported by CounterMap");
+      }
+    };
   }
 }

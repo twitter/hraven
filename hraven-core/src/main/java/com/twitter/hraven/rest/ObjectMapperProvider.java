@@ -183,6 +183,12 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getRunId());
           jsonGenerator.writeFieldName("version");
           jsonGenerator.writeString(aFlow.getVersion());
+          jsonGenerator.writeFieldName("counters");
+          jsonGenerator.writeObject(aFlow.getCounters());
+          jsonGenerator.writeFieldName("mapCounters");
+          jsonGenerator.writeObject(aFlow.getMapCounters());
+          jsonGenerator.writeFieldName("reduceCounters");
+          jsonGenerator.writeObject(aFlow.getReduceCounters());
 
           // if flag, include job details
           if (selectedSerialization ==

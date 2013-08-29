@@ -53,4 +53,15 @@ public class Counter {
   public void setValue(long value) {
     this.value = value;
   }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other instanceof Counter) {
+      Counter otherCounter = (Counter)other;
+      return this.group.equals(otherCounter.group) &&
+          this.key.equals(otherCounter.key) &&
+          this.value == otherCounter.value;
+    }
+    return false;
+  }
 }
