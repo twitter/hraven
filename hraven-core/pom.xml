@@ -21,12 +21,12 @@
   <parent>
     <groupId>com.twitter.hraven</groupId>
     <artifactId>hraven</artifactId>
-    <version>0.9.4</version> 
+    <version>0.9.5-SNAPSHOT</version> 
     <relativePath>../</relativePath>
   </parent>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven-core</artifactId>
-  <version>0.9.4</version>
+  <version>0.9.5-SNAPSHOT</version>
   <name>hRaven - core</name>
   <description>Core components of hRaven, including model classes and data access layer</description>
  
