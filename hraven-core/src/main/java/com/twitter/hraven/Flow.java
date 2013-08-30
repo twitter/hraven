@@ -117,6 +117,15 @@ public class Flow implements Comparable<Flow> {
   /**  app Version for this flow  */
   private String version ;
 
+  /** Aggregated counters from all jobs in this flow */
+  private CounterMap counters = new CounterMap();
+
+  /** Aggregated map counters from all jobs in this flow */
+  private CounterMap mapCounters = new CounterMap();
+
+  /** Aggregated reduce counters from all jobs in this flow */
+  private CounterMap reduceCounters = new CounterMap();
+
   /**
    * Constructor
    * 
@@ -148,7 +157,7 @@ public class Flow implements Comparable<Flow> {
   /**
    * Compares two Flow objects on the basis of their FlowKeys
    *
-   * @param other
+   * @param otherFlow
    * @return 0 if the FlowKeys are equal,
    * 		 1 if this FlowKey greater than other FlowKey,
    * 		-1 if this FlowKey is less than other FlowKey
@@ -235,6 +244,37 @@ public class Flow implements Comparable<Flow> {
     }
 
     this.version = job.getVersion();
+
+    // add up all of the job counters
+    // total counters
+    for (Counter c : job.getCounters()) {
+      long prevValue = 0L;
+      Counter current = counters.getCounter(c.getGroup(), c.getKey());
+      if (current != null) {
+        prevValue = current.getValue();
+      }
+      counters.add(new Counter(c.getGroup(), c.getKey(), c.getValue()+prevValue));
+    }
+
+    // map counters
+    for (Counter c : job.getMapCounters()) {
+      long prevValue = 0L;
+      Counter current = mapCounters.getCounter(c.getGroup(), c.getKey());
+      if (current != null) {
+        prevValue = current.getValue();
+      }
+      mapCounters.add(new Counter(c.getGroup(), c.getKey(), c.getValue()+prevValue));
+    }
+
+    // reduce counters
+    for (Counter c : job.getReduceCounters()) {
+      long prevValue = 0L;
+      Counter current = reduceCounters.getCounter(c.getGroup(), c.getKey());
+      if (current != null) {
+        prevValue = current.getValue();
+      }
+      reduceCounters.add(new Counter(c.getGroup(), c.getKey(), c.getValue()+prevValue));
+    }
   }
 
   public String getUserName() {
@@ -390,5 +430,17 @@ public class Flow implements Comparable<Flow> {
 
   public void setReduceFileBytesRead(long reduceFileBytesRead) {
     this.reduceFileBytesRead = reduceFileBytesRead;
+  }
+
+  public CounterMap getCounters() {
+    return counters;
+  }
+
+  public CounterMap getMapCounters() {
+    return mapCounters;
+  }
+
+  public CounterMap getReduceCounters() {
+    return reduceCounters;
   }
 }
