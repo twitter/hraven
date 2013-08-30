@@ -34,23 +34,22 @@ public class Counter {
     return group;
   }
 
-  public void setGroup(String group) {
-    this.group = group;
-  }
-
   public String getKey() {
     return key;
-  }
-
-  public void setKey(String key) {
-    this.key = key;
   }
 
   public long getValue() {
     return value;
   }
 
-  public void setValue(long value) {
-    this.value = value;
+  @Override
+  public boolean equals(Object other) {
+    if (other instanceof Counter) {
+      Counter otherCounter = (Counter)other;
+      return this.group.equals(otherCounter.group) &&
+          this.key.equals(otherCounter.key) &&
+          this.value == otherCounter.value;
+    }
+    return false;
   }
 }
