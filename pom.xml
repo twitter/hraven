@@ -130,6 +130,9 @@
     <guava.version>12.0</guava.version>
     <jersey.version>1.12</jersey.version>
     <jackson.version>1.9.6</jackson.version>
+
+    <!-- default arguments for release plugin, override with -Drelease.arguments=... -->
+    <release.arguments></release.arguments>
   </properties>
 
   <build>
