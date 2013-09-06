@@ -18,7 +18,7 @@ Requirements
 * Apache Hadoop - hRaven current supports collection of job data on specific
   versions of Hadoop:
   * CDH upto CDH3u5, Hadoop 1.x upto MAPREDUCE-1016
-  * *Note:* Hadoop 1.x post MAPREDUCE-1016 and Hadoop 2.0 are NOT YET supported, though work is in progress to fix this
+  * Hadoop 1.x post MAPREDUCE-1016 and Hadoop 2.0 are supported in versions 0.9.4 onwards
 
 Quick start
 --------------------
