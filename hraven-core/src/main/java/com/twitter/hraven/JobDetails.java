@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
+import org.apache.commons.lang.NotImplementedException;
 
 import com.twitter.hraven.datasource.JobHistoryService;
 
@@ -361,6 +362,18 @@ public class JobDetails implements Comparable<JobDetails> {
   void setCounters(CounterMap counters) { this.counters = counters; }
   void setMapCounters(CounterMap mapCounters) { this.mapCounters = mapCounters; }
   void setReduceCounters(CounterMap reduceCounters) { this.reduceCounters = reduceCounters; }
+  
+  /**
+   * Do not use, this is for JSON deserialization only.
+   * @param newTasks
+   */
+  @Deprecated
+  public void setTasks(List<TaskDetails> newTasks) {
+    if ((newTasks != null) && (newTasks.size() > 0)) {
+      throw new NotImplementedException("Expected to be invoked only during deserialization for empty/null TaskDetails. Deserialization of non-empty TaskDetails should not be done in this setter but by implementing a TaskDetails Custom Deserializer in ClientObjectMapper.");
+    }
+    this.tasks.clear();
+  }
 
   /** TODO: refactor this out into a data access layer */
   public void populate(Result result) {
@@ -496,6 +509,7 @@ public class JobDetails implements Comparable<JobDetails> {
     }
 
     // populate the task-level data
+    // TODO: make sure to properly implement setTasks(...) before adding TaskDetails
     //populateTasks(result.getFamilyMap(Constants.TASK_FAM_BYTES));
   }
 
