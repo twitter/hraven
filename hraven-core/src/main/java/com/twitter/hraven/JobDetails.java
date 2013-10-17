@@ -370,7 +370,9 @@ public class JobDetails implements Comparable<JobDetails> {
   @Deprecated
   public void setTasks(List<TaskDetails> newTasks) {
     if ((newTasks != null) && (newTasks.size() > 0)) {
-      throw new NotImplementedException("Expected to be invoked only during deserialization for empty/null TaskDetails. Deserialization of non-empty TaskDetails should not be done in this setter but by implementing a TaskDetails Custom Deserializer in ClientObjectMapper.");
+      throw new NotImplementedException("Expected to be invoked only during deserialization "
+            + "for empty/null TaskDetails. Deserialization of non-empty TaskDetails should not be done "
+            + "in this setter but by implementing a TaskDetails Custom Deserializer in ClientObjectMapper.");
     }
     this.tasks.clear();
   }
