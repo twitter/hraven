@@ -247,8 +247,26 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
           + "cannot process this record! " + jobKey + " error: ", iae);
     }
 
+    // set the hadoop version for this record
+    Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion2());
+    this.jobPuts.add(versionPut);
+
     LOG.info("For " + this.jobKey + " #jobPuts " + jobPuts.size() + " #taskPuts: "
         + taskPuts.size());
+  }
+
+  /**
+   * generates a put that sets the hadoop version for a record
+   *
+   * @param historyFileVersion2
+   * @return
+   */
+  private Put getHadoopVersionPut(int historyFileVersion2) {
+	Put pVersion = new Put(this.jobKeyBytes);
+	String key = JobHistoryKeys.hadoopversion.toString();
+    populatePut(pVersion, Constants.INFO_FAM_BYTES, key,
+    		Integer.toString(historyFileVersion2));
+	return pVersion;
   }
 
   /**
