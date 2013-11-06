@@ -32,7 +32,7 @@ import com.twitter.hraven.mapreduce.JobHistoryListener;
  * pre MAPREDUCE-1016
  * 
  */
-public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
+public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 
 	private static final Log LOG = LogFactory
 			.getLog(JobHistoryFileParserHadoop1.class);
@@ -50,6 +50,9 @@ public class JobHistoryFileParserHadoop1 implements JobHistoryFileParser {
 		try {
 			jobHistoryListener = new JobHistoryListener(jobKey);
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
+			// set the hadoop version for this record
+			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), jobHistoryListener.getJobKeyBytes());
+			jobHistoryListener.includeHadoopVersionPut(versionPut);
 		} catch (IOException ioe) {
 			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
 			throw new ProcessingException(
