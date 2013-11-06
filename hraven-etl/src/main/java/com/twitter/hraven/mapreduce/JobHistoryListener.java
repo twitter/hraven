@@ -37,6 +37,7 @@ import com.twitter.hraven.TaskKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.TaskKeyConverter;
 import com.twitter.hraven.etl.ImportException;
+import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 
 
 public class JobHistoryListener implements Listener {
@@ -110,6 +111,12 @@ public class JobHistoryListener implements Listener {
       addKeyValues(p, Constants.INFO_FAM_BYTES, e.getKey(), e.getValue());
     }
     this.jobPuts.add(p);
+
+    // set the hadoop version for this record
+    Put versionPut = JobHistoryFileParserFactory.getHadoopVersionPut(
+    		JobHistoryFileParserFactory.getHistoryFileVersion1(), this.jobKeyBytes);
+    this.jobPuts.add(versionPut);
+
   }
 
   private void handleTask(Map<JobHistoryKeys, String> values) {

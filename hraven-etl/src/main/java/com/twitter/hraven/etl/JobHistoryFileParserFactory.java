@@ -16,6 +16,11 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import com.twitter.hraven.Constants;
+import com.twitter.hraven.JobHistoryKeys;
 
 /**
  * Deal with {@link JobHistoryFileParser} implementations.
@@ -115,4 +120,20 @@ public class JobHistoryFileParserFactory {
   public static int getHistoryFileVersion2() {
     return HISTORY_FILE_VERSION2;
   }
+  
+  /**
+   * generates a put that sets the hadoop version for a record
+   *
+   * @param historyFileVersion, jobKeyBytes
+   * @return Put
+   */
+  public static Put getHadoopVersionPut(int historyFileVersion, byte[] jobKeyBytes) {
+	Put pVersion = new Put(jobKeyBytes);
+	byte[] valueBytes = null;
+    valueBytes = Bytes.toBytes(Integer.toString(historyFileVersion));
+    byte[] qualifier = Bytes.toBytes(JobHistoryKeys.hadoopversion.toString().toLowerCase());
+    pVersion.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
+	return pVersion;
+  }
+
 }
