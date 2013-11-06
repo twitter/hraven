@@ -128,12 +128,12 @@ public class JobHistoryFileParserFactory {
    * @return Put
    */
   public static Put getHadoopVersionPut(int historyFileVersion, byte[] jobKeyBytes) {
-	Put pVersion = new Put(jobKeyBytes);
-	byte[] valueBytes = null;
+    Put pVersion = new Put(jobKeyBytes);
+    byte[] valueBytes = null;
     valueBytes = Bytes.toBytes(Integer.toString(historyFileVersion));
     byte[] qualifier = Bytes.toBytes(JobHistoryKeys.hadoopversion.toString().toLowerCase());
     pVersion.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
-	return pVersion;
+    return pVersion;
   }
 
 }
