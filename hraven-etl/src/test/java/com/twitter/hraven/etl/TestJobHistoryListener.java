@@ -50,8 +50,10 @@ public class TestJobHistoryListener {
 				"job_1329348432655_0001");
 		JobHistoryListener jobHistoryListener = new JobHistoryListener(jobKey);
 		assertEquals(jobHistoryListener.getJobPuts().size(), 0);
+		
+		JobHistoryFileParserHadoop1 jh = new JobHistoryFileParserHadoop1();
 
-		Put versionPut = JobHistoryFileParserBase.getHadoopVersionPut(
+		Put versionPut = jh.getHadoopVersionPut(
 				JobHistoryFileParserFactory.getHistoryFileVersion1(),
 				jobHistoryListener.getJobKeyBytes());
 		jobHistoryListener.includeHadoopVersionPut(versionPut);

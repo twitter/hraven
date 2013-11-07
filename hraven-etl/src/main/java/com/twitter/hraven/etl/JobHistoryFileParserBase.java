@@ -15,7 +15,6 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
-import java.util.List;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -41,7 +40,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 	 * 
 	 * @return Put
 	 */
-	public static Put getHadoopVersionPut(int historyFileVersion, byte[] jobKeyBytes) {
+	public Put getHadoopVersionPut(int historyFileVersion, byte[] jobKeyBytes) {
 	  Put pVersion = new Put(jobKeyBytes);
 	  byte[] valueBytes = null;
 	  valueBytes = Bytes.toBytes(Integer.toString(historyFileVersion));
