@@ -9,12 +9,15 @@
 package com.twitter.hraven.etl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import com.google.common.io.Files;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
@@ -24,6 +27,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -50,11 +54,39 @@ public class TestJobHistoryFileParserHadoop2 {
     historyFileParser.parse(contents, jobKey);
 
     List<Put> jobPuts = historyFileParser.getJobPuts();
-    assertEquals(4, jobPuts.size());
+    assertEquals(5, jobPuts.size());
 
     JobKeyConverter jobKeyConv = new JobKeyConverter();
     assertEquals("cluster1!user!Sleep!1!job_1329348432655_0001",
       jobKeyConv.fromBytes(jobPuts.get(0).getRow()).toString());
+
+    // check hadoop version
+    boolean foundVersion2 = false;
+    for (Put p : jobPuts) {
+    	List<KeyValue> kv2 = p.get(Constants.INFO_FAM_BYTES,
+    			Bytes.toBytes(JobHistoryKeys.hadoopversion.toString()));
+    	if (kv2.size() == 0) {
+    	  // we are interested in hadoop version put only
+    	  // hence continue
+          continue;
+    	}
+    	assertEquals(1, kv2.size());
+    	Map<byte[], List<KeyValue>> d = p.getFamilyMap();
+    	for (List<KeyValue> lkv : d.values()) {
+    	  for (KeyValue kv : lkv) {
+    		// ensure we have a hadoop2 version as the value
+    		assertEquals(Bytes.toString(kv.getValue()), 
+    				Integer.toString(JobHistoryFileParserFactory.getHistoryFileVersion2()));
+
+    	    // ensure we don't see the same put twice
+    	    assertFalse(foundVersion2);
+    		// now set this to true
+    		foundVersion2 = true;
+    	  }
+       }
+    }
+    // ensure that we got the hadoop2 version put
+    assertTrue(foundVersion2);
 
     List<Put> taskPuts = historyFileParser.getTaskPuts();
     assertEquals(taskPuts.size(), 45);

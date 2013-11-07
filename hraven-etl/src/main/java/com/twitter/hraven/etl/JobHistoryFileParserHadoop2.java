@@ -50,7 +50,7 @@ import com.twitter.hraven.datasource.TaskKeyConverter;
  * Deal with JobHistory file parsing for job history files which are generated after MAPREDUCE-1016
  * (hadoop 1.x (0.21 and later) and hadoop 2.x)
  */
-public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
+public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
   private JobKey jobKey;
   /** Job ID, minus the leading "job_" */
@@ -246,6 +246,10 @@ public class JobHistoryFileParserHadoop2 implements JobHistoryFileParser {
       throw new ProcessingException(" Unable to parse history file in function parse, "
           + "cannot process this record! " + jobKey + " error: ", iae);
     }
+
+    // set the hadoop version for this record
+    Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion2(), this.jobKeyBytes);
+    this.jobPuts.add(versionPut);
 
     LOG.info("For " + this.jobKey + " #jobPuts " + jobPuts.size() + " #taskPuts: "
         + taskPuts.size());

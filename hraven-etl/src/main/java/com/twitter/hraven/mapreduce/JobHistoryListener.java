@@ -110,6 +110,23 @@ public class JobHistoryListener implements Listener {
       addKeyValues(p, Constants.INFO_FAM_BYTES, e.getKey(), e.getValue());
     }
     this.jobPuts.add(p);
+
+  }
+
+  /**
+   * sets the hadoop version put in the list of job puts
+   * @param pVersion
+   * @throws IllegalArgumentException if put is null
+   */
+  public void includeHadoopVersionPut(Put pVersion) {
+	  // set the hadoop version for this record
+	  if (pVersion != null) {
+		  this.jobPuts.add(pVersion);
+	  } else {
+		  String msg = "Hadoop Version put cannot be null";
+		  LOG.error(msg);
+		  throw new IllegalArgumentException(msg);
+	  }
   }
 
   private void handleTask(Map<JobHistoryKeys, String> values) {
@@ -241,6 +258,14 @@ public class JobHistoryListener implements Listener {
     }
 
     return taskKeyConv.toBytes(new TaskKey(this.jobKey, taskComponent));
+  }
+
+  /**
+   * getter for jobKeyBytes
+   * @return the byte array of jobKeyBytes
+   */
+  public byte[] getJobKeyBytes() {
+	return this.jobKeyBytes;
   }
 
   /**
