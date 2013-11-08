@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.*;
 import com.twitter.hraven.util.ByteUtil;
+import com.twitter.hraven.util.HadoopConfUtil;
 
 /**
  */
@@ -589,10 +590,38 @@ public class JobHistoryService {
   }
 
   /**
+   * sets the hRavenQueueName in the jobPut
+   * so that it's independent of hadoop1/hadoop2 queue/pool names
+   *
+   * @param jobConf
+   * @param jobPut
+   * @param jobKey
+   * @param jobConfColumnPrefix
+   *
+   * @throws IllegalArgumentException if neither config param is found
+   */
+   static void setHravenQueueNamePut(Configuration jobConf, Put jobPut,
+		   JobKey jobKey, byte[] jobConfColumnPrefix) {
+
+     String hRavenQueueName = HadoopConfUtil.getQueueName(jobConf);
+     if (hRavenQueueName.equalsIgnoreCase(Constants.DEFAULT_VALUE_QUEUENAME)){
+       // due to a bug in hadoop2, the queue name value is the string "default"
+       // hence set it to username
+       hRavenQueueName = jobKey.getUserName();
+     }
+
+     // set the "queue" property defined by hRaven
+     // this makes it independent of hadoop version config parameters
+     byte[] column = Bytes.add(jobConfColumnPrefix, Constants.HRAVEN_QUEUE_BYTES);
+     jobPut.add(Constants.INFO_FAM_BYTES, column,
+    			  Bytes.toBytes(hRavenQueueName));
+   }
+
+  /**
    * Returns the HBase {@code Put} instances to store for the given
    * {@code Configuration} data. Each configuration property will be stored as a
    * separate key value.
-   * 
+   *
    * @param jobDesc
    *          the {@link JobDesc} generated for the job
    * @param jobConf
@@ -626,6 +655,9 @@ public class JobHistoryService {
       jobPut.add(Constants.INFO_FAM_BYTES, column,
           Bytes.toBytes(entry.getValue()));
     }
+
+    // ensure pool/queuename is set correctly
+    setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
 
     puts.add(jobPut);
 

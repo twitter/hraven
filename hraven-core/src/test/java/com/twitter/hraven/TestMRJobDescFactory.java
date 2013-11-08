@@ -25,6 +25,7 @@ public class TestMRJobDescFactory {
   public void testCreate() {
     MRJobDescFactory mrFac = new MRJobDescFactory();
     Configuration conf = new Configuration();
+    conf.set(Constants.USER_CONF_KEY, "testuser");
     QualifiedJobId qid = new QualifiedJobId("clusterId", "job_211212010355_45240");
     
     JobDesc jd = null;
@@ -49,6 +50,7 @@ public class TestMRJobDescFactory {
     
     // batch.desc is set set, and mapred.job.name is not set
     conf = new Configuration();
+    conf.set(Constants.USER_CONF_KEY, "testuser");
     name = "Third Crazy Job name! : test 1 2 3!";
     processedName = "Third_Crazy_Job_name__:_test_1_2_3_";
     conf.set("batch.desc", name);
