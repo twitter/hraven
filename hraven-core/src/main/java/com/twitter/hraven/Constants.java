@@ -217,6 +217,34 @@ public class Constants {
       .length();
 
   public static final String USER_CONF_KEY = "user.name";
+  public static final String USER_CONF_KEY_HADOOP2 = "mapreduce.job.user.name";
+
+  /**
+   *  use this config setting to define an
+   *  hadoop-version-independent property for queuename
+   */
+  public static final String HRAVEN_QUEUE = "queue";
+
+  /**
+   * following are different config parameters that are in use
+   * to define a queue for a job
+   */
+  public static final String QUEUENAME_HADOOP2 = "mapreduce.job.queuename";
+  public static final String FAIR_SCHEDULER_POOLNAME_HADOOP1 = "mapred.fairscheduler.pool";
+  public static final String CAPACITY_SCHEDULER_QUEUENAME_HADOOP1 = "mapred.job.queue.name";
+
+  /**
+   *  use this when queue name cannot be determined, for example in FIFO scheduler
+   */
+  public static final String DEFAULT_QUEUENAME = "DEFAULT_QUEUE";
+
+  /**
+   * this setting is a resultant of a bug in hadoop2
+   * there should not exist a value of a string "default" for queuename
+   * it should always default to the user name
+   */
+  public static final String DEFAULT_VALUE_QUEUENAME = "default";
+
   public static final String JOB_NAME_CONF_KEY = "mapred.job.name";
 
   public static final String PIG_CONF_KEY = "pig.version"; // used to detect a

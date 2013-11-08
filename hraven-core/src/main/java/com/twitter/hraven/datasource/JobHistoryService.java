@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.google.common.base.Stopwatch;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -589,10 +590,101 @@ public class JobHistoryService {
   }
 
   /**
+   * sets the hRavenUserName for this job conf independent of hadoop1/hadoop2
+   *      hadoop1 : user.name
+   *      hadoop2 : hadoop.mapreducer.job.user.name
+   *
+   * @param jobConf
+   * @param jobPut
+   * @param jobKey
+   * @param jobConfColumnPrefix
+   * @return hRavenUserName so that it can be used
+   *         for further processing of queue name
+   *
+   * @throws IllegalArgumentException if neither config param is found
+   */
+   static String setHravenUserNamePut(Configuration jobConf, Put jobPut,
+		  JobKey jobKey, byte[] jobConfColumnPrefix) {
+    // check the hadoop2 username first
+    String hRavenUserName = jobConf.get(Constants.USER_CONF_KEY_HADOOP2);
+	if (StringUtils.isBlank(hRavenUserName)) {
+	  // presumably a hadoop1 conf
+	   hRavenUserName = jobConf.get(Constants.USER_CONF_KEY);
+	   if (StringUtils.isBlank(hRavenUserName)) {
+	     // neither user.name nor hadoop.mapreduce.job.user.name found
+		 throw new IllegalArgumentException(" Found neither "
+				 + Constants.USER_CONF_KEY + " nor "
+				 + Constants.USER_CONF_KEY_HADOOP2 + " for job "
+				 + jobKey);
+		  }
+	  } else {
+		  // add the hadoop2 config setting as the user.name property
+		  byte[] column = Bytes.add(jobConfColumnPrefix,
+				  Bytes.toBytes(Constants.USER_CONF_KEY));
+		  jobPut.add(Constants.INFO_FAM_BYTES, column,
+				  Bytes.toBytes(hRavenUserName));
+	  }
+	  // return the name so that it can
+	  // be used at queue name decision time
+	  return hRavenUserName;
+  }
+
+  /**
+   * sets the hRavenQueueName so that it's independent of hadoop1/hadoop2
+   *         hadoop1 - mapred.fairscheduler.pool
+   *         hadoop2 - mapreduce.job.queuename
+   * @param jobConf
+   * @param jobPut
+   * @param jobKey
+   * @param jobConfColumnPrefix
+   * @param hRavenUserName
+   *
+   * @throws IllegalArgumentException if neither config param is found
+   */
+   static void setHravenQueueNamePut(Configuration jobConf, Put jobPut,
+		   JobKey jobKey, byte[] jobConfColumnPrefix, String hRavenUserName) {
+
+     // look for the hadoop2 queuename first
+     String hRavenQueueName = jobConf.get(Constants.QUEUENAME_HADOOP2);
+     if (StringUtils.isBlank(hRavenQueueName)) {
+   	   // presumably a hadoop1 conf, check for fair scheduler pool name
+       hRavenQueueName = jobConf.get(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1);
+       if (StringUtils.isBlank(hRavenQueueName)) {
+    	 // check for capacity scheduler queue name
+    	 hRavenQueueName = jobConf.get(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1);
+         if (StringUtils.isBlank(hRavenQueueName)) {
+    	   // neither pool (hadoop1) nor queuename (hadoop2) found
+    	   // presumably FIFO scheduler, hence set to "DEFAULT_QUEUE"
+    	   hRavenQueueName = Constants.DEFAULT_QUEUENAME;
+    	   LOG.info(" Found neither "
+    			  + Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1 + " nor "
+    			  + Constants.QUEUENAME_HADOOP2 + " nor "
+    			  + Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1
+    			  + " for job " + jobKey + ", hence presuming FIFO scheduler "
+    			  + " and setting the queuename to " + Constants.DEFAULT_QUEUENAME);
+    	 }
+       }
+     }
+
+     if (hRavenQueueName.equalsIgnoreCase(Constants.DEFAULT_VALUE_QUEUENAME)){
+       // due to a bug in hadoop2, the queue name value is the string "default"
+       // hence set it to username
+       hRavenQueueName = hRavenUserName;
+     }
+
+     // set the "queue" property defined by hRaven
+     // this makes it independent of hadoop version config parameters
+     byte[] column = Bytes.add(jobConfColumnPrefix,
+    			  Bytes.toBytes(Constants.HRAVEN_QUEUE));
+     jobPut.add(Constants.INFO_FAM_BYTES, column,
+    			  Bytes.toBytes(hRavenQueueName));
+   }
+
+  /**
    * Returns the HBase {@code Put} instances to store for the given
    * {@code Configuration} data. Each configuration property will be stored as a
    * separate key value.
-   * 
+   *
    * @param jobDesc
    *          the {@link JobDesc} generated for the job
    * @param jobConf
@@ -626,6 +718,12 @@ public class JobHistoryService {
       jobPut.add(Constants.INFO_FAM_BYTES, column,
           Bytes.toBytes(entry.getValue()));
     }
+
+    // ensure hraven user name is set correctly
+    String hRavenUserName = setHravenUserNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
+
+    // ensure pool/queuename is set correctly
+    setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix, hRavenUserName);
 
     puts.add(jobPut);
 
