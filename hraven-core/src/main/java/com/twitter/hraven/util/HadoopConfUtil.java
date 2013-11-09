@@ -6,6 +6,10 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import com.twitter.hraven.Constants;
 
+/**
+ * Utility class for accessing parameters from the Hadoop Conf
+ * used in case of parameter name changes across hadoop versions
+ */
 public class HadoopConfUtil {
 
 	private static Log LOG = LogFactory.getLog(HadoopConfUtil.class);
@@ -34,11 +38,12 @@ public class HadoopConfUtil {
 	}
 
 	/**
-	 * checks if the jobConf contains a certain param
+	 * checks if the jobConf contains a certain parameter
 	 * 
 	 * @param jobConf
 	 * @param name
-	 * @return
+	 * @return true if the job conf contains that parameter
+	 *         false if the job conf does not contain that parameter
 	 */
 	public static boolean constains(Configuration jobConf, String name) {
 		if (StringUtils.isNotBlank(jobConf.get(name))) {
@@ -48,6 +53,13 @@ public class HadoopConfUtil {
 		}
 	}
 
+	/**
+	 * retrieves the queue name from a hadoop conf
+	 * looks for hadoop2 and hadoop1 settings
+	 * 
+	 * @param jobConf
+	 * @return queuename
+	 */
 	public static String getQueueName(Configuration jobConf) {
 		// look for the hadoop2 queuename first
 		String hRavenQueueName = jobConf.get(Constants.QUEUENAME_HADOOP2);
