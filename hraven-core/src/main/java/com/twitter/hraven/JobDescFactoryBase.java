@@ -18,6 +18,7 @@ package com.twitter.hraven;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 
+import com.twitter.hraven.util.HadoopConfUtil;
 import com.twitter.hraven.util.StringUtil;
 
 /**
@@ -68,14 +69,8 @@ public abstract class JobDescFactoryBase {
           "Cannot create a JobKey from a null qualifiedJobId.");
     }
 
-    /**
-     *  Add user name from the job conf
-     *  check for hadoop2 config param, then hadoop1
-     */
-    String userName = jobConf.get(Constants.USER_CONF_KEY_HADOOP2);
-    if (StringUtils.isBlank(userName)) {
-      userName = jobConf.get(Constants.USER_CONF_KEY);
-    }
+    // get the user name from the job conf
+    String userName = HadoopConfUtil.getUserNameInConf(jobConf);
 
     return new JobDesc(qualifiedJobId, userName, appId, version,
         submitTimeMillis, framework);
