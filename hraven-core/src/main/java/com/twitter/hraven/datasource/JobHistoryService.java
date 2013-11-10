@@ -607,7 +607,7 @@ public class JobHistoryService {
 		  JobKey jobKey, byte[] jobConfColumnPrefix) {
 	  // get the user name from the job conf
 	  String hRavenUserName = HadoopConfUtil.getUserNameInConf(jobConf);
-	  if(HadoopConfUtil.constains(jobConf, Constants.USER_CONF_KEY_HADOOP2)) {
+	  if(HadoopConfUtil.contains(jobConf, Constants.USER_CONF_KEY_HADOOP2)) {
 	    // add the hadoop2 config setting as the user.name property
 	    byte[] column = Bytes.add(jobConfColumnPrefix,
 			Bytes.toBytes(Constants.USER_CONF_KEY));
