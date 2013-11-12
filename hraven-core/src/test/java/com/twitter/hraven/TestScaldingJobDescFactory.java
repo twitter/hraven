@@ -123,6 +123,7 @@ public class TestScaldingJobDescFactory {
     c.set("mapred.job.name", jobName1);
     c.set("cascading.app.id", "93543E9B29A4CD14E0556849A93E171B");
     c.set("cascading.flow.id", "0A2CEB3C5DFB905802EB96D1AE0C04D5");
+    c.set("user.name", "testuser");
 
     ScaldingJobDescFactory factory = new ScaldingJobDescFactory();
     QualifiedJobId jobId = new QualifiedJobId("test@local", "job_201206010000_0001");
