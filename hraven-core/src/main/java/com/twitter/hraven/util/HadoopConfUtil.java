@@ -39,7 +39,8 @@ public class HadoopConfUtil {
 	 * 
 	 * @throws IllegalArgumentException
 	 */
-	public static String getUserNameInConf(Configuration jobConf) {
+	public static String getUserNameInConf(Configuration jobConf)
+			throws IllegalArgumentException {
 		String userName = jobConf.get(Constants.USER_CONF_KEY_HADOOP2);
 		if (StringUtils.isBlank(userName)) {
 			userName = jobConf.get(Constants.USER_CONF_KEY);

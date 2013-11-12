@@ -18,6 +18,7 @@ package com.twitter.hraven.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -54,4 +55,20 @@ public class TestHadoopConfUtil {
 		String queueName = HadoopConfUtil.getQueueName(jobConf);
 		assertEquals(queueName, "default");
 	}
+
+	@Test(expected=IllegalArgumentException.class)
+	public void checkUserNameAlwaysSet() throws FileNotFoundException {
+		  final String JOB_CONF_FILE_NAME =
+			        "src/test/resources/job_1329348432655_0001_conf.xml";
+
+		  Configuration jobConf = new Configuration();
+		  jobConf.addResource(new FileInputStream(JOB_CONF_FILE_NAME));
+
+		  // unset the user name to confirm exception thrown
+		  jobConf.set(Constants.USER_CONF_KEY_HADOOP2, "");
+		  jobConf.set(Constants.USER_CONF_KEY, "");
+		  // test the hraven user name setting
+		  String hRavenUserName = HadoopConfUtil.getUserNameInConf(jobConf);
+		  assertNull(hRavenUserName);
+	  }
 }

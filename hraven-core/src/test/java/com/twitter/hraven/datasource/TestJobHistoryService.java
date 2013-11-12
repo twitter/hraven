@@ -17,15 +17,12 @@ package com.twitter.hraven.datasource;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -303,7 +300,6 @@ public class TestJobHistoryService {
 	  List<KeyValue> kv1 = jobPut.get(Constants.INFO_FAM_BYTES, column);
 	  assertEquals(expectedSize, kv1.size());
 	  for (KeyValue kv : kv1) {
-		// ensure we have user name value
 		assertEquals(Bytes.toString(kv.getValue()), expectedValue);
 	    // ensure we don't see the same put twice
 		assertFalse(foundUserName);
@@ -315,7 +311,7 @@ public class TestJobHistoryService {
   }
 
   @Test
-  public void testSetHravenUserAndQueueName() throws FileNotFoundException {
+  public void testSetHravenQueueName() throws FileNotFoundException {
 
 	  final String JOB_CONF_FILE_NAME =
 		        "src/test/resources/job_1329348432655_0001_conf.xml";
@@ -333,47 +329,13 @@ public class TestJobHistoryService {
 
 	  assertEquals(jobPut.size(), 0);
 
-	  // test the hraven user name setting
-	  String hRavenUserName = JobHistoryService.setHravenUserNamePut(jobConf,
-			  jobPut, jobKey, jobConfColumnPrefix);
-	  assertTrue(StringUtils.isNotBlank(hRavenUserName));
-	  assertEquals(hRavenUserName, USERNAME);
-	  assertEquals(jobPut.size(), 1);
-	  byte[] column = Bytes.add(jobConfColumnPrefix,
-			  Bytes.toBytes(Constants.USER_CONF_KEY));
-	  assertFoundOnce(column, jobPut, 1, hRavenUserName);
-
 	  // check queuename
 	  JobHistoryService.setHravenQueueNamePut(jobConf, jobPut, jobKey,
-			  jobConfColumnPrefix, hRavenUserName);
-	  assertEquals(jobPut.size(), 2);
-	  column = Bytes.add(jobConfColumnPrefix,
+			  jobConfColumnPrefix, USERNAME);
+	  assertEquals(jobPut.size(), 1);
+	  byte[] column = Bytes.add(jobConfColumnPrefix,
 			  Bytes.toBytes(Constants.HRAVEN_QUEUE));
-	  assertFoundOnce(column, jobPut, 1, hRavenUserName);
-  }
-
-  @Test(expected=IllegalArgumentException.class)
-  public void checkUserNameAlwaysSet() throws FileNotFoundException {
-	  final String JOB_CONF_FILE_NAME =
-		        "src/test/resources/job_1329348432655_0001_conf.xml";
-
-	  Configuration jobConf = new Configuration();
-	  jobConf.addResource(new FileInputStream(JOB_CONF_FILE_NAME));
-	  String USERNAME = "user";
-	  JobKey jobKey = new JobKey("cluster1", USERNAME, "Sleep", 1,
-			  "job_1329348432655_0001");
-	  byte[] jobKeyBytes = new JobKeyConverter().toBytes(jobKey);
-	  Put jobPut = new Put(jobKeyBytes);
-	  byte[] jobConfColumnPrefix = Bytes.toBytes(Constants.JOB_CONF_COLUMN_PREFIX
-	        + Constants.SEP);
-
-	  // unset the user name to confirm exception thrown
-	  jobConf.set(Constants.USER_CONF_KEY_HADOOP2, "");
-	  jobConf.set(Constants.USER_CONF_KEY, "");
-	  // test the hraven user name setting
-	  String hRavenUserName = JobHistoryService.setHravenUserNamePut(jobConf,
-			  jobPut, jobKey, jobConfColumnPrefix);
-	  assertNull(hRavenUserName);
+	  assertFoundOnce(column, jobPut, 1, USERNAME);
   }
 
   private void assertJob(JobDetails expected, JobDetails actual) {
