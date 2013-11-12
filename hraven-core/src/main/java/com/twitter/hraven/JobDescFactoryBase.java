@@ -15,9 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-
 import com.twitter.hraven.util.HadoopConfUtil;
 import com.twitter.hraven.util.StringUtil;
 

@@ -590,31 +590,29 @@ public class JobHistoryService {
   }
 
   /**
-   * sets the hRavenQueueName so that it's independent of hadoop1/hadoop2
-   *         hadoop1 - mapred.fairscheduler.pool
-   *         hadoop2 - mapreduce.job.queuename
+   * sets the hRavenQueueName in the jobPut
+   * so that it's independent of hadoop1/hadoop2 queue/pool names
+   *
    * @param jobConf
    * @param jobPut
    * @param jobKey
    * @param jobConfColumnPrefix
-   * @param hRavenUserName
    *
    * @throws IllegalArgumentException if neither config param is found
    */
    static void setHravenQueueNamePut(Configuration jobConf, Put jobPut,
-		   JobKey jobKey, byte[] jobConfColumnPrefix, String hRavenUserName) {
+		   JobKey jobKey, byte[] jobConfColumnPrefix) {
 
      String hRavenQueueName = HadoopConfUtil.getQueueName(jobConf);
      if (hRavenQueueName.equalsIgnoreCase(Constants.DEFAULT_VALUE_QUEUENAME)){
        // due to a bug in hadoop2, the queue name value is the string "default"
        // hence set it to username
-       hRavenQueueName = hRavenUserName;
+       hRavenQueueName = jobKey.getUserName();
      }
 
      // set the "queue" property defined by hRaven
      // this makes it independent of hadoop version config parameters
-     byte[] column = Bytes.add(jobConfColumnPrefix,
-    			  Bytes.toBytes(Constants.HRAVEN_QUEUE));
+     byte[] column = Bytes.add(jobConfColumnPrefix, Constants.HRAVEN_QUEUE_BYTES);
      jobPut.add(Constants.INFO_FAM_BYTES, column,
     			  Bytes.toBytes(hRavenQueueName));
    }
@@ -659,8 +657,7 @@ public class JobHistoryService {
     }
 
     // ensure pool/queuename is set correctly
-    String hRavenUserName = HadoopConfUtil.getUserNameInConf(jobConf);
-    setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix, hRavenUserName);
+    setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
 
     puts.add(jobPut);
 

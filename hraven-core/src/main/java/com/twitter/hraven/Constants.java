@@ -225,6 +225,9 @@ public class Constants {
    */
   public static final String HRAVEN_QUEUE = "queue";
 
+  /** raw bytes representation of the queue parameter */
+  public static final byte[] HRAVEN_QUEUE_BYTES = Bytes.toBytes(HRAVEN_QUEUE);
+
   /**
    * following are different config parameters that are in use
    * to define a queue for a job
