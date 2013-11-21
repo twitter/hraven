@@ -187,6 +187,12 @@ public class Constants {
   public static final String SLOTS_MILLIS_REDUCES = "SLOTS_MILLIS_REDUCES";
   public static final String REDUCE_SHUFFLE_BYTES = "REDUCE_SHUFFLE_BYTES";
 
+  // job details related counter sub group in hadoop 2
+  public static final String FILESYSTEM_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.FileSystemCounter";
+  public static final String JOB_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.JobCounter";
+  public static final String TASK_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.TaskCounter";
+
+  
   /**
    * Indicator whether a job has been processed successfully from the RAW table
    * to the history and index tables. Used to skip this job from the RAW table
@@ -227,6 +233,11 @@ public class Constants {
 
   /** raw bytes representation of the queue parameter */
   public static final byte[] HRAVEN_QUEUE_BYTES = Bytes.toBytes(HRAVEN_QUEUE);
+
+  /**
+   * hadoop versions
+   */
+  public enum HADOOP_VERSION { ONE, TWO };
 
   /**
    * following are different config parameters that are in use

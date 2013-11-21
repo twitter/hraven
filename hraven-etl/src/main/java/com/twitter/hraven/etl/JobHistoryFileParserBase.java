@@ -40,10 +40,10 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 	 * 
 	 * @return Put
 	 */
-	public Put getHadoopVersionPut(int historyFileVersion, byte[] jobKeyBytes) {
+	public Put getHadoopVersionPut(Constants.HADOOP_VERSION historyFileVersion, byte[] jobKeyBytes) {
 	  Put pVersion = new Put(jobKeyBytes);
 	  byte[] valueBytes = null;
-	  valueBytes = Bytes.toBytes(Integer.toString(historyFileVersion));
+	  valueBytes = Bytes.toBytes(historyFileVersion.toString());
 	  byte[] qualifier = Bytes.toBytes(JobHistoryKeys.hadoopversion.toString().toLowerCase());
 	  pVersion.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
 	  return pVersion;

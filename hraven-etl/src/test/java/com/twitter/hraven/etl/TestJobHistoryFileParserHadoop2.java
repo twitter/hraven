@@ -76,7 +76,7 @@ public class TestJobHistoryFileParserHadoop2 {
     	  for (KeyValue kv : lkv) {
     		// ensure we have a hadoop2 version as the value
     		assertEquals(Bytes.toString(kv.getValue()), 
-    				Integer.toString(JobHistoryFileParserFactory.getHistoryFileVersion2()));
+    				Constants.HADOOP_VERSION.TWO.toString()); 
 
     	    // ensure we don't see the same put twice
     	    assertFalse(foundVersion2);

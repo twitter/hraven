@@ -54,7 +54,7 @@ public class TestJobHistoryListener {
 		JobHistoryFileParserHadoop1 jh = new JobHistoryFileParserHadoop1();
 
 		Put versionPut = jh.getHadoopVersionPut(
-				JobHistoryFileParserFactory.getHistoryFileVersion1(),
+				Constants.HADOOP_VERSION.ONE,
 				jobHistoryListener.getJobKeyBytes());
 		jobHistoryListener.includeHadoopVersionPut(versionPut);
 		assertEquals(jobHistoryListener.getJobPuts().size(), 1);
@@ -75,7 +75,7 @@ public class TestJobHistoryListener {
 			for (KeyValue kv : lkv) {
 			  // ensure we have a hadoop2 version as the value
 			  assertEquals(Bytes.toString(kv.getValue()),
-						Integer.toString(JobHistoryFileParserFactory.getHistoryFileVersion1()));
+						Constants.HADOOP_VERSION.ONE.toString() );
  			  // ensure we don't see the same put twice
 			  assertFalse(foundVersion1);
 			  // now set this to true

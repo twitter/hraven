@@ -17,6 +17,9 @@ package com.twitter.hraven.etl;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.twitter.hraven.Constants;
+import com.twitter.hraven.Constants.HADOOP_VERSION;
+
 /**
  * Deal with {@link JobHistoryFileParser} implementations.
  * Creates an appropriate Job History File Parser Object based
@@ -33,8 +36,6 @@ public class JobHistoryFileParserFactory {
   public static final String HADOOP1_VERSION_STRING = "Meta VERSION=\"1\" .";
   private static final int HADOOP2_VERSION_LENGTH = 9;
   private static final int HADOOP1_VERSION_LENGTH = 18;
-  private static final int HISTORY_FILE_VERSION1 = 1;
-  private static final int HISTORY_FILE_VERSION2 = 2;
 
   /**
    * determines the verison of hadoop that the history file belongs to
@@ -49,18 +50,18 @@ public class JobHistoryFileParserFactory {
    * 
    * @throws IllegalArgumentException if neither match
    */
-  public static int getVersion(byte[] historyFileContents) {
+  public static Constants.HADOOP_VERSION getVersion(byte[] historyFileContents) {
     if(historyFileContents.length > HADOOP2_VERSION_LENGTH) {
       // the first 10 bytes in a hadoop2.0 history file contain Avro-Json
       String version2Part =  new String(historyFileContents, 0, HADOOP2_VERSION_LENGTH);
       if (StringUtils.equalsIgnoreCase(version2Part, HADOOP2_VERSION_STRING)) {
-        return HISTORY_FILE_VERSION2;
+        return Constants.HADOOP_VERSION.TWO;
       } else {
         if(historyFileContents.length > HADOOP1_VERSION_LENGTH) {
           // the first 18 bytes in a hadoop1.0 history file contain Meta VERSION="1" .
           String version1Part =  new String(historyFileContents, 0, HADOOP1_VERSION_LENGTH);
           if (StringUtils.equalsIgnoreCase(version1Part, HADOOP1_VERSION_STRING)) {
-            return HISTORY_FILE_VERSION1;
+            return Constants.HADOOP_VERSION.ONE;
           }
         }
       }
@@ -87,13 +88,13 @@ public class JobHistoryFileParserFactory {
           "Job history contents should not be null");
     }
 
-    int version = getVersion(historyFileContents);
+    Constants.HADOOP_VERSION version = getVersion(historyFileContents);
 
     switch (version) {
-    case 1:
+    case ONE:
       return new JobHistoryFileParserHadoop1();
 
-    case 2:
+    case TWO:
       return new JobHistoryFileParserHadoop2();
 
     default:
@@ -105,14 +106,14 @@ public class JobHistoryFileParserFactory {
   /**
    * @return HISTORY_FILE_VERSION1
    */
-  public static int getHistoryFileVersion1() {
-    return HISTORY_FILE_VERSION1;
+  public static HADOOP_VERSION getHistoryFileVersion1() {
+    return Constants.HADOOP_VERSION.ONE;
   }
 
   /**
    * @return HISTORY_FILE_VERSION2
    */
-  public static int getHistoryFileVersion2() {
-    return HISTORY_FILE_VERSION2;
+  public static HADOOP_VERSION getHistoryFileVersion2() {
+    return Constants.HADOOP_VERSION.TWO;
   }
 }
