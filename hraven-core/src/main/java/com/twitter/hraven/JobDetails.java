@@ -58,7 +58,7 @@ public class JobDetails implements Comparable<JobDetails> {
   private String priority;
   private String status;
   private String version;
-  private Constants.HADOOP_VERSION hadoopVersion;
+  private HadoopVersion hadoopVersion;
   private long submitTime;
   private long launchTime;
   private long finishTime;
@@ -178,13 +178,13 @@ public class JobDetails implements Comparable<JobDetails> {
     this.version = version;
   }
 
-  public Constants.HADOOP_VERSION getHadoopVersion() {
+  public HadoopVersion getHadoopVersion() {
     return hadoopVersion;
   }
 
   public void setHadoopVersion(String hadoopVersion) {
     // the enum.valueOf could throw a NPE or IllegalArgumentException
-    this.hadoopVersion = Constants.HADOOP_VERSION.valueOf(hadoopVersion);
+    this.hadoopVersion = HadoopVersion.valueOf(hadoopVersion);
   }
 
   public long getSubmitTime() {
@@ -440,16 +440,16 @@ public class JobDetails implements Comparable<JobDetails> {
    * @param infoValues
    * @return value as a enum
    */
-  private Constants.HADOOP_VERSION getHadoopVersionFromResult(final JobHistoryKeys key,
+  private HadoopVersion getHadoopVersionFromResult(final JobHistoryKeys key,
       final NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(key));
     if (value != null) {
       String hv = Bytes.toString(value);
       // could throw an NPE or IllegalArgumentException
-      return Constants.HADOOP_VERSION.valueOf(hv);
+      return HadoopVersion.valueOf(hv);
     } else {
       // default is hadoop 1
-      return Constants.HADOOP_VERSION.ONE;
+      return HadoopVersion.ONE;
     }
   }
 
@@ -504,7 +504,7 @@ public class JobDetails implements Comparable<JobDetails> {
 
     // populate stats from counters for this job based on
     // hadoop version
-    if (this.hadoopVersion == Constants.HADOOP_VERSION.TWO) {
+    if (this.hadoopVersion == HadoopVersion.TWO) {
       // map file bytes read
       this.mapFileBytesRead = getCounterValueAsLong(this.mapCounters, 
             Constants.FILESYSTEM_COUNTER_HADOOP2, Constants.FILES_BYTES_READ);

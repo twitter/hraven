@@ -179,7 +179,7 @@ public class TestJobDetails {
     infoValues.put(c4, value);
   }
 
-  private NavigableMap<byte[], byte[]> getInfoValues(Constants.HADOOP_VERSION hv) {
+  private NavigableMap<byte[], byte[]> getInfoValues(HadoopVersion hv) {
     NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
 
     infoValues.put(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOBID),
@@ -316,7 +316,7 @@ public class TestJobDetails {
           .getValue());
   }
 
-  private void confirmHadoopVersion(JobDetails jd, Constants.HADOOP_VERSION hv) {
+  private void confirmHadoopVersion(JobDetails jd, HadoopVersion hv) {
     assertEquals(hv, jd.getHadoopVersion());
   }
 
@@ -326,7 +326,7 @@ public class TestJobDetails {
   @Test
   public void testPopulateForHadoop2() {
     JobDetails jd = new JobDetails(null);
-    NavigableMap<byte[], byte[]> infoValues = getInfoValues(Constants.HADOOP_VERSION.TWO);
+    NavigableMap<byte[], byte[]> infoValues = getInfoValues(HadoopVersion.TWO);
 
     Result result = Mockito.mock(Result.class);
     when(result.getFamilyMap(Constants.INFO_FAM_BYTES)).thenReturn(infoValues);
@@ -334,7 +334,7 @@ public class TestJobDetails {
     jd.populate(result);
 
     // confirm hadoop2 first
-    confirmHadoopVersion(jd, Constants.HADOOP_VERSION.TWO);
+    confirmHadoopVersion(jd, HadoopVersion.TWO);
     // confirm job details
     confirmSomeJobDeets(jd);
     // confirm hadoop2 counters
@@ -412,7 +412,7 @@ public class TestJobDetails {
   @Test
   public void testPopulateForHadoop1() {
     JobDetails jd = new JobDetails(null);
-    NavigableMap<byte[], byte[]> infoValues = getInfoValues(Constants.HADOOP_VERSION.ONE);
+    NavigableMap<byte[], byte[]> infoValues = getInfoValues(HadoopVersion.ONE);
 
     Result result1 = mock(Result.class);
     when(result1.getFamilyMap(Constants.INFO_FAM_BYTES)).thenReturn(infoValues);
@@ -420,7 +420,7 @@ public class TestJobDetails {
     jd.populate(result1);
 
     // confirm hadoop 1
-    confirmHadoopVersion(jd, Constants.HADOOP_VERSION.ONE);
+    confirmHadoopVersion(jd, HadoopVersion.ONE);
     // confirm hadoop1 counters
     confirmHadoop1Counters(jd);
     // confirm job details

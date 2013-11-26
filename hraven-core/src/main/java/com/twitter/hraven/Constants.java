@@ -235,11 +235,6 @@ public class Constants {
   public static final byte[] HRAVEN_QUEUE_BYTES = Bytes.toBytes(HRAVEN_QUEUE);
 
   /**
-   * hadoop versions
-   */
-  public enum HADOOP_VERSION { ONE, TWO };
-
-  /**
    * following are different config parameters that are in use
    * to define a queue for a job
    */
