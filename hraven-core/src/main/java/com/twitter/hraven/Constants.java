@@ -187,6 +187,12 @@ public class Constants {
   public static final String SLOTS_MILLIS_REDUCES = "SLOTS_MILLIS_REDUCES";
   public static final String REDUCE_SHUFFLE_BYTES = "REDUCE_SHUFFLE_BYTES";
 
+  // job details related counter sub group in hadoop 2
+  public static final String FILESYSTEM_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.FileSystemCounter";
+  public static final String JOB_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.JobCounter";
+  public static final String TASK_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.TaskCounter";
+
+  
   /**
    * Indicator whether a job has been processed successfully from the RAW table
    * to the history and index tables. Used to skip this job from the RAW table
