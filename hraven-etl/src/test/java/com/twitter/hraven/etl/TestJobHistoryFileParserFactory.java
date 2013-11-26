@@ -21,7 +21,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
-import com.twitter.hraven.Constants.HADOOP_VERSION;
+import com.twitter.hraven.HadoopVersion;
 
 /**
  * Test {@link JobHistoryFileParserFactory}
@@ -52,14 +52,14 @@ public class TestJobHistoryFileParserFactory {
   @Test
   public void testGetVersion() {
     String jHist1 = "Meta VERSION=\"1\" .\n" + "Job JOBID=\"job_201301010000_12345\"";
-    HADOOP_VERSION version1 = JobHistoryFileParserFactory.getVersion(jHist1.getBytes());
+    HadoopVersion version1 = JobHistoryFileParserFactory.getVersion(jHist1.getBytes());
     // confirm that we get back hadoop 1.0 version
     assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion1(), version1);
 
     String jHist2 = "Avro-Json\n"
             + "{\"type\":\"record\",\"name\":\"Event\", "
             + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\",\"fields\":[]\"";
-    HADOOP_VERSION version2 = JobHistoryFileParserFactory.getVersion(jHist2.getBytes());
+    HadoopVersion version2 = JobHistoryFileParserFactory.getVersion(jHist2.getBytes());
     // confirm that we get back hadoop 2.0 version
     assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion2(), version2);
   }

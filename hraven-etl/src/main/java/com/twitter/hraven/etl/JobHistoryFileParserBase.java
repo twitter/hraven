@@ -19,6 +19,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobHistoryKeys;
 
 /**
@@ -40,7 +41,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 	 * 
 	 * @return Put
 	 */
-	public Put getHadoopVersionPut(Constants.HADOOP_VERSION historyFileVersion, byte[] jobKeyBytes) {
+	public Put getHadoopVersionPut(HadoopVersion historyFileVersion, byte[] jobKeyBytes) {
 	  Put pVersion = new Put(jobKeyBytes);
 	  byte[] valueBytes = null;
 	  valueBytes = Bytes.toBytes(historyFileVersion.toString());
