@@ -142,9 +142,9 @@ public class JobFileTableMapper extends
           + " submitTimeMillis: " + submitTimeMillis;
       LOG.info(msg);
 
-      List<Put> puts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
+      List<Put> jobConfPuts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
 
-      LOG.info("Writing " + puts.size() + " JobConf puts to "
+      LOG.info("Writing " + jobConfPuts.size() + " JobConf puts to "
           + Constants.HISTORY_TABLE);
 
       // TODO:
@@ -156,7 +156,7 @@ public class JobFileTableMapper extends
       // the Job.
 
       // Emit the puts
-      for (Put put : puts) {
+      for (Put put : jobConfPuts) {
         context.write(JOB_TABLE, put);
         context.progress();
       }
@@ -183,8 +183,9 @@ public class JobFileTableMapper extends
     		  .createJobHistoryFileParser(historyFileContents);
 
       historyFileParser.parse(historyFileContents, jobKey);
+      context.progress();
 
-      puts = historyFileParser.getJobPuts();
+      List<Put> puts = historyFileParser.getJobPuts();
       if (puts == null) {
     	  throw new ProcessingException(
     			  " Unable to get job puts for this record!" + jobKey);
@@ -194,6 +195,25 @@ public class JobFileTableMapper extends
 
       // Emit the puts
       for (Put put : puts) {
+        context.write(JOB_TABLE, put);
+        // TODO: we should not have to do this, but need to confirm that
+        // TableRecordWriter does this for us.
+        context.progress();
+      }
+
+      /** post processing steps on job puts and job conf puts */
+      List<Put> postPuts = historyFileParser.generatePostProcessedPuts(jobConfPuts);
+      context.progress();
+
+      if (postPuts == null) {
+        throw new ProcessingException(
+            " Unable to get post processing puts for this record!" + jobKey);
+      }
+      LOG.info("Writing " + postPuts.size() + " Post Processing Job puts to "
+          + Constants.HISTORY_TABLE);
+
+      // Emit the puts
+      for (Put put : postPuts) {
         context.write(JOB_TABLE, put);
         // TODO: we should not have to do this, but need to confirm that
         // TableRecordWriter does this for us.

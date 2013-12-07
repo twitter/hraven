@@ -187,6 +187,10 @@ public class Constants {
   public static final String SLOTS_MILLIS_REDUCES = "SLOTS_MILLIS_REDUCES";
   public static final String REDUCE_SHUFFLE_BYTES = "REDUCE_SHUFFLE_BYTES";
 
+  /** used to indicate how expensive a job is in terms of memory and time taken*/
+  public static final String MEGABYTEMILLIS = "megabytemillis" ;
+  public static final byte[] MEGABYTEMILLIS_BYTES = Bytes.toBytes(MEGABYTEMILLIS);
+
   // job details related counter sub group in hadoop 2
   public static final String FILESYSTEM_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.FileSystemCounter";
   public static final String JOB_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.JobCounter";
@@ -221,6 +225,9 @@ public class Constants {
    */
   public static final int MAX_LONG_LENGTH = Long.toString(Long.MAX_VALUE)
       .length();
+
+  /** used for indicating if an error occurred in converting to long */
+  public static final long LONG_CONVERSION_ERROR_VALUE = -1L;
 
   public static final String USER_CONF_KEY = "user.name";
   public static final String USER_CONF_KEY_HADOOP2 = "mapreduce.job.user.name";
@@ -275,6 +282,20 @@ public class Constants {
   public static final String CASCADING_APP_ID_CONF_KEY = "cascading.app.id";
   
   public static final String MR_RUN_CONF_KEY = "mapred.app.submitted.timestamp";
+
+  /**
+   * hadoop2 memory mb for container size
+   * for map, reduce and AM containers
+   */
+  public static final String MAP_MEMORY_MB_CONF_KEY = "mapreduce.map.memory.mb";
+  public static final String REDUCE_MEMORY_MB_CONF_KEY = "mapreduce.reduce.memory.mb";
+  public static final String AM_MEMORY_MB_CONF_KEY = "yarn.app.mapreduce.am.resource.mb";
+
+  /**
+   * hadoop1 memory conf keys
+   */
+  public static final String JAVA_CHILD_OPTS_CONF_KEY = "mapred.child.java.opts";
+  public static final String JAVA_XMX_PREFIX = "-Xmx";
 
   /**
    * Timestamp format used to create processing directories

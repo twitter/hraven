@@ -17,15 +17,20 @@ package com.twitter.hraven.etl;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.mapred.JobHistoryCopy;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobKey;
+import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
+import com.twitter.hraven.util.HBasePutUtil;
 
 /**
  * Deal with JobHistory file parsing for job history files which are generated
@@ -37,7 +42,11 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 	private static final Log LOG = LogFactory
 			.getLog(JobHistoryFileParserHadoop1.class);
 
+	private JobKey jobKey;
+	private byte[] jobKeyBytes;
+	private JobKeyConverter jobKeyConv = new JobKeyConverter();
 	private JobHistoryListener jobHistoryListener = null;
+	private List<Put> postProcessedPuts = new LinkedList<Put>();
 
 	/**
 	 * {@inheritDoc}
@@ -49,6 +58,8 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 
 		try {
 			jobHistoryListener = new JobHistoryListener(jobKey);
+			this.jobKey = jobKey;
+			this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 			// set the hadoop version for this record
 			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), jobHistoryListener.getJobKeyBytes());
@@ -57,7 +68,7 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
 			throw new ProcessingException(
 					" Unable to parse history file in function parse, "
-							+ "cannot process this record!" + jobKey
+							+ "cannot process this record!" + this.jobKey
 							+ " error: " , ioe);
 		}
 	}
@@ -85,4 +96,56 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			return null;
 		}
 	}
+
+
+  /**
+   * considering the Xmx setting to be 75% of memory used return the total memory (xmx + native)
+   */
+  Long getXmxTotal(final long Xmx75) {
+    return (Xmx75 * 100 / 75);
+  }
+
+  @Override
+  public List<Put> generatePostProcessedPuts(List<Put> jobConfPuts) {
+    Long Xmx75 = getXmxValue(jobConfPuts);
+    if (Xmx75 == 0L) {
+      // don't want to throw an exception and
+      // cause the processing to fail completely
+      LOG.error("Xmx value is 0? check why");
+      return null;
+    }
+    Long XmxTotal = getXmxTotal(Xmx75);
+    long mapSlotMillis = 0L;
+    long reduceSlotMillis = 0L;
+    String prefixMillis = Constants.COUNTER_COLUMN_PREFIX + Constants.SEP;
+    String mapMillisStr = prefixMillis + Constants.JOBINPROGRESS_COUNTER + Constants.SEP
+        + Constants.SLOTS_MILLIS_MAPS;
+    String reduceMillisStr = prefixMillis + Constants.JOBINPROGRESS_COUNTER + Constants.SEP
+            + Constants.SLOTS_MILLIS_REDUCES;
+    for (Put p : jobHistoryListener.getJobPuts()) {
+      if (mapSlotMillis == 0L) {
+        mapSlotMillis = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES, Bytes.toBytes(mapMillisStr));
+        if (mapSlotMillis == Constants.LONG_CONVERSION_ERROR_VALUE) {
+          return null;
+        }
+      }
+      if (reduceSlotMillis == 0L) {
+        reduceSlotMillis = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES,
+            Bytes.toBytes(reduceMillisStr));
+        if (reduceSlotMillis == Constants.LONG_CONVERSION_ERROR_VALUE) {
+          return null;
+        }
+      }
+    }
+
+    LOG.trace("For " + jobKey.toString() +  " \n Xmx " + XmxTotal + " " + mapMillisStr
+        + ": " + mapSlotMillis + " \n " + reduceMillisStr
+        + ": " + reduceSlotMillis + " \n " );
+    Long mbMillis = XmxTotal * mapSlotMillis + XmxTotal * reduceSlotMillis;
+    byte[] qualifier = Constants.MEGABYTEMILLIS_BYTES;
+    Put pMb = new Put(jobKeyBytes);
+    pMb.add(Constants.INFO_FAM_BYTES, qualifier, Bytes.toBytes(mbMillis));
+    postProcessedPuts.add(pMb);
+    return postProcessedPuts;
+  }
 }

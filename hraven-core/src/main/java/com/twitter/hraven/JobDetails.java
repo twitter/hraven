@@ -76,6 +76,7 @@ public class JobDetails implements Comparable<JobDetails> {
   private long mapSlotMillis;
   private long reduceSlotMillis;
   private long reduceShuffleBytes;
+  private long megabyteMillis;
 
   // job config
   private Configuration config;
@@ -343,6 +344,14 @@ public class JobDetails implements Comparable<JobDetails> {
     this.hdfsBytesRead = hdfsBytesRead;
   }
 
+  public long getMegabyteMillis() {
+    return megabyteMillis;
+  }
+
+  public void setMegabyteMillis(long megabyteMillis) {
+    this.megabyteMillis = megabyteMillis;
+  }
+
   public void addTask(TaskDetails task) {
     this.tasks.add(task);
   }
@@ -536,6 +545,7 @@ public class JobDetails implements Comparable<JobDetails> {
       // reduce shuffle bytes
       this.reduceShuffleBytes = getCounterValueAsLong(this.reduceCounters, Constants.TASK_COUNTER_HADOOP2,
             Constants.REDUCE_SHUFFLE_BYTES);
+
     } else { // presume it's hadoop1
       // map file bytes read
       this.mapFileBytesRead = getCounterValueAsLong(this.mapCounters, Constants.FILESYSTEM_COUNTERS,

@@ -15,12 +15,18 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
+import java.util.List;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobHistoryKeys;
+import com.twitter.hraven.util.HBasePutUtil;
 
 /**
  *  Abstract class for job history file parsing 
@@ -33,6 +39,7 @@ import com.twitter.hraven.JobHistoryKeys;
 
 public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 
+  private static final Log LOG = LogFactory.getLog(JobHistoryFileParserBase.class);
 	/**
 	 * generates a put that sets the hadoop version for a record
 	 * 
@@ -49,4 +56,50 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 	  pVersion.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
 	  return pVersion;
 	}
+
+  /**
+   * parses the -Xmx value from the mapred.child.java.opts in the job conf
+   * @return Xmx value
+   */
+  public Long getXmxValue(List<Put> jobConfPuts) {
+    // usually appears as the following in the job conf:
+    // "mapred.child.java.opts" : "-Xmx3072M"
+    String qualifier = Constants.JOB_CONF_COLUMN_PREFIX + Constants.SEP +
+        Constants.JAVA_CHILD_OPTS_CONF_KEY;
+    String javaOpts = "";
+    for (Put p : jobConfPuts) {
+      javaOpts = HBasePutUtil.getStringValueFromPut(p, Constants.INFO_FAM_BYTES,
+        Bytes.toBytes(qualifier));
+    }
+    if (StringUtils.isBlank(javaOpts)) {
+      LOG.error("No such config parameter? " + javaOpts);
+      return 0L;
+    }
+    String[] XmxStr = javaOpts.split(Constants.JAVA_XMX_PREFIX);
+    Long retVal = 0L;
+    if (XmxStr.length >= 1) {
+      String[] valuesStr = XmxStr[1].split(" ");
+      if (valuesStr.length >= 1) {
+        // if the last char is an alphabet, remove it
+        String valueStr = valuesStr[0];
+        char lastChar = valueStr.charAt(valueStr.length() - 1);
+        try {
+          if (Character.isLetter(lastChar)) {
+            String XmxValStr = valuesStr[0].substring(0, valuesStr[0].length() - 1);
+            retVal = Long.parseLong(XmxValStr);
+          } else {
+            retVal = Long.parseLong(valueStr);
+            // now convert to megabytes
+            // since this was in bytes since the last char was absent
+            retVal /= 1024;
+          }
+        } catch (NumberFormatException nfe) {
+          LOG.error(" unable to get the Xmx value from " + javaOpts);
+          nfe.printStackTrace();
+        }
+      }
+    }
+    return retVal;
+  }
+
 }

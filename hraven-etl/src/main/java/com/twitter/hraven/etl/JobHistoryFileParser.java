@@ -38,6 +38,14 @@ public interface JobHistoryFileParser {
 	public void parse(byte[] historyFile, JobKey jobKey);
 
 	/**
+	 * Performs some post processing on the job history and conf file
+	 * to collect some more stats for inserting for this history file
+	 *
+	 * @return a list of post processing step puts
+	 */
+	public List<Put> generatePostProcessedPuts(List<Put> jobConfPuts);
+
+	/**
 	 * Return the generated list of job puts assembled when history file is
 	 * parsed
 	 * 
