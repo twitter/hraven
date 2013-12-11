@@ -15,8 +15,8 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
-import java.io.InputStream;
 import java.util.List;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.ProcessingException;
@@ -43,7 +43,7 @@ public interface JobHistoryFileParser {
 	 *
 	 * @return a list of post processing step puts
 	 */
-	public List<Put> generatePostProcessedPuts(List<Put> jobConfPuts);
+	public Long getMegaByteMillis(Configuration jobConf);
 
 	/**
 	 * Return the generated list of job puts assembled when history file is

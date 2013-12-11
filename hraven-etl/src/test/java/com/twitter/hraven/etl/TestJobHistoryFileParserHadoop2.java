@@ -23,19 +23,14 @@ import org.junit.Test;
 import com.google.common.io.Files;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.HadoopVersion;
-import com.twitter.hraven.JobDesc;
-import com.twitter.hraven.JobDescFactory;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
-import com.twitter.hraven.QualifiedJobId;
-import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.TaskKeyConverter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -135,10 +130,10 @@ public class TestJobHistoryFileParserHadoop2 {
       assertTrue(putRowKeys.contains(tKey));
     }
 
-    // check post processing puts
-    // first with empty job conf puts
-    List<Put> postPuts = historyFileParser.generatePostProcessedPuts(new LinkedList<Put>());
-    assertNull(postPuts);
+    // check post processing for megabytemillis
+    // first with empty job conf
+    Long mbMillis = historyFileParser.getMegaByteMillis(null);
+    assertNull(mbMillis);
 
     // now load the conf file and check
     final String JOB_CONF_FILE_NAME =
@@ -146,27 +141,10 @@ public class TestJobHistoryFileParserHadoop2 {
 
     Configuration jobConf = new Configuration();
     jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
-    QualifiedJobId qualifiedJobId = new QualifiedJobId("cluster1", "job_1329348432655_0001");
-    Long submitTimeMillis = 1329348443227L;
-    JobDesc jobDesc = JobDescFactory.createJobDesc(qualifiedJobId,
-      submitTimeMillis, jobConf);
-
-    List<Put> jobConfPuts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
-    assertNotNull(jobConfPuts);
-    int expSize = 1;
-    assertEquals(expSize, jobConfPuts.size());
-    postPuts = historyFileParser.generatePostProcessedPuts(jobConfPuts);
-    assertNotNull(postPuts);
-    assertEquals(expSize, postPuts.size());
-    Put p = postPuts.get(0);
-    byte[] qualifier =  Constants.MEGABYTEMILLIS_BYTES;
-    Long actualValue = 0L;
+    mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+    assertNotNull(mbMillis);
     Long expValue = 10390016L;
-    assertTrue(p.has(Constants.INFO_FAM_BYTES, qualifier));
-    List<KeyValue> kv = p.get(Constants.INFO_FAM_BYTES, qualifier);
-    assertEquals(1, kv.size());
-    actualValue =  Bytes.toLong(kv.get(0).getValue());
-    assertEquals(expValue, actualValue);
+    assertEquals(expValue, mbMillis);
   }
 
   /**

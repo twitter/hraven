@@ -15,8 +15,6 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,7 +24,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobHistoryKeys;
-import com.twitter.hraven.util.HBasePutUtil;
+import com.twitter.hraven.datasource.ProcessingException;
 
 /**
  *  Abstract class for job history file parsing 
@@ -58,48 +56,75 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 	}
 
   /**
-   * parses the -Xmx value from the mapred.child.java.opts in the job conf
-   * @return Xmx value
+   * extract the string around Xmx in the java child opts " -Xmx1024m -verbose:gc"
+   * @param javaChildOptsStr
+   * @return
    */
-  public Long getXmxValue(List<Put> jobConfPuts) {
-    // usually appears as the following in the job conf:
-    // "mapred.child.java.opts" : "-Xmx3072M"
-    String qualifier = Constants.JOB_CONF_COLUMN_PREFIX + Constants.SEP +
-        Constants.JAVA_CHILD_OPTS_CONF_KEY;
-    String javaOpts = "";
-    for (Put p : jobConfPuts) {
-      javaOpts = HBasePutUtil.getStringValueFromPut(p, Constants.INFO_FAM_BYTES,
-        Bytes.toBytes(qualifier));
-    }
-    if (StringUtils.isBlank(javaOpts)) {
-      LOG.error("No such config parameter? " + javaOpts);
-      return 0L;
-    }
-    String[] XmxStr = javaOpts.split(Constants.JAVA_XMX_PREFIX);
-    Long retVal = 0L;
-    if (XmxStr.length >= 1) {
-      String[] valuesStr = XmxStr[1].split(" ");
+  String extractXmxValueStr(String javaChildOptsStr) {
+    // first split based on "-Xmx" in "-Xmx1024m -verbose:gc"
+    String[] xmxStr = javaChildOptsStr.split(Constants.JAVA_XMX_PREFIX);
+    if (xmxStr.length >= 2) {
+      // xmxStr[0] is ''
+      // and XmxStr[1] is "1024m -verbose:gc"
+      String[] valuesStr = xmxStr[1].split(" ");
+      // split on whitespace
       if (valuesStr.length >= 1) {
-        // if the last char is an alphabet, remove it
-        String valueStr = valuesStr[0];
-        char lastChar = valueStr.charAt(valueStr.length() - 1);
-        try {
-          if (Character.isLetter(lastChar)) {
-            String XmxValStr = valuesStr[0].substring(0, valuesStr[0].length() - 1);
-            retVal = Long.parseLong(XmxValStr);
-          } else {
-            retVal = Long.parseLong(valueStr);
-            // now convert to megabytes
-            // since this was in bytes since the last char was absent
-            retVal /= 1024;
-          }
-        } catch (NumberFormatException nfe) {
-          LOG.error(" unable to get the Xmx value from " + javaOpts);
-          nfe.printStackTrace();
-        }
+        // now valuesStr[0] is "1024m"
+        return valuesStr[0];
+      } else {
+        throw new ProcessingException("Value for Xmx not set in java child opts "
+            + javaChildOptsStr);
       }
+    } else {
+      throw new ProcessingException("Xmx not present in java child opts " + javaChildOptsStr);
+    }
+  }
+
+  /**
+   * parses the -Xmx value from the mapred.child.java.opts in the job conf usually appears as the
+   * following in the job conf: "mapred.child.java.opts" : "-Xmx3072M" or "mapred.child.java.opts"
+   * :" -Xmx1024m -verbose:gc -Xloggc:/tmp/@taskid@.gc
+   * @return xmx value
+   */
+  public Long getXmxValue(String javaChildOptsStr) {
+    if (StringUtils.isBlank(javaChildOptsStr)) {
+      LOG.error("Null/empty input argument to get xmxValue");
+      throw new ProcessingException("Null/Empty input to get xmxValue");
+    }
+    Long retVal = 0L;
+    String valueStr = extractXmxValueStr(javaChildOptsStr);
+    char lastChar = valueStr.charAt(valueStr.length() - 1);
+    try {
+      if (Character.isLetter(lastChar)) {
+        String xmxValStr = valueStr.substring(0, valueStr.length() - 1);
+        retVal = Long.parseLong(xmxValStr);
+        switch (lastChar) {
+        case 'M':
+        case 'm':
+          // do nothing, since it's already in megabytes
+          break;
+        case 'K':
+        case 'k':
+          // convert kilobytes to megabytes
+          retVal /= 1024;
+          break;
+        case 'G':
+        case 'g':
+          // convert gigabytes to megabtyes
+          retVal *= 1024;
+          break;
+        }
+      } else {
+        retVal = Long.parseLong(valueStr);
+        // now convert to megabytes
+        // since this was in bytes since the last char was absent
+        retVal /= (1024 * 1024);
+      }
+    } catch (NumberFormatException nfe) {
+      LOG.error("Unable to get the Xmx value from " + javaChildOptsStr);
+      nfe.printStackTrace();
+      throw new ProcessingException("Unable to get the Xmx value from " + javaChildOptsStr, nfe);
     }
     return retVal;
   }
-
 }

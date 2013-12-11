@@ -17,20 +17,18 @@ package com.twitter.hraven.etl;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.mapred.JobHistoryCopy;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
-import com.twitter.hraven.util.HBasePutUtil;
 
 /**
  * Deal with JobHistory file parsing for job history files which are generated
@@ -43,10 +41,10 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			.getLog(JobHistoryFileParserHadoop1.class);
 
 	private JobKey jobKey;
+	@SuppressWarnings("unused")
 	private byte[] jobKeyBytes;
 	private JobKeyConverter jobKeyConv = new JobKeyConverter();
 	private JobHistoryListener jobHistoryListener = null;
-	private List<Put> postProcessedPuts = new LinkedList<Put>();
 
 	/**
 	 * {@inheritDoc}
@@ -105,47 +103,36 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
     return (Xmx75 * 100 / 75);
   }
 
+  /**
+   * calculate mega byte millis puts as: 
+   * if not uberized: 
+   *        map slot millis * mapreduce.map.memory.mb
+   *        + reduce slot millis * mapreduce.reduce.memory.mb 
+   *        + yarn.app.mapreduce.am.resource.mb * job runtime 
+   * if uberized:
+   *        yarn.app.mapreduce.am.resource.mb * job run time
+   */
   @Override
-  public List<Put> generatePostProcessedPuts(List<Put> jobConfPuts) {
-    Long Xmx75 = getXmxValue(jobConfPuts);
+  public Long getMegaByteMillis(Configuration jobConf) {
+    if (jobConf == null) {
+      throw new ProcessingException("JobConf is null, cannot calculate megabytemillis");
+    }
+    Long Xmx75 = getXmxValue(jobConf.get(Constants.JAVA_CHILD_OPTS_CONF_KEY));
     if (Xmx75 == 0L) {
       // don't want to throw an exception and
       // cause the processing to fail completely
       LOG.error("Xmx value is 0? check why");
-      return null;
+      throw new ProcessingException("Xmx value is 0! "
+          + jobConf.get(Constants.JAVA_CHILD_OPTS_CONF_KEY));
+
     }
     Long XmxTotal = getXmxTotal(Xmx75);
-    long mapSlotMillis = 0L;
-    long reduceSlotMillis = 0L;
-    String prefixMillis = Constants.COUNTER_COLUMN_PREFIX + Constants.SEP;
-    String mapMillisStr = prefixMillis + Constants.JOBINPROGRESS_COUNTER + Constants.SEP
-        + Constants.SLOTS_MILLIS_MAPS;
-    String reduceMillisStr = prefixMillis + Constants.JOBINPROGRESS_COUNTER + Constants.SEP
-            + Constants.SLOTS_MILLIS_REDUCES;
-    for (Put p : jobHistoryListener.getJobPuts()) {
-      if (mapSlotMillis == 0L) {
-        mapSlotMillis = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES, Bytes.toBytes(mapMillisStr));
-        if (mapSlotMillis == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-      if (reduceSlotMillis == 0L) {
-        reduceSlotMillis = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES,
-            Bytes.toBytes(reduceMillisStr));
-        if (reduceSlotMillis == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-    }
+    Long mapSlotMillis = jobHistoryListener.getMapSlotMillis();
+    Long reduceSlotMillis = jobHistoryListener.getReduceSlotMillis();
 
-    LOG.trace("For " + jobKey.toString() +  " \n Xmx " + XmxTotal + " " + mapMillisStr
-        + ": " + mapSlotMillis + " \n " + reduceMillisStr
-        + ": " + reduceSlotMillis + " \n " );
+    LOG.trace("For " + jobKey.toString() + " \n Xmx " + XmxTotal + " " + ": " + mapSlotMillis
+        + " \n " + ": " + reduceSlotMillis + " \n ");
     Long mbMillis = XmxTotal * mapSlotMillis + XmxTotal * reduceSlotMillis;
-    byte[] qualifier = Constants.MEGABYTEMILLIS_BYTES;
-    Put pMb = new Put(jobKeyBytes);
-    pMb.add(Constants.INFO_FAM_BYTES, qualifier, Bytes.toBytes(mbMillis));
-    postProcessedPuts.add(pMb);
-    return postProcessedPuts;
+    return mbMillis;
   }
 }

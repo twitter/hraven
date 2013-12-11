@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -37,6 +38,7 @@ import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobHistoryRawService;
 import com.twitter.hraven.datasource.JobHistoryService;
+import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
@@ -142,9 +144,9 @@ public class JobFileTableMapper extends
           + " submitTimeMillis: " + submitTimeMillis;
       LOG.info(msg);
 
-      List<Put> jobConfPuts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
+      List<Put> puts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
 
-      LOG.info("Writing " + jobConfPuts.size() + " JobConf puts to "
+      LOG.info("Writing " + puts.size() + " JobConf puts to "
           + Constants.HISTORY_TABLE);
 
       // TODO:
@@ -156,7 +158,7 @@ public class JobFileTableMapper extends
       // the Job.
 
       // Emit the puts
-      for (Put put : jobConfPuts) {
+      for (Put put : puts) {
         context.write(JOB_TABLE, put);
         context.progress();
       }
@@ -185,7 +187,7 @@ public class JobFileTableMapper extends
       historyFileParser.parse(historyFileContents, jobKey);
       context.progress();
 
-      List<Put> puts = historyFileParser.getJobPuts();
+      puts = historyFileParser.getJobPuts();
       if (puts == null) {
     	  throw new ProcessingException(
     			  " Unable to get job puts for this record!" + jobKey);
@@ -202,23 +204,21 @@ public class JobFileTableMapper extends
       }
 
       /** post processing steps on job puts and job conf puts */
-      List<Put> postPuts = historyFileParser.generatePostProcessedPuts(jobConfPuts);
+      Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
       context.progress();
-
-      if (postPuts == null) {
-        throw new ProcessingException(
-            " Unable to get post processing puts for this record!" + jobKey);
+      if (mbMillis == null) {
+        throw new ProcessingException(" Unable to get megabyte millis calculation for this record!"
+              + jobKey);
       }
-      LOG.info("Writing " + postPuts.size() + " Post Processing Job puts to "
-          + Constants.HISTORY_TABLE);
 
-      // Emit the puts
-      for (Put put : postPuts) {
-        context.write(JOB_TABLE, put);
-        // TODO: we should not have to do this, but need to confirm that
-        // TableRecordWriter does this for us.
-        context.progress();
+      Put mbPut = getMegaByteMillisPut(mbMillis, jobKey);
+      if (mbPut == null) {
+        throw new ProcessingException(" Unable to get megabyte millis puts for this record!"
+              + jobKey);
       }
+      LOG.info("Writing mega byte millis  puts to " + Constants.HISTORY_TABLE);
+      context.write(JOB_TABLE, mbPut);
+      context.progress();
 
       puts = historyFileParser.getTaskPuts();
       if (puts == null) {
@@ -271,6 +271,19 @@ public class JobFileTableMapper extends
     // any case with multiple simultaneous runs with different outcome).
     context.write(RAW_TABLE, successPut);
 
+  }
+
+  /**
+   * generates a put for the megabytemillis
+   * @param mbMillis
+   * @param jobKey
+   * @return
+   */
+  private Put getMegaByteMillisPut(Long mbMillis, JobKey jobKey) {
+    JobKeyConverter jobKeyConv = new JobKeyConverter();
+    Put pMb = new Put(jobKeyConv.toBytes(jobKey));
+    pMb.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(mbMillis));
+    return pMb;
   }
 
   @Override

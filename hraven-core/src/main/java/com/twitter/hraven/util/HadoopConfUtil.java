@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.datasource.ProcessingException;
 
 /**
  * Utility class for accessing parameters from the Hadoop Conf
@@ -104,4 +105,26 @@ public class HadoopConfUtil {
 		}
 		return hRavenQueueName;
 	}
+
+  /**
+   * fetches a value from the jobConf as a long
+   * @param key
+   * @param jobConf
+   * @return value as long for that key in the jobConf defaultValue if key not found
+   * @throws {@link} ProcessingException
+   */
+  public static Long getLongValue(String key, Configuration jobConf, Long defaultValue)
+      throws ProcessingException {
+    Long value = defaultValue;
+    String valueStr = jobConf.get(key);
+    if (StringUtils.isNotBlank(valueStr)) {
+      try {
+        value = Long.parseLong(valueStr);
+      } catch (NumberFormatException nfe) {
+        throw new ProcessingException("Could not convert " + valueStr + " for key " + key
+            + " to long", nfe);
+      }
+    }
+    return value;
+  }
 }

@@ -27,6 +27,7 @@ import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
@@ -42,7 +43,7 @@ import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.TaskKey;
 import com.twitter.hraven.util.ByteArrayWrapper;
-import com.twitter.hraven.util.HBasePutUtil;
+import com.twitter.hraven.util.HadoopConfUtil;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.TaskKeyConverter;
@@ -59,7 +60,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private byte[] jobKeyBytes;
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
-  private List<Put> postProcessedPuts = new LinkedList<Put>();
+  boolean uberized = false;
+  private long mapSlotMillis;
+  private long reduceSlotMillis;
+  private long startTime;
+  private long endTime;
 
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
   private TaskKeyConverter taskKeyConv = new TaskKeyConverter();
@@ -358,6 +363,18 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       } else if (type.equalsIgnoreCase(TYPE_LONG)) {
         long value = eventDetails.getLong(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        // populate start time of the job for megabytemillis calculations
+        if ((recType.equals(Hadoop2RecordType.JobInited))
+            && JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key).equals(
+              JobHistoryKeys.LAUNCH_TIME.toString())) {
+          this.startTime = value;
+        }
+        // populate end time of the job for megabytemillis calculations
+        if ((recType.equals(Hadoop2RecordType.JobFinished))
+            && JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key).equals(
+              JobHistoryKeys.FINISH_TIME.toString())) {
+          this.endTime = value;
+        }
       } else if (type.equalsIgnoreCase(TYPE_INT)) {
         int value = eventDetails.getInt(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, value);
@@ -603,6 +620,16 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     byte[] groupPrefix = Bytes.add(counterPrefix, Bytes.toBytes(groupName), Constants.SEP_BYTES);
     byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
     p.add(family, qualifier, Bytes.toBytes(counterValue));
+
+    /**
+     * populate map and reduce slot millis
+     */
+    if (counterName.equals(Constants.SLOTS_MILLIS_MAPS)) {
+      this.mapSlotMillis = counterValue;
+    }
+    if (counterName.equals(Constants.SLOTS_MILLIS_REDUCES)) {
+      this.reduceSlotMillis = counterValue;
+    }
   }
 
   /**
@@ -675,102 +702,27 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    *      yarn.app.mapreduce.am.resource.mb * job run time
    */
   @Override
-  public List<Put> generatePostProcessedPuts(List<Put> jobConfPuts) {
+  public Long getMegaByteMillis(Configuration jobConf) {
 
-    Put pMb = new Put(jobKeyBytes);
     JobKey jobKey = jobKeyConv.fromBytes(jobKeyBytes);
-    boolean uberized = false;
-    long mapSlotMillis = 0L;
-    long reduceSlotMillis = 0L;
-    long startTime = 0L;
-    long endTime = 0L;
     long jobRunTime = 0L;
     long amMb = 0L;
     long mapMb = 0L;
     long reduceMb = 0L;
-    String prefix = Constants.JOB_CONF_COLUMN_PREFIX + Constants.SEP;
-    String amMbStr = prefix + Constants.AM_MEMORY_MB_CONF_KEY;
-    String mapMbStr = prefix + Constants.MAP_MEMORY_MB_CONF_KEY;
-    String reduceMbStr = prefix + Constants.REDUCE_MEMORY_MB_CONF_KEY;
-    String prefixMillis = Constants.COUNTER_COLUMN_PREFIX + Constants.SEP;
-    String mapMillisStr =
-        prefixMillis + Constants.JOB_COUNTER_HADOOP2 + Constants.SEP +
-            Constants.SLOTS_MILLIS_MAPS;
-    String reduceMillisStr =
-        prefixMillis + Constants.JOB_COUNTER_HADOOP2 + Constants.SEP
-            + Constants.SLOTS_MILLIS_REDUCES;
 
-    // get uberized, map millis, reduce millis, job run time from job puts
-    for (Put p : jobPuts) {
-      byte[] v = HBasePutUtil.getValueFromPut(p, Constants.INFO_FAM_BYTES,
-            JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.uberized));
-      if (v != null) {
-        uberized = new Boolean(Bytes.toString(v));
-      }
-      if (mapSlotMillis == 0L) {
-        mapSlotMillis = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES,
-            Bytes.toBytes(mapMillisStr));
-        if (mapSlotMillis == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-      if (reduceSlotMillis == 0L) {
-        reduceSlotMillis = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES,
-            Bytes.toBytes(reduceMillisStr));
-        if (reduceSlotMillis == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-
-      if (startTime == 0L) {
-        startTime = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES,
-              JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.LAUNCH_TIME));
-        if (startTime == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-
-      if (endTime == 0L) {
-        endTime = HBasePutUtil.getLongValueFromPut(p, Constants.INFO_FAM_BYTES,
-              JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISH_TIME));
-        if (endTime == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-    }
     jobRunTime = endTime - startTime;
 
-    if (jobConfPuts == null || jobConfPuts.size() == 0) {
-      LOG.error("job conf puts is null? for job key: " + jobKey.toString());
+    if (jobConf == null) {
+      LOG.error("job conf is null? for job key: " + jobKey.toString());
       return null;
     }
 
-    // get am memory mb, map memory mb, reducer memory mb from job conf puts
-    for (Put p : jobConfPuts) {
-      if (amMb == 0L) {
-        amMb = HBasePutUtil.getLongValueFromStringPut(p, Constants.INFO_FAM_BYTES,
-            Bytes.toBytes(amMbStr));
-        if (amMb == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-
-      if (mapMb == 0L) {
-        mapMb = HBasePutUtil.getLongValueFromStringPut(p, Constants.INFO_FAM_BYTES,
-            Bytes.toBytes(mapMbStr));
-        if (mapMb == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-
-      if (reduceMb == 0L) {
-        reduceMb = HBasePutUtil.getLongValueFromStringPut(p, Constants.INFO_FAM_BYTES,
-              Bytes.toBytes(reduceMbStr));
-        if (reduceMb == Constants.LONG_CONVERSION_ERROR_VALUE) {
-          return null;
-        }
-      }
-    }
+    // get am memory mb, map memory mb, reducer memory mb from job conf
+    final Long defaultValue = 0L;
+    amMb = HadoopConfUtil.getLongValue(Constants.AM_MEMORY_MB_CONF_KEY, jobConf, defaultValue);
+    mapMb = HadoopConfUtil.getLongValue(Constants.MAP_MEMORY_MB_CONF_KEY, jobConf, defaultValue);
+    reduceMb = HadoopConfUtil.getLongValue(Constants.REDUCE_MEMORY_MB_CONF_KEY, jobConf,
+          defaultValue);
 
     Long mbMillis = 0L;
     if (uberized) {
@@ -779,14 +731,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       mbMillis = mapMb * mapSlotMillis + reduceMb * reduceSlotMillis + amMb * jobRunTime;
     }
 
-    LOG.trace("For " + jobKey.toString() + " " + Constants.MEGABYTEMILLIS + " is " + mbMillis
-        + " since \n uberized: " + uberized + " \n " + mapMbStr + ": " + mapMb + " " + mapMillisStr
-        + ": " + mapSlotMillis + " \n " + reduceMbStr + ": " + reduceMb + " " + reduceMillisStr
-        + ": " + reduceSlotMillis + " \n " + amMbStr + ": " + amMb + " jobRunTime: " + jobRunTime);
+    LOG.debug("For " + jobKey.toString() + " " + Constants.MEGABYTEMILLIS + " is " + mbMillis
+        + " since \n uberized: " + uberized + " \n " + ": " + mapMb + ": " + mapSlotMillis + " \n "
+        + ": " + reduceMb + ": " + reduceSlotMillis + " \n " + ": " + amMb + " jobRunTime: "
+        + jobRunTime + " start time: " + this.startTime + " endtime " + this.endTime) ;
 
-    byte[] qualifier = Constants.MEGABYTEMILLIS_BYTES;
-    pMb.add(Constants.INFO_FAM_BYTES, qualifier, Bytes.toBytes(mbMillis));
-    postProcessedPuts.add(pMb);
-    return postProcessedPuts;
+    return mbMillis;
   }
 }
