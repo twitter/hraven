@@ -226,9 +226,6 @@ public class Constants {
   public static final int MAX_LONG_LENGTH = Long.toString(Long.MAX_VALUE)
       .length();
 
-  /** used for indicating if an error occurred in converting to long */
-  public static final long LONG_CONVERSION_ERROR_VALUE = -1L;
-
   public static final String USER_CONF_KEY = "user.name";
   public static final String USER_CONF_KEY_HADOOP2 = "mapreduce.job.user.name";
 
