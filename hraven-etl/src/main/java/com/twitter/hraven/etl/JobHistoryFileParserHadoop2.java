@@ -25,6 +25,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
+import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -43,7 +44,6 @@ import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.TaskKey;
 import com.twitter.hraven.util.ByteArrayWrapper;
-import com.twitter.hraven.util.HadoopConfUtil;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.TaskKeyConverter;
@@ -61,10 +61,12 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   boolean uberized = false;
-  private long mapSlotMillis;
-  private long reduceSlotMillis;
-  private long startTime;
-  private long endTime;
+  private long mapSlotMillis = Constants.NOTFOUND_VALUE;
+  private long reduceSlotMillis = Constants.NOTFOUND_VALUE;
+  private long startTime = Constants.NOTFOUND_VALUE;
+  private long endTime = Constants.NOTFOUND_VALUE;
+  private static final String LAUNCH_TIME_KEY_STR = JobHistoryKeys.LAUNCH_TIME.toString();
+  private static final String FINISH_TIME_KEY_STR = JobHistoryKeys.FINISH_TIME.toString();
 
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
   private TaskKeyConverter taskKeyConv = new TaskKeyConverter();
@@ -364,15 +366,13 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
         long value = eventDetails.getLong(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, value);
         // populate start time of the job for megabytemillis calculations
-        if ((recType.equals(Hadoop2RecordType.JobInited))
-            && JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key).equals(
-              JobHistoryKeys.LAUNCH_TIME.toString())) {
+        if ((recType.equals(Hadoop2RecordType.JobInited)) &&
+            LAUNCH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
           this.startTime = value;
         }
         // populate end time of the job for megabytemillis calculations
-        if ((recType.equals(Hadoop2RecordType.JobFinished))
-            && JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key).equals(
-              JobHistoryKeys.FINISH_TIME.toString())) {
+        if ((recType.equals(Hadoop2RecordType.JobFinished)) &&
+            FINISH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
           this.endTime = value;
         }
       } else if (type.equalsIgnoreCase(TYPE_INT)) {
@@ -624,10 +624,10 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     /**
      * populate map and reduce slot millis
      */
-    if (counterName.equals(Constants.SLOTS_MILLIS_MAPS)) {
+    if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
       this.mapSlotMillis = counterValue;
     }
-    if (counterName.equals(Constants.SLOTS_MILLIS_REDUCES)) {
+    if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
       this.reduceSlotMillis = counterValue;
     }
   }
@@ -693,18 +693,27 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   }
 
   /**
-   * calculate mega byte millis puts as:
-   * if not uberized:
-   *      map slot millis * mapreduce.map.memory.mb
-   *      + reduce slot millis * mapreduce.reduce.memory.mb
-   *      + yarn.app.mapreduce.am.resource.mb * job run time
-   *  if uberized:
-   *      yarn.app.mapreduce.am.resource.mb * job run time
+   * calculate mega byte millis puts as: 
+   * if not uberized: 
+   *        map slot millis * mapreduce.map.memory.mb
+   *        + reduce slot millis * mapreduce.reduce.memory.mb 
+   *        + yarn.app.mapreduce.am.resource.mb * job runtime 
+   * if uberized:
+   *        yarn.app.mapreduce.am.resource.mb * job run time
    */
   @Override
   public Long getMegaByteMillis(Configuration jobConf) {
 
     JobKey jobKey = jobKeyConv.fromBytes(jobKeyBytes);
+    if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE
+        || mapSlotMillis == Constants.NOTFOUND_VALUE
+        || reduceSlotMillis == Constants.NOTFOUND_VALUE) {
+      throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
+          + " since one or more of endTime " + endTime + " startTime " + startTime
+          + " mapSlotMillis " + mapSlotMillis + " reduceSlotMillis " + reduceSlotMillis
+          + " not found!");
+    }
+
     long jobRunTime = 0L;
     long amMb = 0L;
     long mapMb = 0L;
@@ -718,11 +727,19 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     }
 
     // get am memory mb, map memory mb, reducer memory mb from job conf
-    final Long defaultValue = 0L;
-    amMb = HadoopConfUtil.getLongValue(Constants.AM_MEMORY_MB_CONF_KEY, jobConf, defaultValue);
-    mapMb = HadoopConfUtil.getLongValue(Constants.MAP_MEMORY_MB_CONF_KEY, jobConf, defaultValue);
-    reduceMb = HadoopConfUtil.getLongValue(Constants.REDUCE_MEMORY_MB_CONF_KEY, jobConf,
-          defaultValue);
+    try {
+      amMb = jobConf.getLong(Constants.AM_MEMORY_MB_CONF_KEY, Constants.NOTFOUND_VALUE);
+      mapMb = jobConf.getLong(Constants.MAP_MEMORY_MB_CONF_KEY,  Constants.NOTFOUND_VALUE);
+      reduceMb = jobConf.getLong(Constants.REDUCE_MEMORY_MB_CONF_KEY,  Constants.NOTFOUND_VALUE);
+    } catch (ConversionException ce) {
+      LOG.error(" Could not convert to long " + ce.getMessage());
+      throw new ProcessingException(
+          " Can't calculate megabytemillis since conversion to long failed", ce);
+    }
+    if (amMb == Constants.NOTFOUND_VALUE ) {
+      throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
+          + " since " + Constants.AM_MEMORY_MB_CONF_KEY + " not found!");
+    }
 
     Long mbMillis = 0L;
     if (uberized) {

@@ -212,10 +212,6 @@ public class JobFileTableMapper extends
       }
 
       Put mbPut = getMegaByteMillisPut(mbMillis, jobKey);
-      if (mbPut == null) {
-        throw new ProcessingException(" Unable to get megabyte millis puts for this record!"
-              + jobKey);
-      }
       LOG.info("Writing mega byte millis  puts to " + Constants.HISTORY_TABLE);
       context.write(JOB_TABLE, mbPut);
       context.progress();
@@ -277,7 +273,7 @@ public class JobFileTableMapper extends
    * generates a put for the megabytemillis
    * @param mbMillis
    * @param jobKey
-   * @return
+   * @return the put with megabytemillis
    */
   private Put getMegaByteMillisPut(Long mbMillis, JobKey jobKey) {
     JobKeyConverter jobKeyConv = new JobKeyConverter();

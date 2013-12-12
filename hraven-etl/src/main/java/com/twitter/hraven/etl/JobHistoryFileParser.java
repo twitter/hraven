@@ -38,10 +38,8 @@ public interface JobHistoryFileParser {
 	public void parse(byte[] historyFile, JobKey jobKey);
 
 	/**
-	 * Performs some post processing on the job history and conf file
-	 * to collect some more stats for inserting for this history file
-	 *
-	 * @return a list of post processing step puts
+	 * Calculates the megabytmillis taken up by this job
+	 * should be called only after calling parse
 	 */
 	public Long getMegaByteMillis(Configuration jobConf);
 

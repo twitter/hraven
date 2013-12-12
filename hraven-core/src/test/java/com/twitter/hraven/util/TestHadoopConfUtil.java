@@ -25,7 +25,6 @@ import java.io.FileNotFoundException;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.datasource.ProcessingException;
 
 public class TestHadoopConfUtil {
 
@@ -72,28 +71,5 @@ public class TestHadoopConfUtil {
 		  String hRavenUserName = HadoopConfUtil.getUserNameInConf(jobConf);
 		  assertNull(hRavenUserName);
 	  }
-
-  @Test
-  public void testGetLongValue() throws FileNotFoundException {
-    final String JOB_CONF_FILE_NAME =
-        "src/test/resources/job_1329348432655_0001_conf.xml";
-    Configuration jobConf = new Configuration();
-    jobConf.addResource(new FileInputStream(JOB_CONF_FILE_NAME));
-    long value = HadoopConfUtil.getLongValue("ipc.client.connect.max.retries", jobConf, 2L);
-    assertEquals(10L, value);
-
-    value = HadoopConfUtil.getLongValue("no.such.config.param", jobConf, 2L);
-    assertEquals(2L, value);
-  }
-
-  @Test(expected=ProcessingException.class)
-  public void testGetLongValueIncorrect() throws FileNotFoundException {
-    final String JOB_CONF_FILE_NAME =
-        "src/test/resources/job_1329348432655_0001_conf.xml";
-    Configuration jobConf = new Configuration();
-    jobConf.addResource(new FileInputStream(JOB_CONF_FILE_NAME));
-    @SuppressWarnings("unused")
-    long value = HadoopConfUtil.getLongValue("yarn.nodemanager.local-dirs", jobConf, 2L);
-  }
 
 }

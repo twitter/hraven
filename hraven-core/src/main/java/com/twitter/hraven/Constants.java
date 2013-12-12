@@ -191,6 +191,9 @@ public class Constants {
   public static final String MEGABYTEMILLIS = "megabytemillis" ;
   public static final byte[] MEGABYTEMILLIS_BYTES = Bytes.toBytes(MEGABYTEMILLIS);
 
+  /** use this value to indicate fields that were not found */
+  public static final Long NOTFOUND_VALUE = -1L;
+
   // job details related counter sub group in hadoop 2
   public static final String FILESYSTEM_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.FileSystemCounter";
   public static final String JOB_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.JobCounter";
@@ -292,7 +295,11 @@ public class Constants {
    * hadoop1 memory conf keys
    */
   public static final String JAVA_CHILD_OPTS_CONF_KEY = "mapred.child.java.opts";
-  public static final String JAVA_XMX_PREFIX = "-Xmx";
+  /** default xmx size is 1 GB as per 
+   * http://docs.oracle.com/javase/6/docs/technotes/guides/vm/gc-ergonomics.html
+   */
+  public static final Long DEFAULT_XMX_SETTING = 1024L;
+  public static final String DEFAULT_XMX_SETTING_STR = Long.toString(DEFAULT_XMX_SETTING) + "M";
 
   /**
    * Timestamp format used to create processing directories

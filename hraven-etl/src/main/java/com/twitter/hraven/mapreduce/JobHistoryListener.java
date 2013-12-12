@@ -48,8 +48,8 @@ public class JobHistoryListener implements Listener {
   /** Job ID, minus the leading "job_" */
   private String jobNumber = "";
   private final byte[] jobKeyBytes;
-  private long mapSlotMillis;
-  private long reduceSlotMillis;
+  private long mapSlotMillis = Constants.NOTFOUND_VALUE;
+  private long reduceSlotMillis = Constants.NOTFOUND_VALUE;
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
@@ -201,10 +201,10 @@ public class JobHistoryListener implements Listener {
             byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
             p.add(family, qualifier, Bytes.toBytes(counterValue));
             // get the map and reduce slot millis for megabytemillis calculations
-            if (counterName.equals(Constants.SLOTS_MILLIS_MAPS)) {
+            if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
               this.mapSlotMillis = counterValue;
             }
-            if (counterName.equals(Constants.SLOTS_MILLIS_REDUCES)) {
+            if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
               this.reduceSlotMillis = counterValue;
             }
           }

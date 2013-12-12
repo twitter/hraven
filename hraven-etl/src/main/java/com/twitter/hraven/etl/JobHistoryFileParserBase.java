@@ -60,9 +60,15 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    * @param javaChildOptsStr
    * @return
    */
-  String extractXmxValueStr(String javaChildOptsStr) {
+  static String extractXmxValueStr(String javaChildOptsStr) {
+    if (StringUtils.isBlank(javaChildOptsStr)) {
+      LOG.info("Null/empty input argument to get xmxValue, returning "
+          + Constants.DEFAULT_XMX_SETTING_STR);
+      return Constants.DEFAULT_XMX_SETTING_STR;
+     }
     // first split based on "-Xmx" in "-Xmx1024m -verbose:gc"
-    String[] xmxStr = javaChildOptsStr.split(Constants.JAVA_XMX_PREFIX);
+    final String JAVA_XMX_PREFIX = "-Xmx";
+    String[] xmxStr = javaChildOptsStr.split(JAVA_XMX_PREFIX);
     if (xmxStr.length >= 2) {
       // xmxStr[0] is ''
       // and XmxStr[1] is "1024m -verbose:gc"
@@ -72,25 +78,26 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
         // now valuesStr[0] is "1024m"
         return valuesStr[0];
       } else {
-        throw new ProcessingException("Value for Xmx not set in java child opts "
-            + javaChildOptsStr);
+        LOG.info("Strange Xmx setting, returning default " + javaChildOptsStr);
+        return Constants.DEFAULT_XMX_SETTING_STR;
       }
     } else {
-      throw new ProcessingException("Xmx not present in java child opts " + javaChildOptsStr);
+      // Xmx is not present in java child opts
+      LOG.info("Xmx setting absent, returning default " + javaChildOptsStr);
+      return Constants.DEFAULT_XMX_SETTING_STR;
     }
   }
 
   /**
-   * parses the -Xmx value from the mapred.child.java.opts in the job conf usually appears as the
-   * following in the job conf: "mapred.child.java.opts" : "-Xmx3072M" or "mapred.child.java.opts"
-   * :" -Xmx1024m -verbose:gc -Xloggc:/tmp/@taskid@.gc
-   * @return xmx value
+   * parses the -Xmx value from the mapred.child.java.opts
+   * in the job conf usually appears as the
+   * following in the job conf:
+   * "mapred.child.java.opts" : "-Xmx3072M"
+   * or
+   * "mapred.child.java.opts" :" -Xmx1024m -verbose:gc -Xloggc:/tmp/@taskid@.gc
+   * @return xmx value in MB
    */
-  public Long getXmxValue(String javaChildOptsStr) {
-    if (StringUtils.isBlank(javaChildOptsStr)) {
-      LOG.error("Null/empty input argument to get xmxValue");
-      throw new ProcessingException("Null/Empty input to get xmxValue");
-    }
+  public static Long getXmxValue(String javaChildOptsStr) {
     Long retVal = 0L;
     String valueStr = extractXmxValueStr(javaChildOptsStr);
     char lastChar = valueStr.charAt(valueStr.length() - 1);
@@ -113,7 +120,10 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
           // convert gigabytes to megabtyes
           retVal *= 1024;
           break;
-        }
+        default:
+          throw new ProcessingException("Unable to get the Xmx value from " + javaChildOptsStr
+              + " invalid value for Xmx " + xmxValStr);
+       }
       } else {
         retVal = Long.parseLong(valueStr);
         // now convert to megabytes
@@ -126,5 +136,13 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
       throw new ProcessingException("Unable to get the Xmx value from " + javaChildOptsStr, nfe);
     }
     return retVal;
+  }
+
+  /**
+   * considering the Xmx setting to be 75% of memory used 
+   * return the total memory (xmx + native)
+   */
+  public static Long getXmxTotal(final long xmx75) {
+    return (xmx75 * 100 / 75);
   }
 }

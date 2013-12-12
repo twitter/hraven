@@ -26,7 +26,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.mapred.JobHistoryCopy;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobKey;
-import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
 
@@ -41,9 +40,6 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			.getLog(JobHistoryFileParserHadoop1.class);
 
 	private JobKey jobKey;
-	@SuppressWarnings("unused")
-	private byte[] jobKeyBytes;
-	private JobKeyConverter jobKeyConv = new JobKeyConverter();
 	private JobHistoryListener jobHistoryListener = null;
 
 	/**
@@ -57,10 +53,10 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 		try {
 			jobHistoryListener = new JobHistoryListener(jobKey);
 			this.jobKey = jobKey;
-			this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 			// set the hadoop version for this record
-			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), jobHistoryListener.getJobKeyBytes());
+			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), 
+			  jobHistoryListener.getJobKeyBytes());
 			jobHistoryListener.includeHadoopVersionPut(versionPut);
 		} catch (IOException ioe) {
 			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
@@ -95,44 +91,54 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 		}
 	}
 
-
   /**
-   * considering the Xmx setting to be 75% of memory used return the total memory (xmx + native)
-   */
-  Long getXmxTotal(final long Xmx75) {
-    return (Xmx75 * 100 / 75);
-  }
-
-  /**
-   * calculate mega byte millis puts as: 
-   * if not uberized: 
-   *        map slot millis * mapreduce.map.memory.mb
-   *        + reduce slot millis * mapreduce.reduce.memory.mb 
-   *        + yarn.app.mapreduce.am.resource.mb * job runtime 
-   * if uberized:
-   *        yarn.app.mapreduce.am.resource.mb * job run time
+   * calculate mega byte millis as:
+   * Total estimated memory (Xmx as 75% see below) * map slot millis +
+   * Total estimated memory (Xmx as 75% see below) * reduce slot millis 
+   *
+   * for hadoop1 jobs, we can
+   * consider the -Xmx value to be 75% of the memory used by that task.
+   * For eg, if Xmx is set to 3G,
+   * we can consider 4G to be the task's memory usage,
+   * so that we account for native memory (25% presumption).
+   * This way we don't depend on cluster specific memory 
+   * and max map and reduce tasks on that cluster
    */
   @Override
   public Long getMegaByteMillis(Configuration jobConf) {
+
+    if (jobHistoryListener == null ) {
+      LOG.error("Cannot call getMegaByteMillis before parsing the history file!");
+      return Constants.NOTFOUND_VALUE;
+    }
+
+    Long mapSlotMillis = jobHistoryListener.getMapSlotMillis();
+    Long reduceSlotMillis = jobHistoryListener.getReduceSlotMillis();
+    if (mapSlotMillis == Constants.NOTFOUND_VALUE
+        || reduceSlotMillis == Constants.NOTFOUND_VALUE) {
+      throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
+          + " since mapSlotMillis " + mapSlotMillis 
+          + " or reduceSlotMillis " + reduceSlotMillis + " not found!");
+    }
+
     if (jobConf == null) {
       throw new ProcessingException("JobConf is null, cannot calculate megabytemillis");
     }
-    Long Xmx75 = getXmxValue(jobConf.get(Constants.JAVA_CHILD_OPTS_CONF_KEY));
-    if (Xmx75 == 0L) {
-      // don't want to throw an exception and
-      // cause the processing to fail completely
-      LOG.error("Xmx value is 0? check why");
-      throw new ProcessingException("Xmx value is 0! "
-          + jobConf.get(Constants.JAVA_CHILD_OPTS_CONF_KEY));
-
+    Long xmx75 = getXmxValue(jobConf.get(Constants.JAVA_CHILD_OPTS_CONF_KEY));
+    if (xmx75 == 0L) {
+      /** maximum heap size as per
+       * http://docs.oracle.com/javase/6/docs/technotes/guides/vm/gc-ergonomics.html
+       * Is smaller of 1/4th of the physical memory or 1GB.
+       * hence we assume default of 1GB
+       */
+      xmx75 = Constants.DEFAULT_XMX_SETTING;
+      LOG.info("Xmx value is 0, now presuming default Xmx size "
+          + Constants.DEFAULT_XMX_SETTING);
     }
-    Long XmxTotal = getXmxTotal(Xmx75);
-    Long mapSlotMillis = jobHistoryListener.getMapSlotMillis();
-    Long reduceSlotMillis = jobHistoryListener.getReduceSlotMillis();
-
-    LOG.trace("For " + jobKey.toString() + " \n Xmx " + XmxTotal + " " + ": " + mapSlotMillis
-        + " \n " + ": " + reduceSlotMillis + " \n ");
-    Long mbMillis = XmxTotal * mapSlotMillis + XmxTotal * reduceSlotMillis;
+    Long xmxTotal = getXmxTotal(xmx75);
+    LOG.trace("For " + jobKey.toString() + " \n Xmx " + xmxTotal + " " 
+        + ": " + mapSlotMillis + " \n " + ": " + reduceSlotMillis + " \n ");
+    Long mbMillis = xmxTotal * mapSlotMillis + xmxTotal * reduceSlotMillis;
     return mbMillis;
   }
 }

@@ -17,7 +17,6 @@ package com.twitter.hraven.etl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -30,20 +29,17 @@ import org.apache.hadoop.hbase.client.Put;
 import org.junit.Test;
 
 import com.google.common.io.Files;
-import com.twitter.hraven.JobDesc;
-import com.twitter.hraven.JobDescFactory;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobKey;
-import com.twitter.hraven.QualifiedJobId;
-import com.twitter.hraven.datasource.JobHistoryService;
-import com.twitter.hraven.datasource.ProcessingException;
 
 public class TestJobHistoryFileParserHadoop1 {
 
-  @Test(expected = ProcessingException.class)
+  @Test
   public void testNullMegaByteMills() {
     JobHistoryFileParserHadoop1 historyFileParser1 = new JobHistoryFileParserHadoop1();
-    long mbMillis = historyFileParser1.getMegaByteMillis(null);
-    assertNull(mbMillis);
+    assertNotNull(historyFileParser1);
+    Long mbMillis = historyFileParser1.getMegaByteMillis(null);
+    assertEquals(Constants.NOTFOUND_VALUE, mbMillis);
   }
 
   @Test
@@ -72,98 +68,8 @@ public class TestJobHistoryFileParserHadoop1 {
 
     Configuration jobConf = new Configuration();
     jobConf.addResource(new Path(JOB_CONF_FILENAME));
-    QualifiedJobId qualifiedJobId = new QualifiedJobId("cluster1", "job_1329348432655_0001");
-    Long submitTimeMillis = 1329348443227L;
-    JobDesc jobDesc = JobDescFactory.createJobDesc(qualifiedJobId, submitTimeMillis, jobConf);
-
-    List<Put> jobConfPuts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
-    assertNotNull(jobConfPuts);
-    int expSize = 1;
-    assertEquals(expSize, jobConfPuts.size());
     Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
     Long expValue = 2981062L;
     assertEquals(expValue, mbMillis);
-  }
-
-  @Test(expected=ProcessingException.class)
-  public void testIncorrectGetXmxValue(){
-    JobHistoryFileParserHadoop1 historyFileParser1 = new JobHistoryFileParserHadoop1();
-    String xmxValue = "-XmxSOMETHINGWRONG!";
-    @SuppressWarnings("unused")
-    long val = historyFileParser1.getXmxValue(xmxValue);
-  }
-
-  @Test(expected=ProcessingException.class)
-  public void testNullGetXmxValue(){
-    JobHistoryFileParserHadoop1 historyFileParser1 = new JobHistoryFileParserHadoop1();
-    String xmxValue = null;
-    @SuppressWarnings("unused")
-    long val = historyFileParser1.getXmxValue(xmxValue);
-  }
-
-  @Test
-  public void testGetXmxValue(){
-    // check for megabyte value itself
-    String xmxValue = "-Xmx500m";
-    long expValue = 500;
-    JobHistoryFileParserHadoop1 historyFileParser1 = new JobHistoryFileParserHadoop1();
-    long actualValue = historyFileParser1.getXmxValue(xmxValue);
-    assertEquals(expValue, actualValue);
-    long totalValue = historyFileParser1.getXmxTotal(actualValue);
-    assertEquals(666L, totalValue);
-
-    // check if megabytes is returned for kilobytes
-    xmxValue = "-Xmx2048K";
-    actualValue = historyFileParser1.getXmxValue(xmxValue);
-    expValue = 2L;
-    assertEquals(expValue, actualValue);
-    totalValue = historyFileParser1.getXmxTotal(actualValue);
-    long expTotalVal = 2L;
-    assertEquals(expTotalVal, totalValue);
-
-    // check if megabytes is returned for gigabytes
-    xmxValue = "-Xmx2G";
-    actualValue = historyFileParser1.getXmxValue(xmxValue);
-    expValue = 2048;
-    assertEquals(expValue, actualValue);
-    totalValue = historyFileParser1.getXmxTotal(actualValue);
-    expTotalVal = 2730L;
-    assertEquals(expTotalVal, totalValue);
-
-    // check if megabytes is returned for bytes
-    xmxValue = "-Xmx2097152";
-    actualValue = historyFileParser1.getXmxValue(xmxValue);
-    expValue = 2L;
-    assertEquals(expValue, actualValue);
-    totalValue = historyFileParser1.getXmxTotal(actualValue);
-    expTotalVal = 2L;
-    assertEquals(expTotalVal, totalValue);
-
-    xmxValue = " -Xmx1024m -verbose:gc -Xloggc:/tmp/@taskid@.gc" ;
-    actualValue = historyFileParser1.getXmxValue(xmxValue);
-    expValue = 1024L;
-    assertEquals(expValue, actualValue);
-    totalValue = historyFileParser1.getXmxTotal(actualValue);
-    expTotalVal = 1365L;
-    assertEquals(expTotalVal, totalValue);
-  }
-
-  @Test
-  public void testExtractXmxValue() {
-    String jc = " -Xmx1024m -verbose:gc -Xloggc:/tmp/@taskid@.gc" ;
-    JobHistoryFileParserHadoop1 historyFileParser1 = new JobHistoryFileParserHadoop1();
-    String valStr = historyFileParser1.extractXmxValueStr(jc);
-    String expStr = "1024m";
-    assertEquals(expStr, valStr);
-  }
-
-  @Test(expected=ProcessingException.class) 
-  public void testExtractXmxValueIncorrectInput(){
-    String jc = " -Xmx" ;
-    JobHistoryFileParserHadoop1 historyFileParser1 = new JobHistoryFileParserHadoop1();
-    String valStr = historyFileParser1.extractXmxValueStr(jc);
-    String expStr = "";
-    assertEquals(expStr, valStr);
-
   }
 }
