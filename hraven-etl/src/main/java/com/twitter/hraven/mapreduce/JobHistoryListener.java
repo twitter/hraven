@@ -48,6 +48,8 @@ public class JobHistoryListener implements Listener {
   /** Job ID, minus the leading "job_" */
   private String jobNumber = "";
   private final byte[] jobKeyBytes;
+  private long mapSlotMillis = Constants.NOTFOUND_VALUE;
+  private long reduceSlotMillis = Constants.NOTFOUND_VALUE;
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
@@ -194,8 +196,17 @@ public class JobHistoryListener implements Listener {
           byte[] groupPrefix = Bytes.add(
               counterPrefix, Bytes.toBytes(group.getName()), Constants.SEP_BYTES);
           for (Counters.Counter counter : group) {
-            byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counter.getName()));
-            p.add(family, qualifier, Bytes.toBytes(counter.getValue()));
+            String counterName = counter.getName();
+            long counterValue = counter.getValue();
+            byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
+            p.add(family, qualifier, Bytes.toBytes(counterValue));
+            // get the map and reduce slot millis for megabytemillis calculations
+            if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
+              this.mapSlotMillis = counterValue;
+            }
+            if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
+              this.reduceSlotMillis = counterValue;
+            }
           }
         }
       } catch (ParseException pe) {
@@ -281,4 +292,13 @@ public class JobHistoryListener implements Listener {
   public List<Put> getTaskPuts() {
     return this.taskPuts;
   }
+
+  public Long getMapSlotMillis() {
+    return this.mapSlotMillis;
+  }
+
+  public Long getReduceSlotMillis() {
+    return this.reduceSlotMillis;
+  }
+  
 }

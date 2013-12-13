@@ -16,8 +16,6 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import org.apache.commons.lang.StringUtils;
-
-import com.twitter.hraven.Constants;
 import com.twitter.hraven.HadoopVersion;
 
 /**

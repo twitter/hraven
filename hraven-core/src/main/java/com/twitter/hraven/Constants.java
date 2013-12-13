@@ -187,6 +187,13 @@ public class Constants {
   public static final String SLOTS_MILLIS_REDUCES = "SLOTS_MILLIS_REDUCES";
   public static final String REDUCE_SHUFFLE_BYTES = "REDUCE_SHUFFLE_BYTES";
 
+  /** used to indicate how expensive a job is in terms of memory and time taken*/
+  public static final String MEGABYTEMILLIS = "megabytemillis" ;
+  public static final byte[] MEGABYTEMILLIS_BYTES = Bytes.toBytes(MEGABYTEMILLIS);
+
+  /** use this value to indicate fields that were not found */
+  public static final Long NOTFOUND_VALUE = -1L;
+
   // job details related counter sub group in hadoop 2
   public static final String FILESYSTEM_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.FileSystemCounter";
   public static final String JOB_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.JobCounter";
@@ -275,6 +282,24 @@ public class Constants {
   public static final String CASCADING_APP_ID_CONF_KEY = "cascading.app.id";
   
   public static final String MR_RUN_CONF_KEY = "mapred.app.submitted.timestamp";
+
+  /**
+   * hadoop2 memory mb for container size
+   * for map, reduce and AM containers
+   */
+  public static final String MAP_MEMORY_MB_CONF_KEY = "mapreduce.map.memory.mb";
+  public static final String REDUCE_MEMORY_MB_CONF_KEY = "mapreduce.reduce.memory.mb";
+  public static final String AM_MEMORY_MB_CONF_KEY = "yarn.app.mapreduce.am.resource.mb";
+
+  /**
+   * hadoop1 memory conf keys
+   */
+  public static final String JAVA_CHILD_OPTS_CONF_KEY = "mapred.child.java.opts";
+  /** default xmx size is 1 GB as per 
+   * http://docs.oracle.com/javase/6/docs/technotes/guides/vm/gc-ergonomics.html
+   */
+  public static final Long DEFAULT_XMX_SETTING = 1024L;
+  public static final String DEFAULT_XMX_SETTING_STR = Long.toString(DEFAULT_XMX_SETTING) + "M";
 
   /**
    * Timestamp format used to create processing directories

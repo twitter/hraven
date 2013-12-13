@@ -15,8 +15,8 @@ limitations under the License.
  */
 package com.twitter.hraven.etl;
 
-import java.io.InputStream;
 import java.util.List;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.ProcessingException;
@@ -36,6 +36,14 @@ public interface JobHistoryFileParser {
 	 * @throws ProcessingException
 	 */
 	public void parse(byte[] historyFile, JobKey jobKey);
+
+	/**
+	 * Calculates the megabytmillis taken up by this job
+	 * should be called after {@link JobHistoryFileParser#parse(byte[], JobKey)}
+	 * since the values it needs for calculations are
+	 * populated in the parser object while parsing
+	 */
+	public Long getMegaByteMillis(Configuration jobConf);
 
 	/**
 	 * Return the generated list of job puts assembled when history file is

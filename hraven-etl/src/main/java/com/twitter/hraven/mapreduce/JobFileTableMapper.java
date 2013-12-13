@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -37,6 +38,7 @@ import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobHistoryRawService;
 import com.twitter.hraven.datasource.JobHistoryService;
+import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
@@ -64,6 +66,7 @@ public class JobFileTableMapper extends
       Constants.HISTORY_TASK_TABLE_BYTES);
   private static final ImmutableBytesWritable RAW_TABLE = new ImmutableBytesWritable(
       Constants.HISTORY_RAW_TABLE_BYTES);
+  private static JobKeyConverter jobKeyConv = new JobKeyConverter();
 
   /**
    * Used to create secondary index.
@@ -183,6 +186,7 @@ public class JobFileTableMapper extends
     		  .createJobHistoryFileParser(historyFileContents);
 
       historyFileParser.parse(historyFileContents, jobKey);
+      context.progress();
 
       puts = historyFileParser.getJobPuts();
       if (puts == null) {
@@ -199,6 +203,19 @@ public class JobFileTableMapper extends
         // TableRecordWriter does this for us.
         context.progress();
       }
+
+      /** post processing steps on job puts and job conf puts */
+      Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+      context.progress();
+      if (mbMillis == null) {
+        throw new ProcessingException(" Unable to get megabyte millis calculation for this record!"
+              + jobKey);
+      }
+
+      Put mbPut = getMegaByteMillisPut(mbMillis, jobKey);
+      LOG.info("Writing mega byte millis  puts to " + Constants.HISTORY_TABLE);
+      context.write(JOB_TABLE, mbPut);
+      context.progress();
 
       puts = historyFileParser.getTaskPuts();
       if (puts == null) {
@@ -251,6 +268,18 @@ public class JobFileTableMapper extends
     // any case with multiple simultaneous runs with different outcome).
     context.write(RAW_TABLE, successPut);
 
+  }
+
+  /**
+   * generates a put for the megabytemillis
+   * @param mbMillis
+   * @param jobKey
+   * @return the put with megabytemillis
+   */
+  private Put getMegaByteMillisPut(Long mbMillis, JobKey jobKey) {
+    Put pMb = new Put(jobKeyConv.toBytes(jobKey));
+    pMb.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(mbMillis));
+    return pMb;
   }
 
   @Override

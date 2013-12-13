@@ -11,7 +11,11 @@ package com.twitter.hraven.etl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -125,6 +129,22 @@ public class TestJobHistoryFileParserHadoop2 {
       tKey = taskKeyConv.fromBytes(p.getRow()).toString();
       assertTrue(putRowKeys.contains(tKey));
     }
+
+    // check post processing for megabytemillis
+    // first with empty job conf
+    Long mbMillis = historyFileParser.getMegaByteMillis(null);
+    assertNull(mbMillis);
+
+    // now load the conf file and check
+    final String JOB_CONF_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001_conf.xml";
+
+    Configuration jobConf = new Configuration();
+    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
+    mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+    assertNotNull(mbMillis);
+    Long expValue = 10390016L;
+    assertEquals(expValue, mbMillis);
   }
 
   /**

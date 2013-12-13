@@ -25,8 +25,10 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
+import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
@@ -58,6 +60,14 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private byte[] jobKeyBytes;
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
+  boolean uberized = false;
+  private long mapSlotMillis = Constants.NOTFOUND_VALUE;
+  private long reduceSlotMillis = Constants.NOTFOUND_VALUE;
+  private long startTime = Constants.NOTFOUND_VALUE;
+  private long endTime = Constants.NOTFOUND_VALUE;
+  private static final String LAUNCH_TIME_KEY_STR = JobHistoryKeys.LAUNCH_TIME.toString();
+  private static final String FINISH_TIME_KEY_STR = JobHistoryKeys.FINISH_TIME.toString();
+
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
   private TaskKeyConverter taskKeyConv = new TaskKeyConverter();
 
@@ -355,6 +365,16 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       } else if (type.equalsIgnoreCase(TYPE_LONG)) {
         long value = eventDetails.getLong(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        // populate start time of the job for megabytemillis calculations
+        if ((recType.equals(Hadoop2RecordType.JobInited)) &&
+            LAUNCH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
+          this.startTime = value;
+        }
+        // populate end time of the job for megabytemillis calculations
+        if ((recType.equals(Hadoop2RecordType.JobFinished)) &&
+            FINISH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
+          this.endTime = value;
+        }
       } else if (type.equalsIgnoreCase(TYPE_INT)) {
         int value = eventDetails.getInt(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, value);
@@ -600,6 +620,16 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     byte[] groupPrefix = Bytes.add(counterPrefix, Bytes.toBytes(groupName), Constants.SEP_BYTES);
     byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
     p.add(family, qualifier, Bytes.toBytes(counterValue));
+
+    /**
+     * populate map and reduce slot millis
+     */
+    if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
+      this.mapSlotMillis = counterValue;
+    }
+    if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
+      this.reduceSlotMillis = counterValue;
+    }
   }
 
   /**
@@ -660,5 +690,68 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
         }
       }
     }
+  }
+
+  /**
+   * calculate mega byte millis puts as: 
+   * if not uberized: 
+   *        map slot millis * mapreduce.map.memory.mb
+   *        + reduce slot millis * mapreduce.reduce.memory.mb 
+   *        + yarn.app.mapreduce.am.resource.mb * job runtime 
+   * if uberized:
+   *        yarn.app.mapreduce.am.resource.mb * job run time
+   */
+  @Override
+  public Long getMegaByteMillis(Configuration jobConf) {
+
+    if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE
+        || mapSlotMillis == Constants.NOTFOUND_VALUE
+        || reduceSlotMillis == Constants.NOTFOUND_VALUE) {
+      throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
+          + " since one or more of endTime " + endTime + " startTime " + startTime
+          + " mapSlotMillis " + mapSlotMillis + " reduceSlotMillis " + reduceSlotMillis
+          + " not found!");
+    }
+
+    long jobRunTime = 0L;
+    long amMb = 0L;
+    long mapMb = 0L;
+    long reduceMb = 0L;
+
+    jobRunTime = endTime - startTime;
+
+    if (jobConf == null) {
+      LOG.error("job conf is null? for job key: " + jobKey.toString());
+      return null;
+    }
+
+    // get am memory mb, map memory mb, reducer memory mb from job conf
+    try {
+      amMb = jobConf.getLong(Constants.AM_MEMORY_MB_CONF_KEY, Constants.NOTFOUND_VALUE);
+      mapMb = jobConf.getLong(Constants.MAP_MEMORY_MB_CONF_KEY,  Constants.NOTFOUND_VALUE);
+      reduceMb = jobConf.getLong(Constants.REDUCE_MEMORY_MB_CONF_KEY,  Constants.NOTFOUND_VALUE);
+    } catch (ConversionException ce) {
+      LOG.error(" Could not convert to long " + ce.getMessage());
+      throw new ProcessingException(
+          " Can't calculate megabytemillis since conversion to long failed", ce);
+    }
+    if (amMb == Constants.NOTFOUND_VALUE ) {
+      throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
+          + " since " + Constants.AM_MEMORY_MB_CONF_KEY + " not found!");
+    }
+
+    Long mbMillis = 0L;
+    if (uberized) {
+      mbMillis = amMb * jobRunTime;
+    } else {
+      mbMillis = mapMb * mapSlotMillis + reduceMb * reduceSlotMillis + amMb * jobRunTime;
+    }
+
+    LOG.debug("For " + jobKey.toString() + " " + Constants.MEGABYTEMILLIS + " is " + mbMillis
+        + " since \n uberized: " + uberized + " \n " + ": " + mapMb + ": " + mapSlotMillis + " \n "
+        + ": " + reduceMb + ": " + reduceSlotMillis + " \n " + ": " + amMb + " jobRunTime: "
+        + jobRunTime + " start time: " + this.startTime + " endtime " + this.endTime) ;
+
+    return mbMillis;
   }
 }

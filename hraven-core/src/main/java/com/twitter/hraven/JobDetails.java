@@ -76,6 +76,7 @@ public class JobDetails implements Comparable<JobDetails> {
   private long mapSlotMillis;
   private long reduceSlotMillis;
   private long reduceShuffleBytes;
+  private long megabyteMillis;
 
   // job config
   private Configuration config;
@@ -341,6 +342,14 @@ public class JobDetails implements Comparable<JobDetails> {
 
   public void setHdfsBytesRead(long hdfsBytesRead) {
     this.hdfsBytesRead = hdfsBytesRead;
+  }
+
+  public long getMegabyteMillis() {
+    return megabyteMillis;
+  }
+
+  public void setMegabyteMillis(long megabyteMillis) {
+    this.megabyteMillis = megabyteMillis;
   }
 
   public void addTask(TaskDetails task) {
