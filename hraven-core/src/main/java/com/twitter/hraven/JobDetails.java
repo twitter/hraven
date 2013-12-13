@@ -545,7 +545,6 @@ public class JobDetails implements Comparable<JobDetails> {
       // reduce shuffle bytes
       this.reduceShuffleBytes = getCounterValueAsLong(this.reduceCounters, Constants.TASK_COUNTER_HADOOP2,
             Constants.REDUCE_SHUFFLE_BYTES);
-
     } else { // presume it's hadoop1
       // map file bytes read
       this.mapFileBytesRead = getCounterValueAsLong(this.mapCounters, Constants.FILESYSTEM_COUNTERS,
@@ -583,5 +582,4 @@ public class JobDetails implements Comparable<JobDetails> {
     // TODO: make sure to properly implement setTasks(...) before adding TaskDetails
     //populateTasks(result.getFamilyMap(Constants.TASK_FAM_BYTES));
   }
-
 }

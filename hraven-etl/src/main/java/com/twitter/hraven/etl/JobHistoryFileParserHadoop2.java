@@ -704,7 +704,6 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   @Override
   public Long getMegaByteMillis(Configuration jobConf) {
 
-    JobKey jobKey = jobKeyConv.fromBytes(jobKeyBytes);
     if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE
         || mapSlotMillis == Constants.NOTFOUND_VALUE
         || reduceSlotMillis == Constants.NOTFOUND_VALUE) {

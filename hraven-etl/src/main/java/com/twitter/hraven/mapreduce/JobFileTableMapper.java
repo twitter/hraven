@@ -66,6 +66,7 @@ public class JobFileTableMapper extends
       Constants.HISTORY_TASK_TABLE_BYTES);
   private static final ImmutableBytesWritable RAW_TABLE = new ImmutableBytesWritable(
       Constants.HISTORY_RAW_TABLE_BYTES);
+  private static JobKeyConverter jobKeyConv = new JobKeyConverter();
 
   /**
    * Used to create secondary index.
@@ -276,7 +277,6 @@ public class JobFileTableMapper extends
    * @return the put with megabytemillis
    */
   private Put getMegaByteMillisPut(Long mbMillis, JobKey jobKey) {
-    JobKeyConverter jobKeyConv = new JobKeyConverter();
     Put pMb = new Put(jobKeyConv.toBytes(jobKey));
     pMb.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(mbMillis));
     return pMb;

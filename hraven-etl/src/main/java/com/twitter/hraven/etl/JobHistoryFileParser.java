@@ -39,7 +39,9 @@ public interface JobHistoryFileParser {
 
 	/**
 	 * Calculates the megabytmillis taken up by this job
-	 * should be called only after calling parse
+	 * should be called after {@link JobHistoryFileParser#parse(byte[], JobKey)}
+	 * since the values it needs for calculations are
+	 * populated in the parser object while parsing
 	 */
 	public Long getMegaByteMillis(Configuration jobConf);
 

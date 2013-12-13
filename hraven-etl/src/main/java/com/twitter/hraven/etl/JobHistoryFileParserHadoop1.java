@@ -38,8 +38,6 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 
 	private static final Log LOG = LogFactory
 			.getLog(JobHistoryFileParserHadoop1.class);
-
-	private JobKey jobKey;
 	private JobHistoryListener jobHistoryListener = null;
 
 	/**
@@ -52,7 +50,6 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 
 		try {
 			jobHistoryListener = new JobHistoryListener(jobKey);
-			this.jobKey = jobKey;
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 			// set the hadoop version for this record
 			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), 
@@ -62,7 +59,7 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
 			throw new ProcessingException(
 					" Unable to parse history file in function parse, "
-							+ "cannot process this record!" + this.jobKey
+							+ "cannot process this record!" + jobKey
 							+ " error: " , ioe);
 		}
 	}
@@ -116,7 +113,7 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
     Long reduceSlotMillis = jobHistoryListener.getReduceSlotMillis();
     if (mapSlotMillis == Constants.NOTFOUND_VALUE
         || reduceSlotMillis == Constants.NOTFOUND_VALUE) {
-      throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
+      throw new ProcessingException("Cannot calculate megabytemillis "
           + " since mapSlotMillis " + mapSlotMillis 
           + " or reduceSlotMillis " + reduceSlotMillis + " not found!");
     }
@@ -136,8 +133,8 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
           + Constants.DEFAULT_XMX_SETTING);
     }
     Long xmxTotal = getXmxTotal(xmx75);
-    LOG.trace("For " + jobKey.toString() + " \n Xmx " + xmxTotal + " " 
-        + ": " + mapSlotMillis + " \n " + ": " + reduceSlotMillis + " \n ");
+    LOG.trace("\n Xmx " + xmxTotal + ": " + mapSlotMillis + " \n " + ": "
+        + reduceSlotMillis + " \n ");
     Long mbMillis = xmxTotal * mapSlotMillis + xmxTotal * reduceSlotMillis;
     return mbMillis;
   }
