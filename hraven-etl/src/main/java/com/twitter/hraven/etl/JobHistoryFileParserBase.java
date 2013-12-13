@@ -58,7 +58,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
   /**
    * extract the string around Xmx in the java child opts " -Xmx1024m -verbose:gc"
    * @param javaChildOptsStr
-   * @return
+   * @return string that represents the Xmx value
    */
   static String extractXmxValueStr(String javaChildOptsStr) {
     if (StringUtils.isBlank(javaChildOptsStr)) {

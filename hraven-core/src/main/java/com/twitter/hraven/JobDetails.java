@@ -582,4 +582,5 @@ public class JobDetails implements Comparable<JobDetails> {
     // TODO: make sure to properly implement setTasks(...) before adding TaskDetails
     //populateTasks(result.getFamilyMap(Constants.TASK_FAM_BYTES));
   }
+
 }

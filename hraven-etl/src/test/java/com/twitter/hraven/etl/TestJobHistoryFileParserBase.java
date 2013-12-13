@@ -65,6 +65,16 @@ public class TestJobHistoryFileParserBase {
     expTotalVal = 2730L;
     assertEquals(expTotalVal, totalValue);
 
+    // what happens whene there are 2 Xmx settings,
+    // picks the first one
+    xmxValue = "-Xmx2G -Xms 1G -Xmx4G";
+    actualValue = JobHistoryFileParserBase.getXmxValue(xmxValue);
+    expValue = 2048;
+    assertEquals(expValue, actualValue);
+    totalValue = JobHistoryFileParserBase.getXmxTotal(actualValue);
+    expTotalVal = 2730L;
+    assertEquals(expTotalVal, totalValue);
+
     // check if megabytes is returned for bytes
     xmxValue = "-Xmx2097152";
     actualValue = JobHistoryFileParserBase.getXmxValue(xmxValue);

@@ -71,5 +71,4 @@ public class TestHadoopConfUtil {
 		  String hRavenUserName = HadoopConfUtil.getUserNameInConf(jobConf);
 		  assertNull(hRavenUserName);
 	  }
-
 }

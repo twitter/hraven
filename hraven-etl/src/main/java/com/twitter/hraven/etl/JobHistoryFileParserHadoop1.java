@@ -38,6 +38,7 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 
 	private static final Log LOG = LogFactory
 			.getLog(JobHistoryFileParserHadoop1.class);
+
 	private JobHistoryListener jobHistoryListener = null;
 
 	/**
