@@ -71,10 +71,13 @@ public class GenerateFlowTestData {
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOB_STATUS),
           Bytes.toBytes("SUCCESS"));
       p.add(Constants.INFO_FAM_BYTES, Constants.VERSION_COLUMN_BYTES, Bytes.toBytes(version));
+      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.hadoopversion),
+        Bytes.toBytes(HadoopVersion.ONE.toString()));
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_MAPS),
           Bytes.toBytes(baseStats));
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_REDUCES),
           Bytes.toBytes(baseStats));
+      p.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(baseStats));
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.LAUNCH_TIME),
           Bytes.toBytes(curTime));
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISH_TIME),

@@ -171,6 +171,8 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getMapSlotMillis());
           jsonGenerator.writeFieldName("reduceSlotMillis");
           jsonGenerator.writeNumber(aFlow.getReduceSlotMillis());
+          jsonGenerator.writeFieldName("megabyteMillis");
+          jsonGenerator.writeNumber(aFlow.getMegabyteMillis());
           jsonGenerator.writeFieldName("reduceShuffleBytes");
           jsonGenerator.writeNumber(aFlow.getReduceShuffleBytes());
           jsonGenerator.writeFieldName("duration");
@@ -183,6 +185,13 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getRunId());
           jsonGenerator.writeFieldName("version");
           jsonGenerator.writeString(aFlow.getVersion());
+          jsonGenerator.writeFieldName("hadoopVersion");
+          /**
+           *  unlikely that the next line with .toString 
+           *  will throw NPE since Flow class always sets
+           *  default hadoop version in Flow#addJob
+           */
+          jsonGenerator.writeString(aFlow.getHadoopVersion().toString());
           jsonGenerator.writeFieldName("counters");
           jsonGenerator.writeObject(aFlow.getCounters());
           jsonGenerator.writeFieldName("mapCounters");

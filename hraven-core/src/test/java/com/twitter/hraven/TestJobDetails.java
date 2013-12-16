@@ -47,6 +47,7 @@ public class TestJobDetails {
     static final long submitTime = 1376617540985L;
     static final long launchTime = 1376617544263L;
     static final long finishTime = 1376618781318L;
+    static final long megabytemillis = 46317568L;
 
     // hadoop 1 counter values
     static final long FILES_BYTES_READ_1 = 202401720425L;
@@ -216,6 +217,8 @@ public class TestJobDetails {
       Bytes.toBytes(JobDetailsValues.failedReduces));
     infoValues.put(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISHED_MAPS),
       Bytes.toBytes(JobDetailsValues.finishedMaps));
+    infoValues.put(Constants.MEGABYTEMILLIS_BYTES,
+      Bytes.toBytes(JobDetailsValues.megabytemillis));
 
     addInMapCounters(infoValues);
     addInReduceCounters(infoValues);
@@ -239,6 +242,7 @@ public class TestJobDetails {
     assertEquals(JobDetailsValues.finishedReduces, jd.getFinishedReduces());
     assertEquals(JobDetailsValues.totalReduces, jd.getTotalReduces());
     assertEquals(JobDetailsValues.failedReduces, jd.getFailedReduces());
+    assertEquals(JobDetailsValues.megabytemillis, jd.getMegabyteMillis());
   }
 
   private void confirmHadoop2Counters(JobDetails jd) {
@@ -356,6 +360,14 @@ public class TestJobDetails {
     // test non existent value
     expVal = 0L;
     assertEquals(expVal, jd.getValueAsLong(JobHistoryKeys.TOTAL_REDUCES, infoValues));
+    
+    infoValues.put(Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(JobDetailsValues.megabytemillis));
+    expVal = JobDetailsValues.megabytemillis;
+    assertEquals(expVal, jd.getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues));
+
+    // test non existent value
+    expVal = 0L;
+    assertEquals(expVal, jd.getValueAsLong(Constants.HRAVEN_QUEUE_BYTES, infoValues));
   }
 
   /**

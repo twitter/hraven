@@ -412,6 +412,21 @@ public class JobDetails implements Comparable<JobDetails> {
   }
 
   /**
+   * return a value from the NavigableMap as a Long
+   * @param key
+   * @param infoValues
+   * @return value as Long or 0L
+   */
+  Long getValueAsLong(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
+    byte[] value = infoValues.get(key);
+    if (value != null) {
+      return Bytes.toLong(value);
+    } else {
+      return 0L;
+    }
+  }
+
+  /**
    * return a value for that counters from the NavigableMap as a Long
    * @param key
    * @param infoValues
@@ -447,7 +462,7 @@ public class JobDetails implements Comparable<JobDetails> {
    * return an enum value from the NavigableMap for hadoop version
    * @param key
    * @param infoValues
-   * @return value as a enum
+   * @return value as a enum or default of hadoop ONE
    */
   private HadoopVersion getHadoopVersionFromResult(final JobHistoryKeys key,
       final NavigableMap<byte[], byte[]> infoValues) {
@@ -494,6 +509,7 @@ public class JobDetails implements Comparable<JobDetails> {
     this.submitTime = getValueAsLong(JobHistoryKeys.SUBMIT_TIME, infoValues);
     this.launchTime = getValueAsLong(JobHistoryKeys.LAUNCH_TIME, infoValues);
     this.finishTime = getValueAsLong(JobHistoryKeys.FINISH_TIME, infoValues);
+    this.megabyteMillis = getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues);
 
     // task counts
     this.totalMaps = getValueAsLong(JobHistoryKeys.TOTAL_MAPS, infoValues);
