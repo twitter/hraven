@@ -38,6 +38,7 @@ import org.junit.Test;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.GenerateFlowTestData;
+import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
@@ -191,6 +192,33 @@ public class TestJobHistoryService {
     }
   }
 
+  private void checkSomeFlowStats(String version, HadoopVersion hv, int numJobs, long baseStats, List<Flow> flowSeries) {
+    assertNotNull(flowSeries);
+    for ( Flow f : flowSeries ){
+      assertEquals( numJobs, f.getJobCount());
+      assertEquals( numJobs * baseStats , f.getTotalMaps());
+      assertEquals( numJobs * baseStats , f.getTotalReduces());
+      assertEquals( numJobs * baseStats , f.getHdfsBytesRead());
+      assertEquals( numJobs * baseStats , f.getHdfsBytesWritten());
+      assertEquals( numJobs * baseStats , f.getMapFileBytesRead());
+      assertEquals( numJobs * baseStats , f.getMapFileBytesWritten());
+      assertEquals( numJobs * baseStats , f.getMapSlotMillis());
+      assertEquals( numJobs * baseStats , f.getReduceFileBytesRead());
+      assertEquals( numJobs * baseStats , f.getReduceShuffleBytes());
+      assertEquals( numJobs * baseStats , f.getReduceSlotMillis());
+      assertEquals( version , f.getVersion());
+      assertEquals( hv, f.getHadoopVersion());
+      assertEquals( numJobs * baseStats , f.getMegabyteMillis());
+      assertEquals( numJobs * 1000, f.getDuration());
+      // verify that job configurations are empty
+      for (JobDetails job : f.getJobs()) {
+        assertEquals(0, job.getConfiguration().size());
+      }
+    }
+
+  }
+  
+  
   @Test
   public void testGetFlowTimeSeriesStats() throws Exception {
 
@@ -208,44 +236,11 @@ public class TestJobHistoryService {
     try {
       // fetch back the entire flow stats
       List<Flow> flowSeries = service.getFlowTimeSeriesStats("c1@local", "buser", "AppOne", "", 0L, 0L, 1000, null);
-      assertNotNull(flowSeries);
-      for ( Flow f : flowSeries ){
-        assertEquals( numJobsAppOne, f.getJobCount());
-        assertEquals( numJobsAppOne * baseStats , f.getTotalMaps());
-        assertEquals( numJobsAppOne * baseStats , f.getTotalReduces());
-        assertEquals( numJobsAppOne * baseStats , f.getHdfsBytesRead());
-        assertEquals( numJobsAppOne * baseStats , f.getHdfsBytesWritten());
-        assertEquals( numJobsAppOne * baseStats , f.getMapFileBytesRead());
-        assertEquals( numJobsAppOne * baseStats , f.getMapFileBytesWritten());
-        assertEquals( numJobsAppOne * baseStats , f.getMapSlotMillis());
-        assertEquals( numJobsAppOne * baseStats , f.getReduceFileBytesRead());
-        assertEquals( numJobsAppOne * baseStats , f.getReduceShuffleBytes());
-        assertEquals( numJobsAppOne * baseStats , f.getReduceSlotMillis());
-        assertEquals( "a" , f.getVersion());
-        assertEquals( numJobsAppOne * 1000, f.getDuration());
-        // verify that job configurations are empty
-        for (JobDetails job : f.getJobs()) {
-          assertEquals(0, job.getConfiguration().size());
-        }
-      }
+      checkSomeFlowStats("a", HadoopVersion.ONE, numJobsAppOne, baseStats, flowSeries);
 
       flowSeries = service.getFlowTimeSeriesStats("c1@local", "buser", "AppTwo", "", 0L, 0L, 1000, null);
-      assertNotNull(flowSeries);
-      for ( Flow f : flowSeries ){
-        assertEquals( numJobsAppTwo, f.getJobCount());
-        assertEquals( numJobsAppTwo * baseStats , f.getTotalMaps());
-        assertEquals( numJobsAppTwo * baseStats , f.getTotalReduces());
-        assertEquals( numJobsAppTwo * baseStats , f.getHdfsBytesRead());
-        assertEquals( numJobsAppTwo * baseStats , f.getHdfsBytesWritten());
-        assertEquals( numJobsAppTwo * baseStats , f.getMapFileBytesRead());
-        assertEquals( numJobsAppTwo * baseStats , f.getMapFileBytesWritten());
-        assertEquals( numJobsAppTwo * baseStats , f.getMapSlotMillis());
-        assertEquals( numJobsAppTwo * baseStats , f.getReduceFileBytesRead());
-        assertEquals( numJobsAppTwo * baseStats , f.getReduceShuffleBytes());
-        assertEquals( numJobsAppTwo * baseStats , f.getReduceSlotMillis());
-        assertEquals( "b" , f.getVersion());
-        assertEquals( numJobsAppTwo * 1000, f.getDuration());
-      }
+      checkSomeFlowStats("b", HadoopVersion.ONE, numJobsAppTwo, baseStats, flowSeries);
+
     } finally {
       service.close();
     }

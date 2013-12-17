@@ -105,6 +105,9 @@ public class Flow implements Comparable<Flow> {
   /** reduce slot millis  in this flow */
   private long reduceSlotMillis;
 
+  /** megabyte millis  in this flow */
+  private long megabyteMillis;
+
   /** reduce shuffle bytes in this flow */
   private long reduceShuffleBytes;
 
@@ -116,6 +119,9 @@ public class Flow implements Comparable<Flow> {
 
   /**  app Version for this flow  */
   private String version ;
+
+  /**  hadoop Version for this flow  */
+  private HadoopVersion hadoopVersion ;
 
   /** Aggregated counters from all jobs in this flow */
   private CounterMap counters = new CounterMap();
@@ -237,10 +243,17 @@ public class Flow implements Comparable<Flow> {
     this.reduceFileBytesRead += job.getReduceFileBytesRead();
     this.mapSlotMillis += job.getMapSlotMillis();
     this.reduceSlotMillis += job.getReduceSlotMillis();
+    this.megabyteMillis += job.getMegabyteMillis();
 
     // set the submit time of the flow to the submit time of the first job
     if ( this.submitTime == 0L ) {
       this.submitTime = job.getSubmitTime();
+      // set the hadoop version once for this job
+      this.hadoopVersion = job.getHadoopVersion();
+      if (this.hadoopVersion == null) {
+        // set it to default so that we don't run into NPE during json serialization
+        this.hadoopVersion = HadoopVersion.ONE;
+      }
     }
 
     this.version = job.getVersion();
@@ -354,6 +367,22 @@ public class Flow implements Comparable<Flow> {
 
   public void setReduceSlotMillis(long reduceSlotMillis) {
     this.reduceSlotMillis = reduceSlotMillis;
+  }
+
+  public long getMegabyteMillis() {
+    return megabyteMillis;
+  }
+
+  public void setMegabyteMillis(long megabyteMillis) {
+    this.megabyteMillis = megabyteMillis;
+  }
+
+  public HadoopVersion getHadoopVersion() {
+    return hadoopVersion;
+  }
+
+  public void setHadoopVersion(HadoopVersion hadoopVersion) {
+    this.hadoopVersion = hadoopVersion;
   }
 
   public long getReduceShuffleBytes() {
