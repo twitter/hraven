@@ -61,8 +61,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   boolean uberized = false;
-  private long mapSlotMillis = Constants.NOTFOUND_VALUE;
-  private long reduceSlotMillis = Constants.NOTFOUND_VALUE;
+  private long mapSlotMillis;
+  private long reduceSlotMillis;
   private long startTime = Constants.NOTFOUND_VALUE;
   private long endTime = Constants.NOTFOUND_VALUE;
   private static final String LAUNCH_TIME_KEY_STR = JobHistoryKeys.LAUNCH_TIME.toString();
@@ -704,9 +704,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   @Override
   public Long getMegaByteMillis(Configuration jobConf) {
 
-    if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE
-        || mapSlotMillis == Constants.NOTFOUND_VALUE
-        || reduceSlotMillis == Constants.NOTFOUND_VALUE) {
+    if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE)
+    {
       throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
           + " since one or more of endTime " + endTime + " startTime " + startTime
           + " mapSlotMillis " + mapSlotMillis + " reduceSlotMillis " + reduceSlotMillis

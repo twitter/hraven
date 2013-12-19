@@ -112,12 +112,6 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 
     Long mapSlotMillis = jobHistoryListener.getMapSlotMillis();
     Long reduceSlotMillis = jobHistoryListener.getReduceSlotMillis();
-    if (mapSlotMillis == Constants.NOTFOUND_VALUE
-        || reduceSlotMillis == Constants.NOTFOUND_VALUE) {
-      throw new ProcessingException("Cannot calculate megabytemillis "
-          + " since mapSlotMillis " + mapSlotMillis 
-          + " or reduceSlotMillis " + reduceSlotMillis + " not found!");
-    }
 
     if (jobConf == null) {
       throw new ProcessingException("JobConf is null, cannot calculate megabytemillis");

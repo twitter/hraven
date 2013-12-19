@@ -204,19 +204,6 @@ public class JobFileTableMapper extends
         context.progress();
       }
 
-      /** post processing steps on job puts and job conf puts */
-      Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
-      context.progress();
-      if (mbMillis == null) {
-        throw new ProcessingException(" Unable to get megabyte millis calculation for this record!"
-              + jobKey);
-      }
-
-      Put mbPut = getMegaByteMillisPut(mbMillis, jobKey);
-      LOG.info("Writing mega byte millis  puts to " + Constants.HISTORY_TABLE);
-      context.write(JOB_TABLE, mbPut);
-      context.progress();
-
       puts = historyFileParser.getTaskPuts();
       if (puts == null) {
     	  throw new ProcessingException(
@@ -231,6 +218,19 @@ public class JobFileTableMapper extends
         // TableRecordWriter does this for us.
         context.progress();
       }
+
+      /** post processing steps on job puts and job conf puts */
+      Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+      context.progress();
+      if (mbMillis == null) {
+        throw new ProcessingException(" Unable to get megabyte millis calculation for this record!"
+              + jobKey);
+      }
+
+      Put mbPut = getMegaByteMillisPut(mbMillis, jobKey);
+      LOG.info("Writing mega byte millis  puts to " + Constants.HISTORY_TABLE);
+      context.write(JOB_TABLE, mbPut);
+      context.progress();
 
     } catch (RowKeyParseException rkpe) {
       LOG.error("Failed to process record "
