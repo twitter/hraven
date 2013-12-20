@@ -147,6 +147,35 @@ public class TestJobHistoryFileParserHadoop2 {
     assertEquals(expValue, mbMillis);
   }
 
+  @Test
+  public void testMissingSlotMillis() throws IOException {
+    final String JOB_HISTORY_FILE_NAME =
+        "src/test/resources/job_1329348432999_0003-1329348443227-user-Sleep+job-1329348468601-10-1-SUCCEEDED-default.jhist";
+
+    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
+    byte[] contents = Files.toByteArray(jobHistoryfile);
+    JobHistoryFileParser historyFileParser =
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents);
+    assertNotNull(historyFileParser);
+
+    // confirm that we get back an object that can parse hadoop 2.0 files
+    assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
+    JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
+    historyFileParser.parse(contents, jobKey);
+
+    // now load the conf file and check
+    final String JOB_CONF_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001_conf.xml";
+
+    Configuration jobConf = new Configuration();
+    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
+    // this history file has only map slot millis no reduce millis
+    Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+    assertNotNull(mbMillis);
+    Long expValue = 10441216L;
+    assertEquals(expValue, mbMillis);
+  }
+
   /**
    * To ensure we write these keys as Longs, not as ints
    */
