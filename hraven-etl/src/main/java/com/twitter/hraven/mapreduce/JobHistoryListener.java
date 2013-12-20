@@ -48,8 +48,12 @@ public class JobHistoryListener implements Listener {
   /** Job ID, minus the leading "job_" */
   private String jobNumber = "";
   private final byte[] jobKeyBytes;
-  private long mapSlotMillis;
-  private long reduceSlotMillis;
+
+  /** explicitly initializing map millis and
+   * reduce millis in case it's not found
+   */
+  private long mapSlotMillis = 0L;
+  private long reduceSlotMillis = 0L;
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   private JobKeyConverter jobKeyConv = new JobKeyConverter();

@@ -61,8 +61,13 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   boolean uberized = false;
-  private long mapSlotMillis;
-  private long reduceSlotMillis;
+
+  /** explicitly initializing map millis and
+   * reduce millis in case it's not found
+   */
+  private long mapSlotMillis = 0L;
+  private long reduceSlotMillis = 0L;
+
   private long startTime = Constants.NOTFOUND_VALUE;
   private long endTime = Constants.NOTFOUND_VALUE;
   private static final String LAUNCH_TIME_KEY_STR = JobHistoryKeys.LAUNCH_TIME.toString();
@@ -371,9 +376,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
           this.startTime = value;
         }
         // populate end time of the job for megabytemillis calculations
-        if ((recType.equals(Hadoop2RecordType.JobFinished)) &&
-            FINISH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
-          this.endTime = value;
+        if ((recType.equals(Hadoop2RecordType.JobFinished))
+            || (recType.equals(Hadoop2RecordType.JobUnsuccessfulCompletion))) {
+          if (FINISH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
+            this.endTime = value;
+          }
         }
       } else if (type.equalsIgnoreCase(TYPE_INT)) {
         int value = eventDetails.getInt(key);
@@ -708,7 +715,6 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     {
       throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
           + " since one or more of endTime " + endTime + " startTime " + startTime
-          + " mapSlotMillis " + mapSlotMillis + " reduceSlotMillis " + reduceSlotMillis
           + " not found!");
     }
 
@@ -743,13 +749,14 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     if (uberized) {
       mbMillis = amMb * jobRunTime;
     } else {
-      mbMillis = mapMb * mapSlotMillis + reduceMb * reduceSlotMillis + amMb * jobRunTime;
+      mbMillis = (mapMb * mapSlotMillis) + (reduceMb * reduceSlotMillis) + (amMb * jobRunTime);
     }
 
     LOG.debug("For " + jobKey.toString() + " " + Constants.MEGABYTEMILLIS + " is " + mbMillis
-        + " since \n uberized: " + uberized + " \n " + ": " + mapMb + ": " + mapSlotMillis + " \n "
-        + ": " + reduceMb + ": " + reduceSlotMillis + " \n " + ": " + amMb + " jobRunTime: "
-        + jobRunTime + " start time: " + this.startTime + " endtime " + this.endTime) ;
+        + " since \n uberized: " + uberized + " \n " + "mapMb: " + mapMb + " mapSlotMillis: "
+        + mapSlotMillis + " \n " + " reduceMb: " + reduceMb + " reduceSlotMillis: "
+        + reduceSlotMillis + " \n " + " amMb: " + amMb + " jobRunTime: " + jobRunTime
+        + " start time: " + this.startTime + " endtime " + this.endTime);
 
     return mbMillis;
   }
