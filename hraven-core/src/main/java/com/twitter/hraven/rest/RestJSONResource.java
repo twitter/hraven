@@ -33,6 +33,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
 import com.google.common.base.Predicate;
+import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.JobDetails;
@@ -50,6 +51,7 @@ import com.twitter.hraven.datasource.VersionInfo;
 @Path("/api/v1/")
 public class RestJSONResource {
   private static final Log LOG = LogFactory.getLog(RestJSONResource.class);
+  private static final String SLASH = "/" ;
 
   private static final Configuration HBASE_CONF = HBaseConfiguration.create();
   private static final ThreadLocal<JobHistoryService> serviceThreadLocal =
@@ -95,10 +97,15 @@ public class RestJSONResource {
   public JobDetails getJobById(@PathParam("cluster") String cluster,
                                @PathParam("jobId") String jobId) throws IOException {
     LOG.info("Fetching JobDetails for jobId=" + jobId);
+    Stopwatch timer = new Stopwatch().start();
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId);
-    return jobDetails;
+    timer.stop();
+    LOG.info("For job/{cluster}/{jobId} with input query:"
+        + " job/" + cluster + SLASH + jobId
+        + " fetched jobDetails for " + jobDetails.getJobName() + " in " + timer);
+   return jobDetails;
   }
 
   @GET
@@ -107,9 +114,15 @@ public class RestJSONResource {
   public Flow getJobFlowById(@PathParam("cluster") String cluster,
                              @PathParam("jobId") String jobId) throws IOException {
     LOG.info(String.format("Fetching Flow for cluster=%s, jobId=%s", cluster, jobId));
+    Stopwatch timer = new Stopwatch().start();
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING));
     Flow flow = getJobHistoryService().getFlowByJobID(cluster, jobId, false);
+    timer.stop();
+    LOG.info("For jobFlow/{cluster}/{jobId} with input query: "
+        + "jobFlow/" + cluster + SLASH + jobId
+        + " fetched flow " + flow.getFlowName() + " with #jobs " + flow.getJobCount()
+        + " in " + timer);
     return flow;
   }
 
@@ -124,6 +137,7 @@ public class RestJSONResource {
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
+    Stopwatch timer = new Stopwatch().start();
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
       configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
@@ -132,7 +146,25 @@ public class RestJSONResource {
     }
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    return getFlowList(cluster, user, appId, version, limit);
+    List<Flow> flows = getFlowList(cluster, user, appId, version, limit);
+    timer.stop();
+
+    StringBuilder builderIncludeConfigs = new StringBuilder();
+    for(String s : includeConfig) {
+      builderIncludeConfigs.append(s);
+    }
+    StringBuilder builderIncludeConfigRegex = new StringBuilder();
+    for(String s : includeConfig) {
+      builderIncludeConfigRegex.append(s);
+    }
+
+    LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: "
+        + "flow/" + cluster + SLASH + user + SLASH + appId + SLASH + version
+        + "?limit=" + limit
+        + "&includeConf=" + builderIncludeConfigs
+        + "&includeConfRegex=" + builderIncludeConfigRegex
+        + " fetched #number of flows " + flows.size() + " in " + timer);
+    return flows;
   }
 
   @GET
@@ -145,6 +177,7 @@ public class RestJSONResource {
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
+    Stopwatch timer = new Stopwatch().start();
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
       configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
@@ -153,7 +186,27 @@ public class RestJSONResource {
     }
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    return getFlowList(cluster, user, appId, null, limit);
+    List<Flow> flows =  getFlowList(cluster, user, appId, null, limit);
+    timer.stop();
+
+    StringBuilder builderIncludeConfigs = new StringBuilder();
+    for(String s : includeConfig) {
+      builderIncludeConfigs.append(s);
+    }
+    StringBuilder builderIncludeConfigRegex = new StringBuilder();
+    for(String s : includeConfig) {
+      builderIncludeConfigRegex.append(s);
+    }
+
+    LOG.info("For flow/{cluster}/{user}/{appId} with input query: "
+      + "flow/" + cluster + SLASH + user + SLASH + appId
+      + "?limit=" + limit
+      + "&includeConf=" + builderIncludeConfigs
+      + "&includeConfRegex=" + builderIncludeConfigRegex
+      + " fetched #number of flows " + flows.size() + " in " + timer);
+
+    return flows;
+
   }
 
   @GET
@@ -169,7 +222,7 @@ public class RestJSONResource {
                                    @QueryParam("limit") @DefaultValue("100") int limit,
                                    @QueryParam("includeJobs") boolean includeJobs
                                    ) throws IOException {
-
+    Stopwatch timer = new Stopwatch().start();
     byte[] startRow = null;
     if (startRowParam != null) {
       startRow = Base64.decode(startRowParam);
@@ -226,6 +279,15 @@ public class RestJSONResource {
       flowStatsPage.setNextStartRow(null);
       flowStatsPage.setValues(flows);
     }
+    timer.stop();
+
+    LOG.info("For flowStats/{cluster}/{user}/{appId} with input query: "
+      + "flowStats/" + cluster  + SLASH // + user /{appId} cluster + " user " + user
+      + appId + "?version=" + version + "&limit=" + limit
+      + "&startRow=" + startRow + "&startTime=" + startTime + "&endTime=" + endTime
+      + "&includeJobs=" + includeJobs
+      + " fetched #number of flows " + flows.size() + " in " + timer);
+
     return flowStatsPage;
  }
 
@@ -236,6 +298,8 @@ public class RestJSONResource {
                                     @PathParam("user") String user,
                                     @PathParam("appId") String appId,
                                     @QueryParam("limit") int limit) throws IOException {
+     Stopwatch timer = new Stopwatch().start();
+
      if (LOG.isTraceEnabled()) {
       LOG.trace("Fetching App Versions for cluster=" + cluster + " user=" + user + " app=" + appId);
      }
@@ -246,6 +310,13 @@ public class RestJSONResource {
                                                  StringUtils.trimToEmpty(cluster),
                                                  StringUtils.trimToEmpty(user),
                                                  StringUtils.trimToEmpty(appId));
+     timer.stop();
+
+     LOG.info("For appVersion/{cluster}/{user}/{appId}/ with input query "
+       + "appVersion/" + cluster + SLASH + user + SLASH + appId
+       + "?limit=" + limit
+       + " fetched #number of VersionInfo " + distinctVersions.size() + " in " + timer);
+
      return distinctVersions;
   }
 

@@ -402,7 +402,7 @@ public class JobHistoryService {
         }
       }
       timer.stop();
-      LOG.debug("Fetched "+rowCount+" rows, " + colCount + " columns in "+timer);
+      LOG.info("Fetched from hbase "+rowCount+" rows, " + colCount + " columns in "+timer);
     } finally {
       if (scanner != null) {
         scanner.close();
