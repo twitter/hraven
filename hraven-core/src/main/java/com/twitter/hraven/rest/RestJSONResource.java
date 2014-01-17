@@ -137,6 +137,7 @@ public class RestJSONResource {
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
+
     Stopwatch timer = new Stopwatch().start();
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
@@ -163,7 +164,7 @@ public class RestJSONResource {
         + "?limit=" + limit
         + "&includeConf=" + builderIncludeConfigs
         + "&includeConfRegex=" + builderIncludeConfigRegex
-        + " fetched #number of flows " + flows.size() + " in " + timer);
+        + " fetched " + flows.size() + " flows " + " in " + timer);
     return flows;
   }
 
@@ -177,6 +178,7 @@ public class RestJSONResource {
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
+
     Stopwatch timer = new Stopwatch().start();
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
@@ -203,7 +205,7 @@ public class RestJSONResource {
       + "?limit=" + limit
       + "&includeConf=" + builderIncludeConfigs
       + "&includeConfRegex=" + builderIncludeConfigRegex
-      + " fetched #number of flows " + flows.size() + " in " + timer);
+      + " fetched " + flows.size() + " flows in " + timer);
 
     return flows;
 
@@ -222,6 +224,12 @@ public class RestJSONResource {
                                    @QueryParam("limit") @DefaultValue("100") int limit,
                                    @QueryParam("includeJobs") boolean includeJobs
                                    ) throws IOException {
+    LOG.info("Fetching flowStats for flowStats/{cluster}/{user}/{appId} with input query: "
+      + "flowStats/" + cluster  + SLASH // + user /{appId} cluster + " user " + user
+      + appId + "?version=" + version + "&limit=" + limit
+      + "&startRow=" + startRowParam + "&startTime=" + startTime + "&endTime=" + endTime
+      + "&includeJobs=" + includeJobs);
+ 
     Stopwatch timer = new Stopwatch().start();
     byte[] startRow = null;
     if (startRowParam != null) {
@@ -286,7 +294,7 @@ public class RestJSONResource {
       + appId + "?version=" + version + "&limit=" + limit
       + "&startRow=" + startRow + "&startTime=" + startTime + "&endTime=" + endTime
       + "&includeJobs=" + includeJobs
-      + " fetched #number of flows " + flows.size() + " in " + timer);
+      + " fetched "+ flows.size() + " in " + timer);
 
     return flowStatsPage;
  }

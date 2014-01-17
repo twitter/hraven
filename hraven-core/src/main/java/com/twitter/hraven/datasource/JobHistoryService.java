@@ -377,14 +377,17 @@ public class JobHistoryService {
     ResultScanner scanner = null;
     try {
       Stopwatch timer = new Stopwatch().start();
+      Stopwatch timerJob = new Stopwatch();
       int rowCount = 0;
       long colCount = 0;
+      long resultSize = 0;
       scanner = historyTable.getScanner(scan);
       Flow currentFlow = null;
       for (Result result : scanner) {
         if (result != null && !result.isEmpty()) {
           rowCount++;
           colCount += result.size();
+          resultSize += result.getWritableSize();
           JobKey currentKey = jobKeyConv.fromBytes(result.getRow());
           // empty runId is special cased -- we need to treat each job as it's own flow
           if (currentFlow == null || !currentFlow.contains(currentKey) ||
@@ -396,14 +399,19 @@ public class JobHistoryService {
             currentFlow = new Flow(new FlowKey(currentKey));
             flows.add(currentFlow);
           }
+          timerJob.start();
           JobDetails job = new JobDetails(currentKey);
           job.populate(result);
           currentFlow.addJob(job);
+          timerJob.stop();
         }
       }
       timer.stop();
-      LOG.info("Fetched from hbase "+rowCount+" rows, " + colCount + " columns in "+timer);
-    } finally {
+      LOG.info("Fetched from hbase " + rowCount + " rows, " + colCount + " columns, "
+          + resultSize + " bytes ( " + resultSize / (1024 * 1024)
+          + ") MB, in total time of " + timer + " with  " + timerJob
+          + " spent inJobDetails & Flow population");
+      } finally {
       if (scanner != null) {
         scanner.close();
       }
