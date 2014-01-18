@@ -102,9 +102,13 @@ public class RestJSONResource {
         SerializationContext.DetailLevel.EVERYTHING));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId);
     timer.stop();
-    LOG.info("For job/{cluster}/{jobId} with input query:"
-        + " job/" + cluster + SLASH + jobId
-        + " fetched jobDetails for " + jobDetails.getJobName() + " in " + timer);
+    if (jobDetails != null) {
+      LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
+          + " fetched jobDetails for " + jobDetails.getJobName() + " in " + timer);
+    } else {
+      LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
+          + " No jobDetails found, but spent " + timer);
+    }
    return jobDetails;
   }
 
@@ -119,10 +123,14 @@ public class RestJSONResource {
         SerializationContext.DetailLevel.EVERYTHING));
     Flow flow = getJobHistoryService().getFlowByJobID(cluster, jobId, false);
     timer.stop();
-    LOG.info("For jobFlow/{cluster}/{jobId} with input query: "
-        + "jobFlow/" + cluster + SLASH + jobId
-        + " fetched flow " + flow.getFlowName() + " with #jobs " + flow.getJobCount()
-        + " in " + timer);
+    if (flow != null) {
+      LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/" + cluster + SLASH
+          + jobId + " fetched flow " + flow.getFlowName() + " with #jobs " + flow.getJobCount()
+          + " in " + timer);
+    } else {
+      LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/" + cluster + SLASH
+          + jobId + " No flow found, spent " + timer);
+    }
     return flow;
   }
 
@@ -159,12 +167,17 @@ public class RestJSONResource {
       builderIncludeConfigRegex.append(s);
     }
 
-    LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: "
-        + "flow/" + cluster + SLASH + user + SLASH + appId + SLASH + version
-        + "?limit=" + limit
-        + "&includeConf=" + builderIncludeConfigs
-        + "&includeConfRegex=" + builderIncludeConfigRegex
-        + " fetched " + flows.size() + " flows " + " in " + timer);
+    if (flows != null) {
+      LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
+          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched "
+          + flows.size() + " flows " + " in " + timer);
+    } else {
+      LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
+          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex
+          + " No flows fetched, spent " + timer);
+    }
     return flows;
   }
 
@@ -200,12 +213,16 @@ public class RestJSONResource {
       builderIncludeConfigRegex.append(s);
     }
 
-    LOG.info("For flow/{cluster}/{user}/{appId} with input query: "
-      + "flow/" + cluster + SLASH + user + SLASH + appId
-      + "?limit=" + limit
-      + "&includeConf=" + builderIncludeConfigs
-      + "&includeConfRegex=" + builderIncludeConfigRegex
-      + " fetched " + flows.size() + " flows in " + timer);
+    if (flows != null) {
+      LOG.info("For flow/{cluster}/{user}/{appId} with input query: " + "flow/" + cluster + SLASH
+          + user + SLASH + appId + "?limit=" + limit + "&includeConf=" + builderIncludeConfigs
+          + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched " + flows.size()
+          + " flows in " + timer);
+    } else {
+      LOG.info("For flow/{cluster}/{user}/{appId} with input query: " + "flow/" + cluster + SLASH
+          + user + SLASH + appId + "?limit=" + limit + "&includeConf=" + builderIncludeConfigs
+          + "&includeConfRegex=" + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
+    }
 
     return flows;
 
@@ -290,12 +307,12 @@ public class RestJSONResource {
     timer.stop();
 
     LOG.info("For flowStats/{cluster}/{user}/{appId} with input query: "
-      + "flowStats/" + cluster  + SLASH // + user /{appId} cluster + " user " + user
-      + appId + "?version=" + version + "&limit=" + limit
-      + "&startRow=" + startRow + "&startTime=" + startTime + "&endTime=" + endTime
-      + "&includeJobs=" + includeJobs
-      + " fetched "+ flows.size() + " in " + timer);
-
+        + "flowStats/"
+        + cluster
+        + SLASH // + user /{appId} cluster + " user " + user
+        + appId + "?version=" + version + "&limit=" + limit + "&startRow=" + startRow
+        + "&startTime=" + startTime + "&endTime=" + endTime + "&includeJobs=" + includeJobs
+        + " fetched " + flows.size() + " in " + timer);
     return flowStatsPage;
  }
 
