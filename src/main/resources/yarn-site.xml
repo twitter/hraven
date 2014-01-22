@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<configuration>
+
+<property>
+        <name>yarn.resourcemanager.address</name>
+        <!-- value>localhost:8032</value -->
+        <value>hadoop-tst-rm.atla.twitter.com:8032</value>
+</property>
+
+
+</configuration>
