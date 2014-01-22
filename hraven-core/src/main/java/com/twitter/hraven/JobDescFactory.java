@@ -94,15 +94,18 @@ public class JobDescFactory {
     if (jobtracker == null) {
       jobtracker = jobConf.get(RESOURCE_MANAGER_KEY);
     }
-    // strip any port number
-    int portIdx = jobtracker.indexOf(':');
-    if (portIdx > -1) {
-      jobtracker = jobtracker.substring(0, portIdx);
+    String cluster = null;
+    if (jobtracker != null) {
+      // strip any port number
+      int portIdx = jobtracker.indexOf(':');
+      if (portIdx > -1) {
+        jobtracker = jobtracker.substring(0, portIdx);
+      }
+      // An ExceptionInInitializerError may be thrown to indicate that an exception occurred during
+      // evaluation of Cluster class' static initialization
+      cluster = Cluster.getIdentifier(jobtracker);
     }
-    // An ExceptionInInitializerError may be thrown to indicate that an exception occurred during
-    // evaluation of Cluster class' static initialization
-    String cluster = Cluster.getIdentifier(jobtracker);
-    return cluster != null ? cluster: null;
+    return cluster;
   }
 
 }
