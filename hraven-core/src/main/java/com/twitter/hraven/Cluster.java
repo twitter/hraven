@@ -34,6 +34,10 @@ public class Cluster {
   }
 
   static {
+    loadHadoopClustersProps();
+  }
+
+  private static void loadHadoopClustersProps() {
     // read the property file
     // populate the map
     Properties prop = new Properties();
@@ -42,6 +46,7 @@ public class Cluster {
       InputStream inp = Cluster.class.getResourceAsStream("/hadoopclusters.properties");
       if (inp == null) {
         LOG.warn("hadoopclusters.properties does not exists");
+        return;
       }
       prop.load(inp);
       Set<String> hostnames = prop.stringPropertyNames();
