@@ -15,28 +15,37 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
-
-import com.twitter.hraven.JobDescFactory;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 public class TestJobDescFactory {
   @Test
   public void testCluster() {
-    Configuration c = new Configuration();
+    Configuration c = new Configuration(false);
     c.set(JobDescFactory.JOBTRACKER_KEY, "cluster1.identifier1.example.com:8021");
     String result = JobDescFactory.getCluster(c);
-    assertNotNull(result);
     assertEquals("cluster1@identifier1", result);
 
-    c = new Configuration();
+    c = new Configuration(false);
     c.set(JobDescFactory.JOBTRACKER_KEY, "hbase-cluster2.identifier2.example.com:8021");
     result = JobDescFactory.getCluster(c);
-    assertNotNull(result);
     assertEquals("hbase-cluster2@identifier2", result);
+    
+    c = new Configuration(false);
+    c.set(JobDescFactory.RESOURCE_MANAGER_KEY, "cluster2.identifier2.example.com:10020");
+    result = JobDescFactory.getCluster(c);
+    assertEquals("cluster2@identifier2", result);
+    
+    c = new Configuration(false);
+    c.set(JobDescFactory.JOBTRACKER_KEY, "");
+    result = JobDescFactory.getCluster(c);
+    assertNull(result);
  
-    }
+    c = new Configuration(false);
+    result = JobDescFactory.getCluster(c);
+    assertNull(result);  
+  }
 }

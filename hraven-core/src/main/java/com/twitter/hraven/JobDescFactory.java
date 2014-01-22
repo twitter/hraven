@@ -23,6 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 public class JobDescFactory {
   /** Key used to identify the jobtracker host in job configurations. */
   public static final String JOBTRACKER_KEY = "mapred.job.tracker";
+  public static final String RESOURCE_MANAGER_KEY = "yarn.resourcemanager.address";
 
   private static final MRJobDescFactory MR_JOB_DESC_FACTORY = new MRJobDescFactory();
   private static final PigJobDescFactory PIG_JOB_DESC_FACTORY = new PigJobDescFactory();
@@ -90,15 +91,21 @@ public class JobDescFactory {
    */
   public static String getCluster(Configuration jobConf) {
     String jobtracker = jobConf.get(JOBTRACKER_KEY);
-    // strip any port number
-    int portIdx = jobtracker.indexOf(':');
-    if (portIdx > -1) {
-      jobtracker = jobtracker.substring(0, portIdx);
+    if (jobtracker == null) {
+      jobtracker = jobConf.get(RESOURCE_MANAGER_KEY);
     }
-    // An ExceptionInInitializerError may be thrown to indicate that an exception occurred during
-    // evaluation of Cluster class' static initialization
-    String cluster = Cluster.getIdentifier(jobtracker);
-    return cluster != null ? cluster: null;
+    String cluster = null;
+    if (jobtracker != null) {
+      // strip any port number
+      int portIdx = jobtracker.indexOf(':');
+      if (portIdx > -1) {
+        jobtracker = jobtracker.substring(0, portIdx);
+      }
+      // An ExceptionInInitializerError may be thrown to indicate that an exception occurred during
+      // evaluation of Cluster class' static initialization
+      cluster = Cluster.getIdentifier(jobtracker);
+    }
+    return cluster;
   }
 
 }
