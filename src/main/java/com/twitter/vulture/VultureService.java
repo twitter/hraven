@@ -39,6 +39,7 @@ public class VultureService {
     YarnConfiguration yConf = new YarnConfiguration();
     rmDelegate = new ResourceMgrDelegate(yConf);
     clientCache = new ClientCache(conf, rmDelegate);
+    AppConfCache.init(conf);
     clusterCheckerExecutor =
         Executors
             .newSingleThreadScheduledExecutor(new ClusterStatusChecker.SimpleThreadFactory());

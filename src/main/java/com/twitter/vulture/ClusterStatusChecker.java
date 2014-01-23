@@ -1,24 +1,27 @@
 package com.twitter.vulture;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.ClientCache;
 import org.apache.hadoop.mapred.ClientServiceDelegate;
 import org.apache.hadoop.mapred.ResourceMgrDelegate;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TypeConverter;
-import org.apache.hadoop.mapreduce.v2.api.records.JobId;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
-import org.apache.hadoop.yarn.client.YarnClient;
-import org.apache.hadoop.yarn.client.YarnClientImpl;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
+
 
 /**
  * Check the status of the running apps in the cluster
@@ -32,6 +35,7 @@ public class ClusterStatusChecker implements Runnable {
   ExecutorService appCheckerExecutor;
   ResourceMgrDelegate rmDelegate;
   VultureConfiguration conf;
+  AppConfCache appConfCache = AppConfCache.getInstance();
   /**
    * The cache for connections to MRAppMasters
    * 1
@@ -98,14 +102,42 @@ public class ClusterStatusChecker implements Runnable {
     final long start = appReport.getStartTime();
     final long currTime = System.currentTimeMillis();
     final long duration = currTime - start;
-    final long maxJobLenSec =
-        conf.getLong(VultureConfiguration.MAX_JOB_LEN_SEC,
-            VultureConfiguration.DEFAULT_MAX_JOB_LEN_SEC);
+    AppConfiguraiton appConf = getAppConf(appReport);
+    final long maxJobLenSec = appConf.getMaxJobLenSec();
     if (duration > maxJobLenSec * 1000) {
       killApp(appReport);
       return;
     }
     checkOnTasks(appReport);
+  }
+
+  private AppConfiguraiton getAppConf(ApplicationReport appReport) {
+    ApplicationId appId = appReport.getApplicationId();
+    AppConfiguraiton appConf = appConfCache.get(appId);
+    if (appConf != null)
+      return appConf;
+    String xmlUrlStr = buildXmlUrl(appReport);
+    URL xmlUrl;
+    try {
+      xmlUrl = new URL(xmlUrlStr);
+      Configuration origAppConf = new Configuration(false);
+      origAppConf.addResource(xmlUrl);;
+      appConf = new AppConfiguraiton(origAppConf, conf);
+      appConfCache.put(appId, appConf);
+    } catch (MalformedURLException e) {
+      System.out.println(e);
+      e.printStackTrace();
+    }
+    return appConf;
+  }
+  
+  // e.g. URL: http://atla-bar-41-sr1.prod.twttr.net:50030/
+  // proxy/application_1385075571494_429386/conf
+  private String buildXmlUrl(ApplicationReport appReport) {
+    String trackingUrl = appReport.getTrackingUrl();
+    String xmlUrl =
+        "http://" + trackingUrl + "conf";
+    return xmlUrl;
   }
 
   /**
@@ -121,7 +153,8 @@ public class ClusterStatusChecker implements Runnable {
     ClientServiceDelegate clientService = clientCache.getClient(jobId);
     // 2. spawn a new thread to check on each app
     LOG.info("Spawning a tread to check on app " + appReport.getApplicationId());
-    appCheckerExecutor.execute(new AppStatusChecker(conf, appReport, jobId,
+    AppConfiguraiton appConf = appConfCache.get(appReport.getApplicationId());
+    appCheckerExecutor.execute(new AppStatusChecker(conf,  appConf, appReport, jobId,
         clientService));
   }
 

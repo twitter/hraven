@@ -25,4 +25,7 @@ public class VultureConfiguration extends Configuration {
       + "job.max.len.sec";
   public static final int DEFAULT_MAX_JOB_LEN_SEC = 12 * 60 * 60;
 
+  public static final String MAX_CACHED_APP_CONFS = VULTURE_PREFIX
+      + "confCache.max.size";
+  public static final int DEFAULT_MAX_CACHED_APP_CONFS = 10000;
 }

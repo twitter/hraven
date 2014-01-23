@@ -2,18 +2,16 @@ package com.twitter.vulture;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Random;
 import java.util.concurrent.ThreadFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mapred.ClientServiceDelegate;
 import org.apache.hadoop.mapred.TIPStatus;
+import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.hadoop.mapreduce.TaskReport;
 import org.apache.hadoop.mapreduce.TaskType;
-import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.w3c.dom.Document;
@@ -35,20 +33,22 @@ public class AppStatusChecker implements Runnable {
   private ApplicationId appId;
   private JobID jobId;
   private ApplicationReport appReport;
+  private AppConfiguraiton appConf;
   /**
    * The interface to MRAppMaster
    */
   private ClientServiceDelegate clientService;
-  private VultureConfiguration conf;
+//  private VultureConfiguration conf;
 
   public AppStatusChecker(VultureConfiguration conf,
-      ApplicationReport appReport, JobID jobId,
+      AppConfiguraiton appConf, ApplicationReport appReport, JobID jobId,
       ClientServiceDelegate clientService) {
     this.appReport = appReport;
     this.appId = appReport.getApplicationId();
     this.jobId = jobId;
     this.clientService = clientService;
-    this.conf = conf;
+//    this.conf = conf;
+    this.appConf = appConf;
   }
 
   @Override
@@ -95,9 +95,7 @@ public class AppStatusChecker implements Runnable {
   protected void checkTask(TaskReport taskReport, long currTime) {
     long startTime = taskReport.getStartTime();
     long runTime = currTime - startTime;
-    long maxRunTime =
-        conf.getLong(VultureConfiguration.TASK_MAX_RUNTIME_MS,
-            VultureConfiguration.DEFAULT_TASK_MAX_RUNTIME_MS);
+    long maxRunTime = appConf.getMaxTaskLenSec();
     TIPStatus tStatus = taskReport.getCurrentStatus();
     boolean badTask = (tStatus == TIPStatus.RUNNING && runTime > maxRunTime);
     if (badTask)
