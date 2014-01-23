@@ -2,9 +2,7 @@ package com.twitter.vulture;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 
@@ -22,6 +20,8 @@ import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 
+import com.twitter.vulture.policy.AppPolicy;
+import com.twitter.vulture.policy.DefaultPolicy;
 
 /**
  * Check the status of the running apps in the cluster
@@ -32,21 +32,20 @@ import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
  */
 public class ClusterStatusChecker implements Runnable {
   public static final Log LOG = LogFactory.getLog(ClusterStatusChecker.class);
-  ExecutorService appCheckerExecutor;
-  ResourceMgrDelegate rmDelegate;
-  VultureConfiguration conf;
-  AppConfCache appConfCache = AppConfCache.getInstance();
+  private ExecutorService appCheckerExecutor;
+  private ResourceMgrDelegate rmDelegate;
+  private VultureConfiguration vConf;
+  private AppConfCache appConfCache = AppConfCache.getInstance();
   /**
    * The cache for connections to MRAppMasters
-   * 1
    */
-  ClientCache clientCache;
+  private ClientCache clientCache;
 
   public ClusterStatusChecker(VultureConfiguration conf,
       ExecutorService appCheckerExecutor, ResourceMgrDelegate rmDelegate,
       ClientCache clientCache) {
     this.appCheckerExecutor = appCheckerExecutor;
-    this.conf = conf;
+    this.vConf = conf;
     this.clientCache = clientCache;
     this.rmDelegate = rmDelegate;
   }
@@ -74,17 +73,17 @@ public class ClusterStatusChecker implements Runnable {
   }
 
   /**
-   * Check the status of an application.
-   * 
-   * This method can be overridden to define new policies
+   * The pre-check performed on the app status. The idea is to reduce the avoid
+   * paying the cost of the actual check, if it app does not need it.
    * 
    * @param appReport
+   * @return true if app passes this pre-check
    */
-  protected void checkAppStatus(ApplicationReport appReport) {
+  private boolean preAppStatusCheck(ApplicationReport appReport) {
     YarnApplicationState appState = appReport.getYarnApplicationState();
     switch (appState) {
     case RUNNING:
-      break;
+      return true;
     case NEW:
     case SUBMITTED:
     case FINISHED:
@@ -93,22 +92,29 @@ public class ClusterStatusChecker implements Runnable {
     case ACCEPTED:
       LOG.info("Skip app " + appReport.getApplicationId() + " state is "
           + appState);
-      return;
+      return false;
     default:
       LOG.warn("Unknown app state, app is " + appReport.getApplicationId()
           + " state is " + appState);
-      return;
+      return false;
     }
-    final long start = appReport.getStartTime();
-    final long currTime = System.currentTimeMillis();
-    final long duration = currTime - start;
+  }
+
+  /**
+   * Check the status of an application.
+   * 
+   * @param appReport
+   */
+  private void checkAppStatus(ApplicationReport appReport) {
+    boolean passPreCheck = preAppStatusCheck(appReport);
+    if (!passPreCheck)
+      return;
     AppConfiguraiton appConf = getAppConf(appReport);
-    final long maxJobLenSec = appConf.getMaxJobLenSec();
-    if (duration > maxJobLenSec * 1000) {
+    boolean passCheck = appConf.getAppPolicy().checkAppStatus(appReport, appConf);
+    if (!passCheck)
       killApp(appReport);
-      return;
-    }
-    checkOnTasks(appReport);
+    else
+      checkOnTasks(appReport, appConf);
   }
 
   private AppConfiguraiton getAppConf(ApplicationReport appReport) {
@@ -121,8 +127,8 @@ public class ClusterStatusChecker implements Runnable {
     try {
       xmlUrl = new URL(xmlUrlStr);
       Configuration origAppConf = new Configuration(false);
-      origAppConf.addResource(xmlUrl);;
-      appConf = new AppConfiguraiton(origAppConf, conf);
+      origAppConf.addResource(xmlUrl);
+      appConf = new AppConfiguraiton(origAppConf, vConf);
       appConfCache.put(appId, appConf);
     } catch (MalformedURLException e) {
       System.out.println(e);
@@ -130,42 +136,36 @@ public class ClusterStatusChecker implements Runnable {
     }
     return appConf;
   }
-  
+
   // e.g. URL: http://atla-bar-41-sr1.prod.twttr.net:50030/
   // proxy/application_1385075571494_429386/conf
   private String buildXmlUrl(ApplicationReport appReport) {
     String trackingUrl = appReport.getTrackingUrl();
-    String xmlUrl =
-        "http://" + trackingUrl + "conf";
+    String xmlUrl = "http://" + trackingUrl + "conf";
     return xmlUrl;
   }
 
   /**
    * Check on the tasks of a running app.
    * 
-   * This method can be overridden to define new policies
-   * 
    * @param appReport
    */
-  protected void checkOnTasks(ApplicationReport appReport) {
+  private void checkOnTasks(ApplicationReport appReport, AppConfiguraiton appConf) {
     JobID jobId = TypeConverter.fromYarn(appReport.getApplicationId());
     LOG.info("getting a client connection for " + appReport.getApplicationId());
     ClientServiceDelegate clientService = clientCache.getClient(jobId);
     // 2. spawn a new thread to check on each app
     LOG.info("Spawning a tread to check on app " + appReport.getApplicationId());
-    AppConfiguraiton appConf = appConfCache.get(appReport.getApplicationId());
-    appCheckerExecutor.execute(new AppStatusChecker(conf,  appConf, appReport, jobId,
-        clientService));
+    appCheckerExecutor.execute(new AppStatusChecker(vConf, appConf, appReport,
+        jobId, clientService));
   }
 
   /**
    * kill an application.
    * 
-   * This method can be overridden to adapt to new/old hadoop APIs
-   * 
    * @param appReport
    */
-  protected void killApp(ApplicationReport appReport) {
+  private void killApp(ApplicationReport appReport) {
     LOG.info("KILLING job " + appReport.getApplicationId());
     try {
       rmDelegate.killApplication(appReport.getApplicationId());

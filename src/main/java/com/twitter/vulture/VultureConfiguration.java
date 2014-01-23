@@ -18,7 +18,7 @@ public class VultureConfiguration extends Configuration {
   public static final int DEFAULT_NEW_APP_CHECKER_INTERVAL_SEC = 5 * 60;
 
   public static final String TASK_MAX_RUNTIME_MS = VULTURE_PREFIX
-      + "taks.max.runtime.ms";
+      + "task.max.runtime.ms";
   public static final int DEFAULT_TASK_MAX_RUNTIME_MS = 20 * 60 * 1000;
 
   public static final String MAX_JOB_LEN_SEC = VULTURE_PREFIX
@@ -28,4 +28,7 @@ public class VultureConfiguration extends Configuration {
   public static final String MAX_CACHED_APP_CONFS = VULTURE_PREFIX
       + "confCache.max.size";
   public static final int DEFAULT_MAX_CACHED_APP_CONFS = 10000;
+  
+  public static final String APP_POLICY_CLASS = VULTURE_PREFIX + "app.policy";
+  public static final String TASK_POLICY_CLASS = VULTURE_PREFIX + "task.policy";
 }

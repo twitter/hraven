@@ -7,7 +7,6 @@ import java.util.concurrent.ThreadFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mapred.ClientServiceDelegate;
-import org.apache.hadoop.mapred.TIPStatus;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskReport;
@@ -15,9 +14,6 @@ import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 import com.twitter.vulture.RestClient.RestException;
 
@@ -38,16 +34,17 @@ public class AppStatusChecker implements Runnable {
    * The interface to MRAppMaster
    */
   private ClientServiceDelegate clientService;
-//  private VultureConfiguration conf;
 
-  public AppStatusChecker(VultureConfiguration conf,
-      AppConfiguraiton appConf, ApplicationReport appReport, JobID jobId,
+  // private VultureConfiguration conf;
+
+  public AppStatusChecker(VultureConfiguration conf, AppConfiguraiton appConf,
+      ApplicationReport appReport, JobID jobId,
       ClientServiceDelegate clientService) {
     this.appReport = appReport;
     this.appId = appReport.getApplicationId();
     this.jobId = jobId;
     this.clientService = clientService;
-//    this.conf = conf;
+    // this.conf = conf;
     this.appConf = appConf;
   }
 
@@ -63,11 +60,9 @@ public class AppStatusChecker implements Runnable {
   /**
    * Retrieve the tasks of the same kind and check their status.
    * 
-   * This method can be overridden to define new policies
-   * 
    * @param taskType
    */
-  protected void checkTasks(TaskType taskType) {
+  private void checkTasks(TaskType taskType) {
     try {
       // 1. get the list of running tasks
       TaskReport[] taskReports = clientService.getTaskReports(jobId, taskType);
@@ -76,7 +71,7 @@ public class AppStatusChecker implements Runnable {
       long currTime = System.currentTimeMillis();
       // 2. check task status
       for (TaskReport taskReport : taskReports) {
-        checkTask(taskReport, currTime);
+        checkTask(taskType, taskReport, currTime);
       }
     } catch (IOException e) {
       LOG.error(e);
@@ -92,17 +87,16 @@ public class AppStatusChecker implements Runnable {
    * @param taskReport
    * @param currTime
    */
-  protected void checkTask(TaskReport taskReport, long currTime) {
-    long startTime = taskReport.getStartTime();
-    long runTime = currTime - startTime;
-    long maxRunTime = appConf.getMaxTaskLenSec();
-    TIPStatus tStatus = taskReport.getCurrentStatus();
-    boolean badTask = (tStatus == TIPStatus.RUNNING && runTime > maxRunTime);
-    if (badTask)
+  protected void checkTask(TaskType taskType, TaskReport taskReport,
+      long currTime) {
+    boolean okTask =
+        appConf.getTaskPolicy().checkTask(taskType, taskReport, appConf,
+            currTime);
+    if (!okTask)
       LOG.error(taskReport.getTaskId() + " identified as BAD");
     else
       LOG.warn(taskReport.getTaskId() + " passes the check");
-    if (!badTask)
+    if (okTask)
       return;
 
     // the task is potentially problematic, check the attempts to make sure
@@ -115,11 +109,18 @@ public class AppStatusChecker implements Runnable {
       Document taskAttemptXml;
       try {
         taskAttemptXml = RestClient.getInstance().getXml(xmlUrl);
-        checkTaskAttempt(taskReport, attemptId, taskAttemptXml, maxRunTime);
       } catch (RestException e) {
         LOG.error(e);
         e.printStackTrace();
+        return;
       }
+      boolean okAttempt =
+          appConf.getTaskPolicy().checkTaskAttempt(taskType, taskReport,
+              appConf, attemptId, taskAttemptXml);
+      if (!okAttempt)
+        killTaskAttempt(taskReport, attemptId);
+      else
+        LOG.info("LET the task " + attemptId + " run.");
     }
   }
 
@@ -134,38 +135,6 @@ public class AppStatusChecker implements Runnable {
         "http://" + trackingUrl + "ws/v1/mapreduce/jobs/" + jobId + "/tasks/"
             + taskId + "/attempts/" + attemptId;
     return xmlUrl;
-  }
-
-  /**
-   * Check the status of an attempt of a task
-   * 
-   * This method can be overridden to define new policies
-   * 
-   * @param taskReport
-   * @param taskAttemptId
-   * @param taskAttemptXml The task attempt detail in xml format
-   * @param maxRunTime
-   */
-  protected void checkTaskAttempt(TaskReport taskReport,
-      TaskAttemptID taskAttemptId, Document taskAttemptXml, long maxRunTime) {
-    // Iterating through the nodes and extracting the data.
-    NodeList nodeList = taskAttemptXml.getDocumentElement().getChildNodes();
-    for (int i = 0; i < nodeList.getLength(); i++) {
-      Node node = nodeList.item(i);
-      if (node instanceof Element) {
-        String name = node.getNodeName();
-        if (name.equals("elapsedTime")) {
-          String timeStr = node.getTextContent();
-          long timeMs = Long.parseLong(timeStr);
-          LOG.info(name + " = " + timeMs + " ? " + maxRunTime);
-          if (timeMs > maxRunTime)
-            killTaskAttempt(taskReport, taskAttemptId);
-          else
-            LOG.info("LET the task " + taskAttemptId + " run.");
-          break;
-        }
-      }
-    }
   }
 
   /**
