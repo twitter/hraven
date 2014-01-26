@@ -46,6 +46,7 @@ public class GenerateFlowTestData {
   }
 
   private int jobIdCnt;
+  public static int SUBMIT_LAUCH_DIFF = 500 ;
 
   public void loadFlow(String cluster, String user, String app, long runId,
       String version, int jobCount, long baseStats,
@@ -62,6 +63,7 @@ public class GenerateFlowTestData {
     List<Put> puts = new ArrayList<Put>(jobCount);
     JobKeyConverter keyConv = new JobKeyConverter();
     long curTime = 1355614887;
+    long submitTime = curTime - GenerateFlowTestData.SUBMIT_LAUCH_DIFF;
     for (int i = 0; i < jobCount; i++) {
       String jobId = String.format("job_20120101000000_%04d", jobIdCnt++);
       JobKey key = new JobKey(cluster, user, app, runId, jobId);
@@ -78,6 +80,8 @@ public class GenerateFlowTestData {
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_REDUCES),
           Bytes.toBytes(baseStats));
       p.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(baseStats));
+      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.SUBMIT_TIME),
+        Bytes.toBytes(submitTime));
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.LAUNCH_TIME),
           Bytes.toBytes(curTime));
       p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISH_TIME),

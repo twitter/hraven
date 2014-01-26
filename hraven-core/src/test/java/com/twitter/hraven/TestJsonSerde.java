@@ -186,6 +186,7 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
     assertEquals(flow1.getCluster(), flow2.getCluster());
     assertEquals(flow1.getSubmitTime(), flow2.getSubmitTime());
     assertEquals(flow1.getDuration(), flow2.getDuration());
+    assertEquals(flow1.getElapsedTime(), flow2.getElapsedTime());
     assertEquals(flow1.getRunId(), flow2.getRunId());
     assertEquals(flow1.getMapSlotMillis(), flow2.getMapSlotMillis());
     assertEquals(flow1.getReduceSlotMillis(), flow2.getReduceSlotMillis());

@@ -114,6 +114,9 @@ public class Flow implements Comparable<Flow> {
   /** duration/runtime for this flow */
   private long duration;
 
+  /** elapsed time/wall clock time for this flow */
+  private long elapsedTime;
+
   /** submit time for this flow (submit time of first job) */
   private long submitTime;
 
@@ -419,6 +422,18 @@ public class Flow implements Comparable<Flow> {
 
   public void setDuration(long duration) {
     this.duration = duration;
+  }
+
+  public long getElapsedTime() {
+    if (this.getJobCount() > 0) {
+      this.elapsedTime = this.getJobs().get(this.getJobCount() - 1).getFinishTime()
+          - this.getJobs().get(0).getSubmitTime();
+    }
+    return elapsedTime;
+  }
+
+  public void setElapsedTime(long elapsedTime) {
+    this.elapsedTime = elapsedTime;
   }
 
   public long getSubmitTime() {

@@ -177,6 +177,8 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getReduceShuffleBytes());
           jsonGenerator.writeFieldName("duration");
           jsonGenerator.writeNumber(aFlow.getDuration());
+          jsonGenerator.writeFieldName("elapsedTime");
+          jsonGenerator.writeNumber(aFlow.getElapsedTime());
           jsonGenerator.writeFieldName("cluster");
           jsonGenerator.writeString(aFlow.getCluster());
           jsonGenerator.writeFieldName("appId");
