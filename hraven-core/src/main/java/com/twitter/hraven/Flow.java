@@ -111,14 +111,31 @@ public class Flow implements Comparable<Flow> {
   /** reduce shuffle bytes in this flow */
   private long reduceShuffleBytes;
 
-  /** duration/runtime for this flow */
+  /**
+   * duration is the time for which a job executes
+   * it is finish time of the job that finishes last
+   * in the flow minus
+   * the launch time of the first job to get launched
+   */
   private long duration;
 
-  /** elapsed time/wall clock time for this flow */
+  /**
+   * Elapsed time is the time seen by the user
+   * finish time of job that finishes last minus submit
+   * time of first job in the flow
+   */
   private long elapsedTime;
 
   /** submit time for this flow (submit time of first job) */
   private long submitTime;
+
+  /** launch time for this flow (launch time of first job) */
+  private long launchTime;
+
+  /** finish time for this flow
+   * (finish time of the job that completes last)
+   */
+  private long finishTime;
 
   /**  app Version for this flow  */
   private String version ;
@@ -249,7 +266,7 @@ public class Flow implements Comparable<Flow> {
     this.megabyteMillis += job.getMegabyteMillis();
 
     // set the submit time of the flow to the submit time of the first job
-    if ( this.submitTime == 0L ) {
+    if (( this.submitTime == 0L ) || (job.getSubmitTime() < this.submitTime)) {
       this.submitTime = job.getSubmitTime();
       // set the hadoop version once for this job
       this.hadoopVersion = job.getHadoopVersion();
@@ -257,6 +274,16 @@ public class Flow implements Comparable<Flow> {
         // set it to default so that we don't run into NPE during json serialization
         this.hadoopVersion = HadoopVersion.ONE;
       }
+    }
+
+    // set the launch time of the flow to the launch time of the first job
+    if (( this.launchTime == 0L ) || (job.getLaunchTime() < this.launchTime)) {
+      this.launchTime = job.getLaunchTime();
+    }
+
+    // set the finish time of the flow to the finish time of the last job
+    if (job.getFinishTime() > this.finishTime) {
+      this.finishTime = job.getFinishTime();
     }
 
     this.version = job.getVersion();
@@ -412,10 +439,16 @@ public class Flow implements Comparable<Flow> {
     this.hdfsBytesWritten = hdfsBytesWritten;
   }
 
+  /**
+   * duration is the time for which a job executes
+   * which is finish time of the job that finishes last
+   * in the flow minus
+   * the launch time of the first job to get launched
+   * @return duration
+   */
   public long getDuration() {
     if (this.getJobCount() > 0) {
-      this.duration = this.getJobs().get(this.getJobCount() - 1).getFinishTime()
-          - this.getJobs().get(0).getLaunchTime();
+      this.duration = this.finishTime - this.launchTime;
     }
     return duration;
   }
@@ -424,10 +457,15 @@ public class Flow implements Comparable<Flow> {
     this.duration = duration;
   }
 
+  /**
+   * Elapsed time is the time seen by the user
+   * finish time of job that finishes last minus
+   * submit time of first job in the flow
+   * @return ElapsedTime
+   */
   public long getElapsedTime() {
     if (this.getJobCount() > 0) {
-      this.elapsedTime = this.getJobs().get(this.getJobCount() - 1).getFinishTime()
-          - this.getJobs().get(0).getSubmitTime();
+      this.elapsedTime = this.finishTime - this.submitTime;
     }
     return elapsedTime;
   }
@@ -442,6 +480,22 @@ public class Flow implements Comparable<Flow> {
 
   public void setSubmitTime(long submitTime) {
     this.submitTime = submitTime;
+  }
+
+  public long getLaunchTime() {
+    return launchTime;
+  }
+
+  public void setLaunchTime(long launchTime) {
+    this.launchTime = launchTime;
+  }
+
+  public long getFinishTime() {
+    return finishTime;
+  }
+
+  public void setFinishTime(long finishTime) {
+    this.finishTime = finishTime;
   }
 
   public String getVersion() {

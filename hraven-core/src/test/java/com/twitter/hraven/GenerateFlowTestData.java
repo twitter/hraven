@@ -117,6 +117,7 @@ public class GenerateFlowTestData {
 
       puts.add(p);
       curTime += 1000 ;
+      submitTime = curTime - GenerateFlowTestData.SUBMIT_LAUCH_DIFF;
 
       idService.writeIndexes(key);
     }
