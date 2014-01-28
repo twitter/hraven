@@ -192,6 +192,7 @@ public class TestJobHistoryService {
     }
   }
 
+  @SuppressWarnings("deprecation")
   private void checkSomeFlowStats(String version, HadoopVersion hv, int numJobs, long baseStats, List<Flow> flowSeries) {
     assertNotNull(flowSeries);
     for ( Flow f : flowSeries ){
@@ -210,7 +211,7 @@ public class TestJobHistoryService {
       assertEquals( hv, f.getHadoopVersion());
       assertEquals( numJobs * baseStats , f.getMegabyteMillis());
       assertEquals( numJobs * 1000, f.getDuration());
-      assertEquals( f.getDuration() + GenerateFlowTestData.SUBMIT_LAUCH_DIFF, f.getElapsedTime());
+      assertEquals( f.getDuration() + GenerateFlowTestData.SUBMIT_LAUCH_DIFF, f.getWallClockTime());
       // verify that job configurations are empty
       for (JobDetails job : f.getJobs()) {
         assertEquals(0, job.getConfiguration().size());

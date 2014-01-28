@@ -117,22 +117,28 @@ public class Flow implements Comparable<Flow> {
    * in the flow minus
    * the launch time of the first job to get launched
    */
+  @Deprecated
   private long duration;
 
   /**
-   * Elapsed time is the time seen by the user
+   * wallClockTime is the time seen by the user on
+   * the hadoop cluster
    * finish time of job that finishes last minus submit
    * time of first job in the flow
    */
-  private long elapsedTime;
+  private long wallClockTime;
 
-  /** submit time for this flow (submit time of first job) */
+  /** submit time for this flow in milliseconds
+   * (submit time of first job)
+   */
   private long submitTime;
 
-  /** launch time for this flow (launch time of first job) */
+  /** launch time for this flow in milliseconds
+   * (launch time of first job)
+   */
   private long launchTime;
 
-  /** finish time for this flow
+  /** finish time for this flow in milliseconds
    * (finish time of the job that completes last)
    */
   private long finishTime;
@@ -441,11 +447,14 @@ public class Flow implements Comparable<Flow> {
 
   /**
    * duration is the time for which a job executes
-   * which is finish time of the job that finishes last
+   *
+   * Calculated as
+   * finish time of the job that finishes last
    * in the flow minus
    * the launch time of the first job to get launched
    * @return duration
    */
+  @Deprecated
   public long getDuration() {
     if (this.getJobCount() > 0) {
       this.duration = this.finishTime - this.launchTime;
@@ -453,25 +462,30 @@ public class Flow implements Comparable<Flow> {
     return duration;
   }
 
+  @Deprecated
   public void setDuration(long duration) {
     this.duration = duration;
   }
 
   /**
-   * Elapsed time is the time seen by the user
+   * wallClockTime time is the time seen by the user
+   * on the hadoop cluster in milliseconds
+   *
+   * Calculated as:
    * finish time of job that finishes last minus
    * submit time of first job in the flow
-   * @return ElapsedTime
+   * @return time in milliseconds
    */
-  public long getElapsedTime() {
+  public long getWallClockTime() {
     if (this.getJobCount() > 0) {
-      this.elapsedTime = this.finishTime - this.submitTime;
+      this.wallClockTime = this.finishTime - this.submitTime;
     }
-    return elapsedTime;
+    return wallClockTime;
   }
 
-  public void setElapsedTime(long elapsedTime) {
-    this.elapsedTime = elapsedTime;
+  /** sets the wallClockTime in milliseconds */
+  public void setWallClockTime(long wallClockTime) {
+    this.wallClockTime = wallClockTime;
   }
 
   public long getSubmitTime() {
