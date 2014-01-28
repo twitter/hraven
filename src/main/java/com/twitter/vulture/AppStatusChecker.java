@@ -6,6 +6,7 @@ import java.util.concurrent.ThreadFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+//import org.apache.hadoop.mapred.ClientCache;
 import org.apache.hadoop.mapred.ClientServiceDelegate;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
@@ -15,7 +16,11 @@ import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.w3c.dom.Document;
 
-import com.twitter.vulture.RestClient.RestException;
+import com.twitter.vulture.conf.AppConfiguraiton;
+import com.twitter.vulture.conf.VultureConfiguration;
+import com.twitter.vulture.rpc.ClientCache;
+import com.twitter.vulture.rpc.RestClient;
+import com.twitter.vulture.rpc.RestClient.RestException;
 
 /**
  * Check the status of a running app, including its task
@@ -34,27 +39,32 @@ public class AppStatusChecker implements Runnable {
    * The interface to MRAppMaster
    */
   private ClientServiceDelegate clientService;
+  private ClientCache clientCache;
 
-  // private VultureConfiguration conf;
+  private VultureConfiguration vConf;
 
   public AppStatusChecker(VultureConfiguration conf, AppConfiguraiton appConf,
       ApplicationReport appReport, JobID jobId,
-      ClientServiceDelegate clientService) {
+      ClientCache clientCache) {
     this.appReport = appReport;
     this.appId = appReport.getApplicationId();
     this.jobId = jobId;
-    this.clientService = clientService;
-    // this.conf = conf;
+    this.clientCache = clientCache;
+    LOG.info("getting a client connection for " + appReport.getApplicationId());
+    this.vConf = conf;
     this.appConf = appConf;
   }
+
 
   @Override
   public void run() {
     // 0. set thread name
     setThreadName();
     LOG.info("Running " + Thread.currentThread().getName());
+    clientService = clientCache.getClient(jobId);
     checkTasks(TaskType.MAP);
     checkTasks(TaskType.REDUCE);
+    clientCache.stopClient(jobId);
   }
 
   /**
@@ -90,8 +100,8 @@ public class AppStatusChecker implements Runnable {
   protected void checkTask(TaskType taskType, TaskReport taskReport,
       long currTime) {
     boolean okTask =
-        appConf.getTaskPolicy().checkTask(taskType, taskReport, appConf,
-            currTime);
+        appConf.getTaskPolicy().checkTask(appReport, taskType, taskReport,
+            appConf, currTime);
     if (!okTask)
       LOG.error(taskReport.getTaskId() + " identified as BAD");
     else
@@ -115,8 +125,8 @@ public class AppStatusChecker implements Runnable {
         return;
       }
       boolean okAttempt =
-          appConf.getTaskPolicy().checkTaskAttempt(taskType, taskReport,
-              appConf, attemptId, taskAttemptXml);
+          appConf.getTaskPolicy().checkTaskAttempt(appReport, taskType,
+              taskReport, appConf, attemptId, taskAttemptXml);
       if (!okAttempt)
         killTaskAttempt(taskReport, attemptId);
       else
@@ -148,6 +158,8 @@ public class AppStatusChecker implements Runnable {
   protected void killTaskAttempt(TaskReport taskReport,
       TaskAttemptID taskAttemptId) {
     LOG.warn("KILLING " + taskAttemptId);
+    if (vConf.isDryRun())
+      return;
     try {
       clientService.killTask(taskAttemptId, true);
     } catch (IOException e) {

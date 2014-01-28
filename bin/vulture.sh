@@ -35,7 +35,8 @@ SCRIPTFILE=`$READLINK -f $0`
 SCRIPTDIR=`dirname $SCRIPTFILE`
 export VULTURE_PREFIX=$SCRIPTDIR/..
 cd $SCRIPTDIR;
-CLASSPATH=../src/main/resources
+CLASSPATH=/etc/hadoop/conf
+CLASSPATH=$CLASSPATH:../src/main/resources
 for j in ../target/vulture*.jar; do
   CLASSPATH=$CLASSPATH:$j
 done
@@ -78,7 +79,7 @@ start() {
   checkpid;
   echo starting $app $1, logging to $log
   echo starting $app $1 >> $log
-  nohup java -Xmx256m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.twitter.vulture.VultureService -log $1 >> "$log" 2>&1 < /dev/null &
+  nohup java -Xmx512m -cp $CLASSPATH -Dlog4j.configuration=log4j.properties com.twitter.vulture.VultureService $1 >> "$log" 2>&1 < /dev/null &
   echo $! > $pid
   sleep 1
   tail "$log"

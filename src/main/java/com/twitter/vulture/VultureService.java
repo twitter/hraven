@@ -1,14 +1,28 @@
 package com.twitter.vulture;
 
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.hadoop.mapred.ClientCache;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.mapred.ResourceMgrDelegate;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
-import org.mortbay.log.Log;
+
+import com.twitter.vulture.conf.AppConfCache;
+import com.twitter.vulture.conf.VultureConfiguration;
+import com.twitter.vulture.notification.Mail;
+import com.twitter.vulture.notification.Notifier;
+import com.twitter.vulture.rpc.ClientCache;
+import com.twitter.vulture.rpc.RestClient;
 
 /**
  * Vulture Service
@@ -29,6 +43,8 @@ import org.mortbay.log.Log;
  * 
  */
 public class VultureService {
+  public static final Log LOG = LogFactory.getLog(VultureService.class);
+
   ScheduledExecutorService clusterCheckerExecutor;
   ExecutorService appCheckerExecutor;
   VultureConfiguration conf = new VultureConfiguration();
@@ -40,15 +56,22 @@ public class VultureService {
     rmDelegate = new ResourceMgrDelegate(yConf);
     clientCache = new ClientCache(conf, rmDelegate);
     AppConfCache.init(conf);
+    Mail.init(conf);
+    Notifier.init(conf);
     clusterCheckerExecutor =
         Executors
             .newSingleThreadScheduledExecutor(new ClusterStatusChecker.SimpleThreadFactory());
+    int concurrentAppCheckers =
+        conf.getInt(VultureConfiguration.NEW_APP_CHECKER_CONCURRENCY,
+            VultureConfiguration.DEFAULT_NEW_APP_CHECKER_CONCURRENCY);
     appCheckerExecutor =
-        Executors
-            .newCachedThreadPool(new AppStatusChecker.SimpleThreadFactory());
+        new BlockingExecutor(concurrentAppCheckers,
+            new AppStatusChecker.SimpleThreadFactory());
   }
 
   public void start() {
+    if (conf.isDryRun())
+      System.err.println("========== DRYRUN ===========");
     long intervalSec =
         conf.getLong(VultureConfiguration.NEW_APP_CHECKER_INTERVAL_SEC,
             VultureConfiguration.DEFAULT_NEW_APP_CHECKER_INTERVAL_SEC);
@@ -59,9 +82,9 @@ public class VultureService {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
       public void run() {
-        Log.warn("Shutting down rest client...");
+        LOG.warn("Shutting down rest client...");
         RestClient.getInstance().shutdown();
-        Log.warn("...done");
+        LOG.warn("...done");
       }
     });
   }
@@ -81,5 +104,48 @@ public class VultureService {
       }
     }
 
+  }
+
+  /**
+   * This is to limit the number of concurrent threads checking on applications.
+   * This affects (i) the pressure on the RM and AMs as well as (ii) the
+   * required memory space.
+   */
+  class BlockingExecutor extends ThreadPoolExecutor {
+    Semaphore availableThreads;
+
+    public BlockingExecutor(int corePoolSize, ThreadFactory threadFactory) {
+      super(corePoolSize, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
+          new SynchronousQueue<Runnable>(), threadFactory);
+      availableThreads = new Semaphore(corePoolSize);
+    }
+
+    protected void beforeExecute(Thread t, Runnable r) {
+      LOG.info("CHECKING THREAD AVAILABILTIY "
+          + availableThreads.availablePermits());
+      availableThreads.acquireUninterruptibly();
+      LOG.info("THREAD SLOT ACQUIRED");
+      super.beforeExecute(t, r);
+    }
+
+    protected void afterExecute(Runnable r, Throwable t) {
+      super.afterExecute(r, t);
+      LOG.info("RELEASING THREAD SLOT");
+      availableThreads.release();
+      LOG.info("THREAD SLOT RELEASED");
+      if (t == null && r instanceof Future<?>) {
+        try {
+          ((Future<?>) r).get();
+        } catch (CancellationException ce) {
+          t = ce;
+        } catch (ExecutionException ee) {
+          t = ee.getCause();
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt(); // ignore/reset
+        }
+      }
+      if (t != null)
+        LOG.fatal(t);
+    }
   }
 }

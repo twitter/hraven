@@ -12,7 +12,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.twitter.vulture.AppConfiguraiton;
+import com.twitter.vulture.conf.AppConfiguraiton;
+import com.twitter.vulture.notification.Notifier;
 
 public class DefaultPolicy implements AppPolicy, TaskPolicy {
   public static final Log LOG = LogFactory.getLog(DefaultPolicy.class);
@@ -36,6 +37,7 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
     final long duration = currTime - start;
     final long maxJobLenSec = appConf.getMaxJobLenSec();
     if (duration > maxJobLenSec * 1000) {
+      Notifier.tooLongApp(appReport, duration, maxJobLenSec * 1000);
       return false;
     }
     return true;
@@ -51,7 +53,7 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
    * @return true if task is well-behaved
    */
   @Override
-  public boolean checkTask(TaskType taskType, TaskReport taskReport,
+  public boolean checkTask(ApplicationReport appReport, TaskType taskType, TaskReport taskReport,
       AppConfiguraiton appConf, long currTime) {
     long startTime = taskReport.getStartTime();
     long runTime = currTime - startTime;
@@ -72,7 +74,7 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
    * @param taskAttemptXml The task attempt detail in xml format
    * @return true if task attempt is well-behaved
    */
-  public boolean checkTaskAttempt(TaskType taskType, TaskReport taskReport, AppConfiguraiton appConf, 
+  public boolean checkTaskAttempt(ApplicationReport appReport, TaskType taskType, TaskReport taskReport, AppConfiguraiton appConf, 
       TaskAttemptID taskAttemptId, Document taskAttemptXml) {
     long maxRunTime = appConf.getMaxTaskLenSec();
     // Iterating through the nodes and extracting the data.
@@ -86,6 +88,8 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
           long timeMs = Long.parseLong(timeStr);
           LOG.info(name + " = " + timeMs + " ? " + maxRunTime);
           boolean badTask = (timeMs > maxRunTime);
+          if (badTask)
+            Notifier.tooLongTaskAttempt(appReport, taskReport, taskAttemptId, timeMs, maxRunTime);
           return !badTask;
         }
       }

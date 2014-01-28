@@ -1,4 +1,4 @@
-package com.twitter.vulture;
+package com.twitter.vulture.conf;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -18,15 +18,16 @@ public class AppConfiguraiton {
   private int maxTaskLenSec;
   private AppPolicy appPolicy;
   private TaskPolicy taskPolicy;
-  private Configuration origAppConf;
+  private HideExceptionConfiguration origAppConf;
   private Configuration vultureConf;
 
   public AppConfiguraiton(Configuration origAppConf,
       VultureConfiguration vultureConf) {
-    init(origAppConf, vultureConf);
+    init(new HideExceptionConfiguration(origAppConf), vultureConf);
   }
 
-  private void init(Configuration origAppConf, VultureConfiguration vultureConf) {
+  private void init(HideExceptionConfiguration origAppConf,
+      VultureConfiguration vultureConf) {
     this.origAppConf = origAppConf;
     this.vultureConf = vultureConf;
     maxJobLenSec =
@@ -101,12 +102,48 @@ public class AppConfiguraiton {
   public int getMaxTaskLenSec() {
     return maxTaskLenSec;
   }
-  
+
   public AppPolicy getAppPolicy() {
     return appPolicy;
   }
-  
+
   public TaskPolicy getTaskPolicy() {
     return taskPolicy;
+  }
+
+  /**
+   * If the source of the conf is a url, a possible scenario is that url is no
+   * longer available due to app termination. To hide such exception, we wrap
+   * access the original conf with this class.
+   * 
+   * @author myabandeh
+   * 
+   */
+  private class HideExceptionConfiguration {
+    Configuration conf;
+
+    public HideExceptionConfiguration(Configuration conf) {
+      this.conf = conf;
+    }
+
+    public String get(String param) {
+      String value = null;
+      try {
+        value = conf.get(param);
+      } catch (Exception e) {
+        LOG.warn(e);
+      }
+      return value;
+    }
+
+    public int getInt(String param, int defaultVal) {
+      int value = defaultVal;
+      try {
+        value = conf.getInt(param, defaultVal);
+      } catch (Exception e) {
+        LOG.warn(e);
+      }
+      return value;
+    }
   }
 }

@@ -1,4 +1,4 @@
-package com.twitter.vulture;
+package com.twitter.vulture.conf;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

@@ -2,7 +2,7 @@ package com.twitter.vulture.policy;
 
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 
-import com.twitter.vulture.AppConfiguraiton;
+import com.twitter.vulture.conf.AppConfiguraiton;
 
 public interface AppPolicy {
 

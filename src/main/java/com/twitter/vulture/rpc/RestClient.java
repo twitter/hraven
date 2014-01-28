@@ -1,4 +1,4 @@
-package com.twitter.vulture;
+package com.twitter.vulture.rpc;
 
 import java.io.InputStream;
 
