@@ -126,6 +126,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
    * fields to include in serialized response
    */
   public static class FlowSerializer extends JsonSerializer<Flow> {
+    @SuppressWarnings("deprecation")
     @Override
     public void serialize(Flow aFlow, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
@@ -177,6 +178,8 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getReduceShuffleBytes());
           jsonGenerator.writeFieldName("duration");
           jsonGenerator.writeNumber(aFlow.getDuration());
+          jsonGenerator.writeFieldName("wallClockTime");
+          jsonGenerator.writeNumber(aFlow.getWallClockTime());
           jsonGenerator.writeFieldName("cluster");
           jsonGenerator.writeString(aFlow.getCluster());
           jsonGenerator.writeFieldName("appId");
