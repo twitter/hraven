@@ -4,6 +4,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskReport;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 
+import com.twitter.vulture.conf.AppConfiguraiton;
 import com.twitter.vulture.conf.VultureConfiguration;
 
 public class Notifier {
@@ -16,22 +17,28 @@ public class Notifier {
     DRYRUN = vConf.isDryRun();
   }
 
-  public static void tooLongApp(ApplicationReport appReport, long duration,
+  public static void tooLongApp(AppConfiguraiton appConf, ApplicationReport appReport, long duration,
       long max) {
     String body = longAppMsg(appReport, duration, max);
     if (DRYRUN)
       body += DRYRUN_NOTE;
-    Mail.send(SUBJECT, body);
+    if (appConf.getNotifyUser())
+      Mail.send(SUBJECT, body, appReport.getUser());
+    else
+      Mail.send(SUBJECT, body);
   }
 
-  public static void tooLongTaskAttempt(ApplicationReport appReport,
+  public static void tooLongTaskAttempt(AppConfiguraiton appConf, ApplicationReport appReport,
       TaskReport taskReport, TaskAttemptID taskAttemptId, long duration,
       long max) {
     String body =
         longTaskMsg(appReport, taskReport, taskAttemptId, duration, max);
     if (DRYRUN)
       body += "\n" + DRYRUN_NOTE;
-    Mail.send(SUBJECT, body);
+    if (appConf.getNotifyUser())
+      Mail.send(SUBJECT, body, appReport.getUser());
+    else
+      Mail.send(SUBJECT, body);
   }
 
   public static String longTaskMsg(ApplicationReport appReport,

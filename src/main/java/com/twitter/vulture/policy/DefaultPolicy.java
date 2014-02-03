@@ -13,11 +13,13 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.twitter.vulture.conf.AppConfiguraiton;
+import com.twitter.vulture.conf.VultureConfiguration;
 import com.twitter.vulture.notification.Notifier;
 
 public class DefaultPolicy implements AppPolicy, TaskPolicy {
   public static final Log LOG = LogFactory.getLog(DefaultPolicy.class);
   private static DefaultPolicy INSTANCE = new DefaultPolicy();
+
   public static DefaultPolicy getInstance() {
     return INSTANCE;
   }
@@ -35,10 +37,11 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
     final long start = appReport.getStartTime();
     final long currTime = System.currentTimeMillis();
     final long duration = currTime - start;
-    final long maxJobLenSec = appConf.getMaxJobLenSec();
-    if (duration > maxJobLenSec * 1000) {
-      Notifier.tooLongApp(appReport, duration, maxJobLenSec * 1000);
-      return false;
+    final long maxJobLenMs = appConf.getMaxJobLenMin() * 60 * 1000;
+    if (duration > maxJobLenMs) {
+      Notifier.tooLongApp(appConf, appReport, duration, maxJobLenMs);
+      if (appConf.isEnforced(VultureConfiguration.JOB_MAX_LEN_MIN))
+        return false;
     }
     return true;
   }
@@ -53,13 +56,13 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
    * @return true if task is well-behaved
    */
   @Override
-  public boolean checkTask(ApplicationReport appReport, TaskType taskType, TaskReport taskReport,
-      AppConfiguraiton appConf, long currTime) {
+  public boolean checkTask(ApplicationReport appReport, TaskType taskType,
+      TaskReport taskReport, AppConfiguraiton appConf, long currTime) {
     long startTime = taskReport.getStartTime();
     long runTime = currTime - startTime;
-    long maxRunTime = appConf.getMaxTaskLenSec();
+    long maxRunTimeMs = appConf.getMaxTaskLenMin(taskType) * 60 * 1000;
     TIPStatus tStatus = taskReport.getCurrentStatus();
-    boolean badTask = (tStatus == TIPStatus.RUNNING && runTime > maxRunTime);
+    boolean badTask = (tStatus == TIPStatus.RUNNING && runTime > maxRunTimeMs);
     return !badTask;
   }
 
@@ -74,9 +77,10 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
    * @param taskAttemptXml The task attempt detail in xml format
    * @return true if task attempt is well-behaved
    */
-  public boolean checkTaskAttempt(ApplicationReport appReport, TaskType taskType, TaskReport taskReport, AppConfiguraiton appConf, 
+  public boolean checkTaskAttempt(ApplicationReport appReport,
+      TaskType taskType, TaskReport taskReport, AppConfiguraiton appConf,
       TaskAttemptID taskAttemptId, Document taskAttemptXml) {
-    long maxRunTime = appConf.getMaxTaskLenSec();
+    long maxRunTimeMs = appConf.getMaxTaskLenMin(taskType) * 60 * 1000;
     // Iterating through the nodes and extracting the data.
     NodeList nodeList = taskAttemptXml.getDocumentElement().getChildNodes();
     for (int i = 0; i < nodeList.getLength(); i++) {
@@ -86,35 +90,23 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
         if (name.equals("elapsedTime")) {
           String timeStr = node.getTextContent();
           long timeMs = Long.parseLong(timeStr);
-          LOG.info(name + " = " + timeMs + " ? " + maxRunTime);
-          boolean badTask = (timeMs > maxRunTime);
-          if (badTask)
-            Notifier.tooLongTaskAttempt(appReport, taskReport, taskAttemptId, timeMs, maxRunTime);
-          return !badTask;
+          LOG.info(name + " = " + timeMs + " ? " + maxRunTimeMs);
+          boolean badTask = (timeMs > maxRunTimeMs);
+          if (badTask) {
+            Notifier.tooLongTaskAttempt(appConf, appReport, taskReport,
+                taskAttemptId, timeMs, maxRunTimeMs);
+            if (taskType == TaskType.MAP
+                && appConf.isEnforced(VultureConfiguration.MAP_MAX_RUNTIME_MIN))
+              return false;
+            if (taskType == TaskType.REDUCE
+                && appConf
+                    .isEnforced(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN))
+              return false;
+          }
+          break;
         }
       }
     }
-    return false;
+    return true;
   }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

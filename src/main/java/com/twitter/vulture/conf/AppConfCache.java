@@ -14,7 +14,7 @@ public class AppConfCache extends
 
   private final int maxEntries;
 
-  private static AppConfCache INSTANCE = null;
+  private static volatile AppConfCache INSTANCE = null;
 
   synchronized public static void init(VultureConfiguration conf) {
     if (INSTANCE != null)

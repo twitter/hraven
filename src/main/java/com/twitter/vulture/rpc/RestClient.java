@@ -32,14 +32,13 @@ public class RestClient {
           try {
             return docBldrFactory.newDocumentBuilder();
           } catch (ParserConfigurationException e) {
-            LOG.fatal(e);
-            e.printStackTrace();
+            LOG.fatal("Error in parsing XML", e);
             return null;
           }
         }
       };
 
-  private static RestClient SINGLTON = new RestClient();
+  private final static RestClient SINGLTON = new RestClient();
 
   /**
    * @return the singlton instance

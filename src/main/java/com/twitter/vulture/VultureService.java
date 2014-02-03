@@ -5,9 +5,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -112,27 +111,20 @@ public class VultureService {
    * required memory space.
    */
   class BlockingExecutor extends ThreadPoolExecutor {
-    Semaphore availableThreads;
 
     public BlockingExecutor(int corePoolSize, ThreadFactory threadFactory) {
-      super(corePoolSize, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
-          new SynchronousQueue<Runnable>(), threadFactory);
-      availableThreads = new Semaphore(corePoolSize);
+      super(corePoolSize, corePoolSize, 0L, TimeUnit.MILLISECONDS,
+          new LinkedBlockingQueue<Runnable>(), threadFactory);
     }
 
     protected void beforeExecute(Thread t, Runnable r) {
-      LOG.info("CHECKING THREAD AVAILABILTIY "
-          + availableThreads.availablePermits());
-      availableThreads.acquireUninterruptibly();
-      LOG.info("THREAD SLOT ACQUIRED");
+      LOG.debug("THREAD SLOT ACQUIRED " + this.getPoolSize());
       super.beforeExecute(t, r);
     }
 
     protected void afterExecute(Runnable r, Throwable t) {
       super.afterExecute(r, t);
-      LOG.info("RELEASING THREAD SLOT");
-      availableThreads.release();
-      LOG.info("THREAD SLOT RELEASED");
+      LOG.debug("THREAD SLOT RELEASED current: " + this.getPoolSize());
       if (t == null && r instanceof Future<?>) {
         try {
           ((Future<?>) r).get();
@@ -145,7 +137,7 @@ public class VultureService {
         }
       }
       if (t != null)
-        LOG.fatal(t);
+        LOG.fatal("Error in running task", t);
     }
   }
 }

@@ -1,49 +1,47 @@
 package com.twitter.vulture.conf;
 
+import java.util.Enumeration;
+import java.util.Properties;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.TaskType;
 
 import com.twitter.vulture.policy.AppPolicy;
 import com.twitter.vulture.policy.DefaultPolicy;
 import com.twitter.vulture.policy.TaskPolicy;
 
+import static com.twitter.vulture.conf.VultureConfiguration.*;
+
 /**
  * The conf objects can be quite big. Here we solicit the parts relevant to
  * Vulture.
  */
-public class AppConfiguraiton {
+public class AppConfiguraiton extends Configuration {
   public static final Log LOG = LogFactory.getLog(AppConfiguraiton.class);
-  private int maxJobLenSec;
-  private int maxTaskLenSec;
   private AppPolicy appPolicy;
   private TaskPolicy taskPolicy;
-  private HideExceptionConfiguration origAppConf;
   private Configuration vultureConf;
 
   public AppConfiguraiton(Configuration origAppConf,
       VultureConfiguration vultureConf) {
+    super(false);// don't load default resources
     init(new HideExceptionConfiguration(origAppConf), vultureConf);
   }
 
   private void init(HideExceptionConfiguration origAppConf,
       VultureConfiguration vultureConf) {
-    this.origAppConf = origAppConf;
     this.vultureConf = vultureConf;
-    maxJobLenSec =
-        get(VultureConfiguration.MAX_JOB_LEN_SEC,
-            VultureConfiguration.DEFAULT_MAX_JOB_LEN_SEC);
-    maxTaskLenSec =
-        get(VultureConfiguration.TASK_MAX_RUNTIME_MS,
-            VultureConfiguration.DEFAULT_TASK_MAX_RUNTIME_MS);
-    appPolicy = extractAppPolicy();
-    taskPolicy = extractTaskPolicy();
-    // Release the pointers
-    this.origAppConf = null;
-    this.vultureConf = null;
+    origAppConf.loadPropsTo(this, VultureConfiguration.VULTURE_PREFIX);
+    origAppConf.loadPropsTo(this, VultureConfiguration.JOB_MAX_LEN_MIN);
+    origAppConf.loadPropsTo(this, VultureConfiguration.MAP_MAX_RUNTIME_MIN);
+    origAppConf.loadPropsTo(this, VultureConfiguration.REDUCE_MAX_RUNTIME_MIN);
+    appPolicy = extractAppPolicy(origAppConf);
+    taskPolicy = extractTaskPolicy(origAppConf);
   }
 
-  private AppPolicy extractAppPolicy() {
+  private AppPolicy extractAppPolicy(HideExceptionConfiguration origAppConf) {
     String policyClassName =
         origAppConf.get(VultureConfiguration.APP_POLICY_CLASS);
     if (policyClassName == null)
@@ -56,7 +54,7 @@ public class AppConfiguraiton {
     return DefaultPolicy.getInstance();
   }
 
-  private TaskPolicy extractTaskPolicy() {
+  private TaskPolicy extractTaskPolicy(HideExceptionConfiguration origAppConf) {
     String policyClassName =
         origAppConf.get(VultureConfiguration.TASK_POLICY_CLASS);
     if (policyClassName == null)
@@ -89,18 +87,48 @@ public class AppConfiguraiton {
     return DefaultPolicy.getInstance();
   }
 
-  private int get(String param, int defaultValue) {
+  public int getInt(String param, int defaultValue) {
     int vultureDefault = vultureConf.getInt(param, defaultValue);
-    int value = origAppConf.getInt(param, vultureDefault);
+    int value = super.getInt(param, vultureDefault);
     return value;
   }
 
-  public int getMaxJobLenSec() {
-    return maxJobLenSec;
+  public boolean getBoolean(String param, boolean defaultValue) {
+    boolean vultureDefault = vultureConf.getBoolean(param, defaultValue);
+    boolean value = super.getBoolean(param, vultureDefault);
+    return value;
   }
 
-  public int getMaxTaskLenSec() {
-    return maxTaskLenSec;
+  public int getMaxJobLenMin() {
+    return getInt(VultureConfiguration.JOB_MAX_LEN_MIN,
+        VultureConfiguration.DEFAULT_JOB_MAX_LEN_MIN);
+  }
+
+  public int getMaxTaskLenMin(TaskType taskType) {
+    switch (taskType) {
+    case MAP:
+      return getMaxMapLenMin();
+    case REDUCE:
+      return getMaxReduceLenMin();
+    default:
+      LOG.error("Unknow task type: " + taskType);
+      return Integer.MAX_VALUE;
+    }
+  }
+
+  public int getMaxMapLenMin() {
+    return getInt(VultureConfiguration.MAP_MAX_RUNTIME_MIN,
+        VultureConfiguration.DEFAULT_MAP_MAX_RUNTIME_MIN);
+  }
+
+  public int getMaxReduceLenMin() {
+    return getInt(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN,
+        VultureConfiguration.DEFAULT_REDUCE_MAX_RUNTIME_MIN);
+  }
+
+  public boolean getNotifyUser() {
+    return getBoolean(VultureConfiguration.NOTIFY_USER,
+        VultureConfiguration.DEFAULT_NOTIFY_USER);
   }
 
   public AppPolicy getAppPolicy() {
@@ -111,19 +139,30 @@ public class AppConfiguraiton {
     return taskPolicy;
   }
 
+  public boolean isEnforced(String param) {
+    boolean enforced =
+        getBoolean(enforced(param), VultureConfiguration.DEFAULT_ENFORCE);
+    return enforced;
+  }
+
   /**
    * If the source of the conf is a url, a possible scenario is that url is no
    * longer available due to app termination. To hide such exception, we wrap
    * access the original conf with this class.
-   * 
-   * @author myabandeh
-   * 
    */
   private class HideExceptionConfiguration {
-    Configuration conf;
+    FilterableConfiguration conf;
 
     public HideExceptionConfiguration(Configuration conf) {
-      this.conf = conf;
+      this.conf = new FilterableConfiguration(conf);
+    }
+
+    void loadPropsTo(Configuration newConf, String prefix) {
+      try {
+        conf.loadPropsTo(newConf, prefix);
+      } catch (Exception e) {
+        LOG.warn("Error in accessing remote conf", e);
+      }
     }
 
     public String get(String param) {
@@ -131,19 +170,29 @@ public class AppConfiguraiton {
       try {
         value = conf.get(param);
       } catch (Exception e) {
-        LOG.warn(e);
+        LOG.warn("Error in accessing remote conf", e);
       }
       return value;
     }
 
-    public int getInt(String param, int defaultVal) {
-      int value = defaultVal;
-      try {
-        value = conf.getInt(param, defaultVal);
-      } catch (Exception e) {
-        LOG.warn(e);
+  }
+
+  private class FilterableConfiguration extends Configuration {
+    FilterableConfiguration(Configuration conf) {
+      super(conf);
+    }
+
+    void loadPropsTo(Configuration newConf, String prefix) {
+      Properties props = this.getProps();
+      Enumeration<?> iter = props.propertyNames();
+      while (iter.hasMoreElements()) {
+        String name = (String) iter.nextElement();
+        if (name.startsWith(prefix)) {
+          String value = props.getProperty(name);
+          newConf.set(name, value);
+        }
       }
-      return value;
     }
   }
+
 }

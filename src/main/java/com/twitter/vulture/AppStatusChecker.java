@@ -1,21 +1,28 @@
 package com.twitter.vulture;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Collection;
 import java.util.concurrent.ThreadFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 //import org.apache.hadoop.mapred.ClientCache;
 import org.apache.hadoop.mapred.ClientServiceDelegate;
+import org.apache.hadoop.mapred.ResourceMgrDelegate;
 import org.apache.hadoop.mapreduce.JobID;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskReport;
 import org.apache.hadoop.mapreduce.TaskType;
+import org.apache.hadoop.mapreduce.TypeConverter;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
+import org.apache.hadoop.yarn.exceptions.YarnRemoteException;
 import org.w3c.dom.Document;
 
+import com.twitter.vulture.conf.AppConfCache;
 import com.twitter.vulture.conf.AppConfiguraiton;
 import com.twitter.vulture.conf.VultureConfiguration;
 import com.twitter.vulture.rpc.ClientCache;
@@ -35,36 +42,98 @@ public class AppStatusChecker implements Runnable {
   private JobID jobId;
   private ApplicationReport appReport;
   private AppConfiguraiton appConf;
+  private ResourceMgrDelegate rmDelegate;
   /**
    * The interface to MRAppMaster
    */
   private ClientServiceDelegate clientService;
   private ClientCache clientCache;
+  private AppConfCache appConfCache = AppConfCache.getInstance();
 
   private VultureConfiguration vConf;
 
-  public AppStatusChecker(VultureConfiguration conf, AppConfiguraiton appConf,
-      ApplicationReport appReport, JobID jobId,
-      ClientCache clientCache) {
+  public AppStatusChecker(VultureConfiguration conf,
+      ApplicationReport appReport, ClientCache clientCache,
+      ResourceMgrDelegate rmDelegate) {
     this.appReport = appReport;
     this.appId = appReport.getApplicationId();
+    JobID jobId = TypeConverter.fromYarn(appReport.getApplicationId());
     this.jobId = jobId;
     this.clientCache = clientCache;
     LOG.info("getting a client connection for " + appReport.getApplicationId());
     this.vConf = conf;
+    this.rmDelegate = rmDelegate;
+  }
+
+  void init() {
+    AppConfiguraiton appConf = getAppConf(appReport);
     this.appConf = appConf;
   }
 
+  boolean checkApp() {
+    boolean passCheck =
+        appConf.getAppPolicy().checkAppStatus(appReport, appConf);
+    if (!passCheck)
+      killApp(appReport);
+    return passCheck;
+  }
 
   @Override
   public void run() {
     // 0. set thread name
     setThreadName();
     LOG.info("Running " + Thread.currentThread().getName());
+    init();
+    if (!checkApp())
+      return;
     clientService = clientCache.getClient(jobId);
     checkTasks(TaskType.MAP);
     checkTasks(TaskType.REDUCE);
     clientCache.stopClient(jobId);
+  }
+
+  private AppConfiguraiton getAppConf(ApplicationReport appReport) {
+    ApplicationId appId = appReport.getApplicationId();
+    AppConfiguraiton appConf = appConfCache.get(appId);
+    if (appConf != null)
+      return appConf;
+    String xmlUrlStr = buildXmlUrl(appReport);
+    URL xmlUrl;
+    try {
+      xmlUrl = new URL(xmlUrlStr);
+      Configuration origAppConf = new Configuration(false);
+      origAppConf.addResource(xmlUrl);
+      appConf = new AppConfiguraiton(origAppConf, vConf);
+      appConfCache.put(appId, appConf);
+    } catch (MalformedURLException e) {
+      System.out.println(e);
+      e.printStackTrace();
+    }
+    return appConf;
+  }
+
+  // e.g. URL: http://atla-bar-41-sr1.prod.twttr.net:50030/
+  // proxy/application_1385075571494_429386/conf
+  private String buildXmlUrl(ApplicationReport appReport) {
+    String trackingUrl = appReport.getTrackingUrl();
+    String xmlUrl = "http://" + trackingUrl + "conf";
+    return xmlUrl;
+  }
+
+  /**
+   * kill an application.
+   * 
+   * @param appReport
+   */
+  private void killApp(ApplicationReport appReport) {
+    LOG.info("KILLING job " + appReport.getApplicationId());
+    if (vConf.isDryRun())
+      return;
+    try {
+      rmDelegate.killApplication(appReport.getApplicationId());
+    } catch (YarnRemoteException e) {
+      LOG.error("Error in killing job " + appReport.getApplicationId(), e);
+    }
   }
 
   /**
@@ -84,20 +153,17 @@ public class AppStatusChecker implements Runnable {
         checkTask(taskType, taskReport, currTime);
       }
     } catch (IOException e) {
-      LOG.error(e);
-      e.printStackTrace();
+      LOG.error("Error in getting task reports of job " + jobId, e);
     }
   }
 
   /**
    * Check the status of a task
    * 
-   * This method can be overridden to define new policies
-   * 
    * @param taskReport
    * @param currTime
    */
-  protected void checkTask(TaskType taskType, TaskReport taskReport,
+  private void checkTask(TaskType taskType, TaskReport taskReport,
       long currTime) {
     boolean okTask =
         appConf.getTaskPolicy().checkTask(appReport, taskType, taskReport,
@@ -120,8 +186,7 @@ public class AppStatusChecker implements Runnable {
       try {
         taskAttemptXml = RestClient.getInstance().getXml(xmlUrl);
       } catch (RestException e) {
-        LOG.error(e);
-        e.printStackTrace();
+        LOG.error("Error in connecting to REST api from " + xmlUrl, e);
         return;
       }
       boolean okAttempt =
@@ -150,12 +215,10 @@ public class AppStatusChecker implements Runnable {
   /**
    * Kill a task attempt
    * 
-   * This method can be overridden to adapt to new/old hadoop APIs
-   * 
    * @param taskReport
    * @param taskAttemptId
    */
-  protected void killTaskAttempt(TaskReport taskReport,
+  private void killTaskAttempt(TaskReport taskReport,
       TaskAttemptID taskAttemptId) {
     LOG.warn("KILLING " + taskAttemptId);
     if (vConf.isDryRun())
@@ -163,8 +226,7 @@ public class AppStatusChecker implements Runnable {
     try {
       clientService.killTask(taskAttemptId, true);
     } catch (IOException e) {
-      LOG.warn(e);
-      e.printStackTrace();
+      LOG.warn("Error in killing task " + taskAttemptId, e);
     }
   }
 

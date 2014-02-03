@@ -41,11 +41,11 @@ public class Mail {
     try {
       p = pb.start();
       exitValue = p.waitFor();
-      LOG.info("Send mail to " + to);
+      LOG.info("Send email to " + to + " exitValue is " + exitValue);
     } catch (IOException e) {
-      LOG.error(e);
+      LOG.error("Error in executing mail command", e);
     } catch (InterruptedException e) {
-      LOG.error(e);
+      LOG.error("Error in executing mail command", e);
     } finally {
       if (exitValue != 0) {
         LOG.info(commands);

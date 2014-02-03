@@ -6,7 +6,7 @@
   <packaging>jar</packaging>
   <version>1.0-SNAPSHOT</version>
   <name>vulture</name>
-  <url>http://maven.apache.org</url>
+  <url>http://www.twitter.com</url>
 
   <repositories>
     <repository>
