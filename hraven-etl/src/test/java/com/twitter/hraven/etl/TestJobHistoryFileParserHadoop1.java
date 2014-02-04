@@ -38,7 +38,7 @@ public class TestJobHistoryFileParserHadoop1 {
   public void testNullMegaByteMills() {
     JobHistoryFileParserHadoop1 historyFileParser1 = new JobHistoryFileParserHadoop1();
     assertNotNull(historyFileParser1);
-    Long mbMillis = historyFileParser1.getMegaByteMillis(null);
+    Long mbMillis = historyFileParser1.getMegaByteMillis();
     assertEquals(Constants.NOTFOUND_VALUE, mbMillis);
   }
 
@@ -57,18 +57,17 @@ public class TestJobHistoryFileParserHadoop1 {
     // confirm that we get back an object that can parse hadoop 1.0 files
     assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop1);
 
+    final String JOB_CONF_FILENAME = "src/test/resources/job_1329348432655_0001_conf.xml";
+    Configuration jobConf = new Configuration();
+    jobConf.addResource(new Path(JOB_CONF_FILENAME));
+
     JobKey jobKey = new JobKey("cluster1", "user1", "Sleep", 1, "job_201311192236_3583");
-    historyFileParser.parse(contents, jobKey);
+    historyFileParser.parse(contents, jobKey, jobConf);
 
     List<Put> jobPuts = historyFileParser.getJobPuts();
     assertNotNull(jobPuts);
 
-    // now load the conf file and check
-    final String JOB_CONF_FILENAME = "src/test/resources/job_1329348432655_0001_conf.xml";
-
-    Configuration jobConf = new Configuration();
-    jobConf.addResource(new Path(JOB_CONF_FILENAME));
-    Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+    Long mbMillis = historyFileParser.getMegaByteMillis();
     Long expValue = 2981062L;
     assertEquals(expValue, mbMillis);
   }

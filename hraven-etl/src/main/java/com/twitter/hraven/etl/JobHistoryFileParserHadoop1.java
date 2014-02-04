@@ -40,17 +40,19 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			.getLog(JobHistoryFileParserHadoop1.class);
 
 	private JobHistoryListener jobHistoryListener = null;
+	private Configuration jobConf = null;
 
 	/**
 	 * {@inheritDoc}
 	 * 
 	 */
 	@Override
-	public void parse(byte[] historyFile, JobKey jobKey)
+	public void parse(byte[] historyFile, JobKey jobKey, Configuration jobConf)
 			throws ProcessingException {
 
 		try {
 			jobHistoryListener = new JobHistoryListener(jobKey);
+			this.jobConf = jobConf;
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 			// set the hadoop version for this record
 			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), 
@@ -103,7 +105,7 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
    * and max map and reduce tasks on that cluster
    */
   @Override
-  public Long getMegaByteMillis(Configuration jobConf) {
+  public Long getMegaByteMillis() {
 
     if (jobHistoryListener == null ) {
       LOG.error("Cannot call getMegaByteMillis before parsing the history file!");

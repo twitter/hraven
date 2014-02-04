@@ -26,6 +26,7 @@ import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
+import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.TaskKeyConverter;
 import java.io.File;
 import java.io.IOException;
@@ -55,8 +56,15 @@ public class TestJobHistoryFileParserHadoop2 {
     // confirm that we get back an object that can parse hadoop 2.0 files
     assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
 
+    // now load the conf file and check
+    final String JOB_CONF_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001_conf.xml";
+
+    Configuration jobConf = new Configuration();
+    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
+
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
-    historyFileParser.parse(contents, jobKey);
+    historyFileParser.parse(contents, jobKey, jobConf);
 
     List<Put> jobPuts = historyFileParser.getJobPuts();
     assertEquals(5, jobPuts.size());
@@ -132,19 +140,30 @@ public class TestJobHistoryFileParserHadoop2 {
 
     // check post processing for megabytemillis
     // first with empty job conf
-    Long mbMillis = historyFileParser.getMegaByteMillis(null);
-    assertNull(mbMillis);
-
-    // now load the conf file and check
-    final String JOB_CONF_FILE_NAME =
-        "src/test/resources/job_1329348432655_0001_conf.xml";
-
-    Configuration jobConf = new Configuration();
-    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
-    mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+    Long mbMillis = historyFileParser.getMegaByteMillis();
     assertNotNull(mbMillis);
     Long expValue = 10390016L;
     assertEquals(expValue, mbMillis);
+  }
+
+  @Test(expected=ProcessingException.class)
+  public void testCreateJobHistoryFileParserNullConf() throws IOException {
+
+    final String JOB_HISTORY_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001-1329348443227-user-Sleep+job-1329348468601-10-1-SUCCEEDED-default.jhist";
+
+    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
+    byte[] contents = Files.toByteArray(jobHistoryfile);
+    JobHistoryFileParser historyFileParser =
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents);
+    assertNotNull(historyFileParser);
+
+    // confirm that we get back an object that can parse hadoop 2.0 files
+    assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
+
+    JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
+    // pass in null as jobConf and confirm the exception thrown
+    historyFileParser.parse(contents, jobKey, null);
   }
 
   @Test
@@ -161,18 +180,16 @@ public class TestJobHistoryFileParserHadoop2 {
     // confirm that we get back an object that can parse hadoop 2.0 files
     assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
-    historyFileParser.parse(contents, jobKey);
-
-    // now load the conf file and check
     final String JOB_CONF_FILE_NAME =
         "src/test/resources/job_1329348432655_0001_conf.xml";
-
     Configuration jobConf = new Configuration();
     jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
+    historyFileParser.parse(contents, jobKey, jobConf);
+
     // this history file has only map slot millis no reduce millis
-    Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+    Long mbMillis = historyFileParser.getMegaByteMillis();
     assertNotNull(mbMillis);
-    Long expValue = 10441216L;
+    Long expValue = 10402816L;
     assertEquals(expValue, mbMillis);
   }
 

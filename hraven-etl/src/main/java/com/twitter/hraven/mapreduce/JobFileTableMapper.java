@@ -185,7 +185,7 @@ public class JobFileTableMapper extends
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
     		  .createJobHistoryFileParser(historyFileContents);
 
-      historyFileParser.parse(historyFileContents, jobKey);
+      historyFileParser.parse(historyFileContents, jobKey, jobConf);
       context.progress();
 
       puts = historyFileParser.getJobPuts();
@@ -220,7 +220,7 @@ public class JobFileTableMapper extends
       }
 
       /** post processing steps on job puts and job conf puts */
-      Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+      Long mbMillis = historyFileParser.getMegaByteMillis();
       context.progress();
       if (mbMillis == null) {
         throw new ProcessingException(" Unable to get megabyte millis calculation for this record!"

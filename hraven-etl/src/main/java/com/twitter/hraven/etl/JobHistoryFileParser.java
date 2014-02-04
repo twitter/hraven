@@ -35,7 +35,7 @@ public interface JobHistoryFileParser {
 	 * 
 	 * @throws ProcessingException
 	 */
-	public void parse(byte[] historyFile, JobKey jobKey);
+	public void parse(byte[] historyFile, JobKey jobKey, Configuration jobConf);
 
 	/**
 	 * Calculates the megabytmillis taken up by this job
@@ -43,7 +43,7 @@ public interface JobHistoryFileParser {
 	 * since the values it needs for calculations are
 	 * populated in the parser object while parsing
 	 */
-	public Long getMegaByteMillis(Configuration jobConf);
+	public Long getMegaByteMillis();
 
 	/**
 	 * Return the generated list of job puts assembled when history file is

@@ -61,6 +61,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   boolean uberized = false;
+  private Configuration jobConf;
 
   /** explicitly initializing map millis and
    * reduce millis in case it's not found
@@ -197,11 +198,13 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * {@inheritDoc}
    */
   @Override
-  public void parse(byte[] historyFileContents, JobKey jobKey) throws ProcessingException {
+  public void parse(byte[] historyFileContents, JobKey jobKey, Configuration jobConf)
+      throws ProcessingException {
 
     this.jobKey = jobKey;
     this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
     setJobId(jobKey.getJobId().getJobIdString());
+    this.jobConf = jobConf;
 
     try {
       FSDataInputStream in =
@@ -626,17 +629,45 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
     byte[] groupPrefix = Bytes.add(counterPrefix, Bytes.toBytes(groupName), Constants.SEP_BYTES);
     byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
-    p.add(family, qualifier, Bytes.toBytes(counterValue));
 
     /**
      * populate map and reduce slot millis
      */
     if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
+      if (jobConf == null) {
+        throw new ProcessingException("While correcting slot millis, jobConf is null ?!");
+      }
+      long yarnSchedulerMinMB = this.jobConf.getLong(Constants.YARN_SCHEDULER_MIN_MB,
+            Constants.DEFAULT_YARN_SCHEDULER_MIN_MB);
+      long mapMemoryMB = this.jobConf.getLong(Constants.MAP_MEMORY_MB_CONF_KEY, 0L);
+      if (mapMemoryMB == 0L ) {
+        throw new ProcessingException(Constants.MAP_MEMORY_MB_CONF_KEY + " is null in jobConf? ");
+      }
+      LOG.info("Updating " + counterName + " from " + counterValue + " based on "
+          + Constants.YARN_SCHEDULER_MIN_MB + ": " + yarnSchedulerMinMB + " and "
+          + Constants.MAP_MEMORY_MB_CONF_KEY + ": " + mapMemoryMB);
+      counterValue = counterValue * yarnSchedulerMinMB / mapMemoryMB;
       this.mapSlotMillis = counterValue;
     }
     if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
+      if (jobConf == null) {
+        throw new ProcessingException("While correcting slot millis, jobConf is null ?!");
+      }
+      long yarnSchedulerMinMB = this.jobConf.getLong(Constants.YARN_SCHEDULER_MIN_MB,
+            Constants.DEFAULT_YARN_SCHEDULER_MIN_MB);
+      long reduceMemoryMB = this.jobConf.getLong(Constants.REDUCE_MEMORY_MB_CONF_KEY, 0L);
+      if (reduceMemoryMB == 0L ) {
+        throw new ProcessingException(Constants.REDUCE_MEMORY_MB_CONF_KEY + " is null in jobConf? ");
+      }
+      LOG.info("Updating " + counterName + " from " + counterValue + " based on "
+          + Constants.YARN_SCHEDULER_MIN_MB + ": " + yarnSchedulerMinMB + " and "
+          + Constants.REDUCE_MEMORY_MB_CONF_KEY + ": " + reduceMemoryMB);
+      counterValue = counterValue * yarnSchedulerMinMB / reduceMemoryMB;
       this.reduceSlotMillis = counterValue;
     }
+
+    p.add(family, qualifier, Bytes.toBytes(counterValue));
+
   }
 
   /**
@@ -709,7 +740,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    *        yarn.app.mapreduce.am.resource.mb * job run time
    */
   @Override
-  public Long getMegaByteMillis(Configuration jobConf) {
+  public Long getMegaByteMillis() {
 
     if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE)
     {
