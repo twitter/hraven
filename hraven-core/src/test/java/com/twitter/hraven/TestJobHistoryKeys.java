@@ -25,7 +25,7 @@ public class TestJobHistoryKeys {
       applicationAttemptId, containerId, nodeManagerHost,
       successfulAttemptId, failedDueToAttempt,
       workflowId, workflowName, workflowNodeName,
-      workflowAdjacencies, locality, avataar,
+      workflowAdjacencies, locality, avataar, diagnostics,
       hadoopversion, nodeManagerPort, nodeManagerHttpPort,
       acls, uberized, shufflePort, mapFinishTime,
       port, rackname, clockSplits, cpuUsages,
