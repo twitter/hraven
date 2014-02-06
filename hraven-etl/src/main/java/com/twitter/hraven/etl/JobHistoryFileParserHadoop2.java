@@ -631,43 +631,49 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
 
     /**
-     * populate map and reduce slot millis
+     * correct and populate map and reduce slot millis
      */
-    if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
-      if (jobConf == null) {
-        throw new ProcessingException("While correcting slot millis, jobConf is null ?!");
-      }
-      long yarnSchedulerMinMB = this.jobConf.getLong(Constants.YARN_SCHEDULER_MIN_MB,
-            Constants.DEFAULT_YARN_SCHEDULER_MIN_MB);
-      long mapMemoryMB = this.jobConf.getLong(Constants.MAP_MEMORY_MB_CONF_KEY, 0L);
-      if (mapMemoryMB == 0L ) {
-        throw new ProcessingException(Constants.MAP_MEMORY_MB_CONF_KEY + " is null in jobConf? ");
-      }
-      LOG.info("Updating " + counterName + " from " + counterValue + " based on "
-          + Constants.YARN_SCHEDULER_MIN_MB + ": " + yarnSchedulerMinMB + " and "
-          + Constants.MAP_MEMORY_MB_CONF_KEY + ": " + mapMemoryMB);
-      counterValue = counterValue * yarnSchedulerMinMB / mapMemoryMB;
-      this.mapSlotMillis = counterValue;
-    }
-    if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
-      if (jobConf == null) {
-        throw new ProcessingException("While correcting slot millis, jobConf is null ?!");
-      }
-      long yarnSchedulerMinMB = this.jobConf.getLong(Constants.YARN_SCHEDULER_MIN_MB,
-            Constants.DEFAULT_YARN_SCHEDULER_MIN_MB);
-      long reduceMemoryMB = this.jobConf.getLong(Constants.REDUCE_MEMORY_MB_CONF_KEY, 0L);
-      if (reduceMemoryMB == 0L ) {
-        throw new ProcessingException(Constants.REDUCE_MEMORY_MB_CONF_KEY + " is null in jobConf? ");
-      }
-      LOG.info("Updating " + counterName + " from " + counterValue + " based on "
-          + Constants.YARN_SCHEDULER_MIN_MB + ": " + yarnSchedulerMinMB + " and "
-          + Constants.REDUCE_MEMORY_MB_CONF_KEY + ": " + reduceMemoryMB);
-      counterValue = counterValue * yarnSchedulerMinMB / reduceMemoryMB;
-      this.reduceSlotMillis = counterValue;
+    if ((Constants.SLOTS_MILLIS_MAPS.equals(counterName)) ||
+        (Constants.SLOTS_MILLIS_REDUCES.equals(counterName))) {
+      counterValue = getUpdatedCounterValue(counterName, counterValue);
     }
 
     p.add(family, qualifier, Bytes.toBytes(counterValue));
 
+  }
+
+  private long getMemoryMb(String key) {
+    long memoryMb = 0L;
+    memoryMb = this.jobConf.getLong(key, 0L);
+    if (memoryMb == 0L) {
+      throw new ProcessingException("While correcting slot millis, why is"
+          + " map/reduce memory mb 0? ");
+    }
+    return memoryMb;
+  }
+
+  private Long getUpdatedCounterValue(String counterName, Long counterValue) {
+    if (jobConf == null) {
+      throw new ProcessingException("While correcting slot millis, jobConf is null ?!");
+    }
+    long yarnSchedulerMinMB = this.jobConf.getLong(Constants.YARN_SCHEDULER_MIN_MB,
+          Constants.DEFAULT_YARN_SCHEDULER_MIN_MB);
+    long updatedCounterValue = 0L;
+    long memoryMb = 0L;
+    if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
+      memoryMb = getMemoryMb(Constants.MAP_MEMORY_MB_CONF_KEY);
+      updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
+      this.mapSlotMillis = updatedCounterValue;
+    } else {
+      memoryMb = getMemoryMb(Constants.REDUCE_MEMORY_MB_CONF_KEY);
+      updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
+      this.reduceSlotMillis = updatedCounterValue;
+    }
+
+    LOG.info("Updated " + counterName + " from " + counterValue + " to " + updatedCounterValue
+        + " based on " + Constants.YARN_SCHEDULER_MIN_MB + ": " + yarnSchedulerMinMB
+        + " and memory mb: " + memoryMb);
+    return updatedCounterValue;
   }
 
   /**
