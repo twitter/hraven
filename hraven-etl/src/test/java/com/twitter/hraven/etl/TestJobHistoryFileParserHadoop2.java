@@ -48,22 +48,21 @@ public class TestJobHistoryFileParserHadoop2 {
 
     File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
     byte[] contents = Files.toByteArray(jobHistoryfile);
+    // now load the conf file and check
+    final String JOB_CONF_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001_conf.xml";
+    Configuration jobConf = new Configuration();
+    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
+
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
     assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
 
-    // now load the conf file and check
-    final String JOB_CONF_FILE_NAME =
-        "src/test/resources/job_1329348432655_0001_conf.xml";
-
-    Configuration jobConf = new Configuration();
-    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
-
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
-    historyFileParser.parse(contents, jobKey, jobConf);
+    historyFileParser.parse(contents, jobKey);
 
     List<Put> jobPuts = historyFileParser.getJobPuts();
     assertEquals(5, jobPuts.size());
@@ -154,7 +153,7 @@ public class TestJobHistoryFileParserHadoop2 {
     File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
     byte[] contents = Files.toByteArray(jobHistoryfile);
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, null);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
@@ -162,7 +161,7 @@ public class TestJobHistoryFileParserHadoop2 {
 
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
     // pass in null as jobConf and confirm the exception thrown
-    historyFileParser.parse(contents, jobKey, null);
+    historyFileParser.parse(contents, jobKey);
   }
 
   @Test
@@ -172,18 +171,19 @@ public class TestJobHistoryFileParserHadoop2 {
 
     File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
     byte[] contents = Files.toByteArray(jobHistoryfile);
+    final String JOB_CONF_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001_conf.xml";
+    Configuration jobConf = new Configuration();
+    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
+
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
     assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
-    final String JOB_CONF_FILE_NAME =
-        "src/test/resources/job_1329348432655_0001_conf.xml";
-    Configuration jobConf = new Configuration();
-    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
-    historyFileParser.parse(contents, jobKey, jobConf);
+    historyFileParser.parse(contents, jobKey);
 
     // this history file has only map slot millis no reduce millis
     Long mbMillis = historyFileParser.getMegaByteMillis();
@@ -204,7 +204,7 @@ public class TestJobHistoryFileParserHadoop2 {
     int intValue10 = 10;
     long longValue10 = 10L;
 
-    JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2();
+    JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2(null);
 
     for(String key: keysToBeChecked) {
       byteValue = jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);
@@ -222,7 +222,7 @@ public class TestJobHistoryFileParserHadoop2 {
     byte[] byteValue = null;
     int intValue10 = 10;
 
-    JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2();
+    JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2(null);
 
     for(String key: keysToBeChecked) {
       byteValue = jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);

@@ -40,19 +40,20 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			.getLog(JobHistoryFileParserHadoop1.class);
 
 	private JobHistoryListener jobHistoryListener = null;
-	private Configuration jobConf = null;
+
+	public JobHistoryFileParserHadoop1(Configuration conf) {
+	  super(conf);
+	}
 
 	/**
 	 * {@inheritDoc}
 	 * 
 	 */
 	@Override
-	public void parse(byte[] historyFile, JobKey jobKey, Configuration jobConf)
-			throws ProcessingException {
+	public void parse(byte[] historyFile, JobKey jobKey) throws ProcessingException {
 
 		try {
 			jobHistoryListener = new JobHistoryListener(jobKey);
-			this.jobConf = jobConf;
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 			// set the hadoop version for this record
 			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), 

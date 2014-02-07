@@ -18,6 +18,7 @@ package com.twitter.hraven.etl;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -38,6 +39,12 @@ import com.twitter.hraven.datasource.ProcessingException;
 public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 
   private static final Log LOG = LogFactory.getLog(JobHistoryFileParserBase.class);
+  protected final Configuration jobConf;
+
+  JobHistoryFileParserBase(Configuration conf) {
+    this.jobConf = conf;
+  }
+
 	/**
 	 * generates a put that sets the hadoop version for a record
 	 * 

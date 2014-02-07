@@ -16,7 +16,6 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import java.util.List;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.ProcessingException;
@@ -35,7 +34,7 @@ public interface JobHistoryFileParser {
 	 * 
 	 * @throws ProcessingException
 	 */
-	public void parse(byte[] historyFile, JobKey jobKey, Configuration jobConf);
+	public void parse(byte[] historyFile, JobKey jobKey);
 
 	/**
 	 * Calculates the megabytmillis taken up by this job

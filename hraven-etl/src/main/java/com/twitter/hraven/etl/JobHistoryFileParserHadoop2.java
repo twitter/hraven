@@ -61,7 +61,6 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   boolean uberized = false;
-  private Configuration jobConf;
 
   /** explicitly initializing map millis and
    * reduce millis in case it's not found
@@ -191,20 +190,20 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
   }
 
-  JobHistoryFileParserHadoop2() {
+  JobHistoryFileParserHadoop2(Configuration conf) {
+    super(conf);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void parse(byte[] historyFileContents, JobKey jobKey, Configuration jobConf)
+  public void parse(byte[] historyFileContents, JobKey jobKey)
       throws ProcessingException {
 
     this.jobKey = jobKey;
     this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
     setJobId(jobKey.getJobId().getJobIdString());
-    this.jobConf = jobConf;
 
     try {
       FSDataInputStream in =

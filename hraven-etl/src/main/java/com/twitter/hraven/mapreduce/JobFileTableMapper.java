@@ -183,9 +183,9 @@ public class JobFileTableMapper extends
         historyFileContents = keyValue.getValue();
       }
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-    		  .createJobHistoryFileParser(historyFileContents);
+    		  .createJobHistoryFileParser(historyFileContents, jobConf);
 
-      historyFileParser.parse(historyFileContents, jobKey, jobConf);
+      historyFileParser.parse(historyFileContents, jobKey);
       context.progress();
 
       puts = historyFileParser.getJobPuts();
