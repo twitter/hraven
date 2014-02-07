@@ -634,7 +634,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
      */
     if ((Constants.SLOTS_MILLIS_MAPS.equals(counterName)) ||
         (Constants.SLOTS_MILLIS_REDUCES.equals(counterName))) {
-      counterValue = getUpdatedCounterValue(counterName, counterValue);
+      counterValue = getStandardizedCounterValue(counterName, counterValue);
     }
 
     p.add(family, qualifier, Bytes.toBytes(counterValue));
@@ -645,33 +645,48 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     long memoryMb = 0L;
     memoryMb = this.jobConf.getLong(key, 0L);
     if (memoryMb == 0L) {
-      throw new ProcessingException("While correcting slot millis, why is"
-          + " map/reduce memory mb 0? ");
+      throw new ProcessingException(
+          "While correcting slot millis, " + key + " was found to be 0 ");
     }
     return memoryMb;
   }
 
-  private Long getUpdatedCounterValue(String counterName, Long counterValue) {
+  /**
+   * Issue #51 in hraven on github
+   * map and reduce slot millis in Hadoop 2.0 are not calculated properly.
+   * They are aproximately 4X off by actual value.
+   * calculate the correct map slot millis as
+   * hadoop2ReportedMapSlotMillis * yarn.scheduler.minimum-allocation-mb
+   *        / mapreduce.mapreduce.memory.mb
+   * similarly for reduce slot millis
+   * @param counterName
+   * @param counterValue
+   * @return corrected counter value
+   */
+  private Long getStandardizedCounterValue(String counterName, Long counterValue) {
     if (jobConf == null) {
-      throw new ProcessingException("While correcting slot millis, jobConf is null ?!");
+      throw new ProcessingException("While correcting slot millis, jobConf is null");
     }
     long yarnSchedulerMinMB = this.jobConf.getLong(Constants.YARN_SCHEDULER_MIN_MB,
           Constants.DEFAULT_YARN_SCHEDULER_MIN_MB);
     long updatedCounterValue = 0L;
     long memoryMb = 0L;
+    String key;
     if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
-      memoryMb = getMemoryMb(Constants.MAP_MEMORY_MB_CONF_KEY);
+      key = Constants.MAP_MEMORY_MB_CONF_KEY;
+      memoryMb = getMemoryMb(key);
       updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
       this.mapSlotMillis = updatedCounterValue;
     } else {
-      memoryMb = getMemoryMb(Constants.REDUCE_MEMORY_MB_CONF_KEY);
+      key = Constants.REDUCE_MEMORY_MB_CONF_KEY;
+      memoryMb = getMemoryMb(key);
       updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
       this.reduceSlotMillis = updatedCounterValue;
     }
 
     LOG.info("Updated " + counterName + " from " + counterValue + " to " + updatedCounterValue
         + " based on " + Constants.YARN_SCHEDULER_MIN_MB + ": " + yarnSchedulerMinMB
-        + " and memory mb: " + memoryMb);
+        + " and " + key + ": " + memoryMb);
     return updatedCounterValue;
   }
 
