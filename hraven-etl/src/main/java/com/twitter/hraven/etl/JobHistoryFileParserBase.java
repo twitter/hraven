@@ -41,7 +41,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
   private static final Log LOG = LogFactory.getLog(JobHistoryFileParserBase.class);
   protected final Configuration jobConf;
 
-  JobHistoryFileParserBase(Configuration conf) {
+  protected JobHistoryFileParserBase(Configuration conf) {
     this.jobConf = conf;
   }
 
