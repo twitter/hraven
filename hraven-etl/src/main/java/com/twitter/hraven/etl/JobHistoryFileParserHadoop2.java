@@ -190,14 +190,16 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
   }
 
-  JobHistoryFileParserHadoop2() {
+  JobHistoryFileParserHadoop2(Configuration conf) {
+    super(conf);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void parse(byte[] historyFileContents, JobKey jobKey) throws ProcessingException {
+  public void parse(byte[] historyFileContents, JobKey jobKey)
+      throws ProcessingException {
 
     this.jobKey = jobKey;
     this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
@@ -626,17 +628,66 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
     byte[] groupPrefix = Bytes.add(counterPrefix, Bytes.toBytes(groupName), Constants.SEP_BYTES);
     byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
-    p.add(family, qualifier, Bytes.toBytes(counterValue));
 
     /**
-     * populate map and reduce slot millis
+     * correct and populate map and reduce slot millis
      */
+    if ((Constants.SLOTS_MILLIS_MAPS.equals(counterName)) ||
+        (Constants.SLOTS_MILLIS_REDUCES.equals(counterName))) {
+      counterValue = getStandardizedCounterValue(counterName, counterValue);
+    }
+
+    p.add(family, qualifier, Bytes.toBytes(counterValue));
+
+  }
+
+  private long getMemoryMb(String key) {
+    long memoryMb = 0L;
+    memoryMb = this.jobConf.getLong(key, 0L);
+    if (memoryMb == 0L) {
+      throw new ProcessingException(
+          "While correcting slot millis, " + key + " was found to be 0 ");
+    }
+    return memoryMb;
+  }
+
+  /**
+   * Issue #51 in hraven on github
+   * map and reduce slot millis in Hadoop 2.0 are not calculated properly.
+   * They are aproximately 4X off by actual value.
+   * calculate the correct map slot millis as
+   * hadoop2ReportedMapSlotMillis * yarn.scheduler.minimum-allocation-mb
+   *        / mapreduce.mapreduce.memory.mb
+   * similarly for reduce slot millis
+   * @param counterName
+   * @param counterValue
+   * @return corrected counter value
+   */
+  private Long getStandardizedCounterValue(String counterName, Long counterValue) {
+    if (jobConf == null) {
+      throw new ProcessingException("While correcting slot millis, jobConf is null");
+    }
+    long yarnSchedulerMinMB = this.jobConf.getLong(Constants.YARN_SCHEDULER_MIN_MB,
+          Constants.DEFAULT_YARN_SCHEDULER_MIN_MB);
+    long updatedCounterValue = 0L;
+    long memoryMb = 0L;
+    String key;
     if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
-      this.mapSlotMillis = counterValue;
+      key = Constants.MAP_MEMORY_MB_CONF_KEY;
+      memoryMb = getMemoryMb(key);
+      updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
+      this.mapSlotMillis = updatedCounterValue;
+    } else {
+      key = Constants.REDUCE_MEMORY_MB_CONF_KEY;
+      memoryMb = getMemoryMb(key);
+      updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
+      this.reduceSlotMillis = updatedCounterValue;
     }
-    if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
-      this.reduceSlotMillis = counterValue;
-    }
+
+    LOG.info("Updated " + counterName + " from " + counterValue + " to " + updatedCounterValue
+        + " based on " + Constants.YARN_SCHEDULER_MIN_MB + ": " + yarnSchedulerMinMB
+        + " and " + key + ": " + memoryMb);
+    return updatedCounterValue;
   }
 
   /**
@@ -709,7 +760,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    *        yarn.app.mapreduce.am.resource.mb * job run time
    */
   @Override
-  public Long getMegaByteMillis(Configuration jobConf) {
+  public Long getMegaByteMillis() {
 
     if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE)
     {

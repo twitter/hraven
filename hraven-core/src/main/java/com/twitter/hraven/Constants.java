@@ -291,6 +291,10 @@ public class Constants {
   public static final String REDUCE_MEMORY_MB_CONF_KEY = "mapreduce.reduce.memory.mb";
   public static final String AM_MEMORY_MB_CONF_KEY = "yarn.app.mapreduce.am.resource.mb";
 
+  /** yarn scheduler min mb is 1G */
+  public static final String YARN_SCHEDULER_MIN_MB = "yarn.scheduler.minimum-allocation-mb";
+  public static final long DEFAULT_YARN_SCHEDULER_MIN_MB = 1024;
+
   /**
    * hadoop1 memory conf keys
    */

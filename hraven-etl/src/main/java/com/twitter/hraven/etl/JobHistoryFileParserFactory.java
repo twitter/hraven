@@ -16,6 +16,7 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
 import com.twitter.hraven.HadoopVersion;
 
 /**
@@ -79,7 +80,7 @@ public class JobHistoryFileParserFactory {
    * Or return null if either input is null
    */
   public static JobHistoryFileParser createJobHistoryFileParser(
-      byte[] historyFileContents) throws IllegalArgumentException {
+      byte[] historyFileContents, Configuration jobConf) throws IllegalArgumentException {
 
     if (historyFileContents == null) {
       throw new IllegalArgumentException(
@@ -90,10 +91,10 @@ public class JobHistoryFileParserFactory {
 
     switch (version) {
     case ONE:
-      return new JobHistoryFileParserHadoop1();
+      return new JobHistoryFileParserHadoop1(jobConf);
 
     case TWO:
-      return new JobHistoryFileParserHadoop2();
+      return new JobHistoryFileParserHadoop2(jobConf);
 
     default:
       throw new IllegalArgumentException(
