@@ -417,7 +417,7 @@ public class JobDetails implements Comparable<JobDetails> {
    * @param infoValues
    * @return value as Long or 0L
    */
-  Long getValueAsLong(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
+  static Long getValueAsLong(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(key);
     if (value != null) {
       return Bytes.toLong(value);
@@ -483,7 +483,7 @@ public class JobDetails implements Comparable<JobDetails> {
    * @param infoValues
    * @return value as a String or ""
    */
-  String getValueAsString(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
+  static String getValueAsString(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(key);
     if (value != null) {
       return Bytes.toString(value);

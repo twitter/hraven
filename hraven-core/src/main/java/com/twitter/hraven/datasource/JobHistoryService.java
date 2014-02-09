@@ -43,7 +43,6 @@ import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
-import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.*;
 import com.twitter.hraven.util.ByteUtil;
 import com.twitter.hraven.util.HadoopConfUtil;
