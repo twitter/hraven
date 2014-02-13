@@ -382,70 +382,50 @@ public class RestJSONResource {
   @Path("hdfs/{cluster}/")
   @Produces(MediaType.APPLICATION_JSON)
   public List<HdfsStats> getHdfsStats(@PathParam("cluster") String cluster,
-                             // run Id is timestamp in seconds
-                             @QueryParam("runid") long runId, 
-                             @QueryParam("path") String pathPrefix,
-                             @QueryParam("limit") int limit)
-                                 throws IOException {
+                                // run Id is timestamp in seconds
+                                @QueryParam("runid") long runid,
+                                @QueryParam("path") String pathPrefix,
+                                @QueryParam("limit") int limit)
+                                    throws IOException {
     if (limit == 0) {
       limit = HdfsConstants.RECORDS_RETURNED_LIMIT;
     }
 
-    if (runId == 0L) {
+    boolean noRunId = false;
+    if (runid == 0L) {
       // default it to 2 hours back
-      long lastHour = System.currentTimeMillis() - 2*3600000L;
-      // convert to seconds
-      runId = lastHour/1000L;
+      long lastHour = System.currentTimeMillis() - 2 * 3600000L;
+      // convert milliseconds to seconds
+      runid = lastHour / 1000L;
+      noRunId = true;
     }
 
     LOG.info(String.format("Fetching hdfs stats for cluster=%s, path=%s limit=%d, runId=%d",
-      cluster, pathPrefix, limit, runId));
+      cluster, pathPrefix, limit, runid));
     Stopwatch timer = new Stopwatch().start();
-    serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING));
-    List<HdfsStats> hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runId);
+    serializationContext.set(new SerializationContext(SerializationContext.DetailLevel.EVERYTHING));
+    List<HdfsStats> hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
     timer.stop();
+    /**
+     * consider the case when no runId is passed in
+     * that means user is expecting a default response
+     * we set the default runId to 2 hours back as above
+     * but what if there was an error in collection at that time?
+     * hence we try to look back for some older runIds
+     */
+    if ( (noRunId == true) && hdfsStats.size() == 0L) {
+      // consider reading the daily aggregation table instead of hourly
+      // or consider reading older data since runId was a default timestamp
+      int retryCount = 0;
+      while (retryCount < HdfsConstants.MAX_RETRIES) {
+        runid = HdfsStatsService.getOlderRunId(retryCount, runid);
+        hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
+        retryCount++;
+      }
+    }
     return hdfsStats;
   }
 
-  @GET
-  @Path("hdfsPath/{cluster}/{path}")
-  @Produces(MediaType.APPLICATION_JSON)
-  public List<HdfsStats> getHdfsStatsPath(@PathParam("cluster") String cluster,
-                             @PathParam("path") String path,
-                             @QueryParam("starttime") long startTime,
-                             @QueryParam("endtime") long endTime,
-                             @QueryParam("limit") int limit)
-                                 throws IOException {
-    if (limit == 0) {
-      limit = HdfsConstants.RECORDS_RETURNED_LIMIT;
-    }
-
-    if (startTime == 0L) {
-      // default it to 2 hours back
-      long lastHour = System.currentTimeMillis() - 2*3600000L;
-      // convert to seconds
-      startTime = lastHour/1000L;
-    }
-
-    if (endTime == 0L) {
-      // default it to 1 week back
-      long lastHour = System.currentTimeMillis() - 8*3600000L;
-      // convert to seconds
-      endTime = lastHour/1000L;
-    }
-
-    LOG.info(String.format("Fetching hdfs path timeseries stats for cluster=%s, path=%s limit=%d, starttime=%d endtime=%d",
-      cluster, path, limit, startTime, endTime));
-    Stopwatch timer = new Stopwatch().start();
-    serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING));
-    List<HdfsStats> hdfsStats = getHdfsStatsService().getPathTimeSeries(cluster, path, limit, startTime);
-    timer.stop();
-    return hdfsStats;
-  }
-
-  
   private HdfsStatsService getHdfsStatsService() {
     if (LOG.isDebugEnabled()) {
       LOG.debug(String.format("Returning HdfsStats %s bound to thread %s",

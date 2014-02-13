@@ -22,27 +22,88 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 /**
  * An HdfsStats object represents information about a particular
- * path on hdfs including storage, access and cost
+ * path on hdfs including storage details,
+ * access details and cost of that path
  */
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 public class HdfsStats {
 
+  /** the key that uniquely identifies this hdfs stats record */
   private HdfsStatsKey hdfsStatsKey;
+
+  /** represents the number of files in the
+   * path that's defined by the {@link HdfsStatsKey}
+   */
   private long fileCount;
+
+  /** represents the number of directories in the
+   * path defined by the {@link HdfsStatsKey}
+   */
   private long dirCount;
+
+  /** owner of the path defined by
+   * the {@link HdfsStatsKey}
+   */
   private String owner;
+
+  /** raw bytes of storage taken up by the path
+   * defined by the {@link HdfsStatsKey}
+   * includes replication
+   */
   private long spaceConsumed;
+
+  /** represents the hdfs file count quota for the
+   * path that's defined by the {@link HdfsStatsKey}
+   */
   private long quota;
+
+  /** represents the hdfs space quota for the
+   * path that's defined by the {@link HdfsStatsKey}
+   */
   private long spaceQuota;
+
+  /** represents the number of files in /tmp count for
+   * the path that's defined by the {@link HdfsStatsKey}
+   */
   private long tmpFileCount;
+
+  /** represents the space taken up by files in /tmp for
+   * the path that's defined by the {@link HdfsStatsKey}
+   */
   private long tmpSpaceConsumed;
+
+  /** represents the number of files in trash for
+   * the path that's defined by the {@link HdfsStatsKey}
+   */
   private long trashFileCount;
+
+  /** represents the space taken up by files in trash for
+   * the path that's defined by the {@link HdfsStatsKey}
+   */
   private long trashSpaceConsumed;
+
+  /** represents the number of times the path that's
+   * defined by the {@link HdfsStatsKey} has been
+   * accessed
+   */
   private long accessCountTotal;
+
+  /** represents the total hdfs cost for the path that's
+   * defined by the {@link HdfsStatsKey}
+   */
   private long hdfsCost;
+
+  /** represents the cost of access for the path that's
+   * defined by the {@link HdfsStatsKey}
+   */
   private long accessCost;
+
+  /** represents the storage cost for the path that's
+   * defined by the {@link HdfsStatsKey}
+   */
   private long storageCost;
 
+  /** default constructor */
   public HdfsStats() {
   }
 

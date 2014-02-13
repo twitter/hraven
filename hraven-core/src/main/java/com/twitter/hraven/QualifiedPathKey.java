@@ -19,9 +19,8 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 /**
- * The cluster + path should be unique
- * and identifies one HdfsStats record 
- * 
+ * The cluster + path qualifier for hdfs stats
+ * this does not change over time
  */
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 public class QualifiedPathKey implements Comparable<Object> {
@@ -38,7 +37,7 @@ public class QualifiedPathKey implements Comparable<Object> {
 
   /**
    * Constructor.
-   * 
+   *
    * @param cluster
    * @param path
    */
@@ -48,7 +47,7 @@ public class QualifiedPathKey implements Comparable<Object> {
   }
 
   /**
-   * @return The Hadoop cluster on which the job ran.
+   * @return The Hadoop cluster on which the path exists
    */
   public String getCluster() {
     return cluster;

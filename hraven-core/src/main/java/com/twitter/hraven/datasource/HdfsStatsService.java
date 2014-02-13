@@ -1,11 +1,18 @@
 /*
- * Copyright 2014 Twitter, Inc. Licensed under the Apache License, Version 2.0 (the "License"); you
- * may not use this file except in compliance with the License. You may obtain a copy of the License
- * at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in
- * writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
- * language governing permissions and limitations under the License.
- */
+Copyright 2014 Twitter, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package com.twitter.hraven.datasource;
 
 import java.io.IOException;
@@ -30,8 +37,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.twitter.hraven.*;
 
 /**
- * Service that accesses the hdfs stats tables
- * and populates the HdfsStats object
+ * Service that accesses the hdfs stats tables and populates the HdfsStats object
  */
 public class HdfsStatsService {
   private static Log LOG = LogFactory.getLog(HdfsStatsService.class);
@@ -50,7 +56,12 @@ public class HdfsStatsService {
     hdfsStatsKeyConv = new HdfsStatsKeyConverter();
   }
 
-  public static long getLastHourInvertedTimestamp(long now) {
+  /**
+   * returns the inverted timestamp for a given timestamp
+   * @param now
+   * @return
+   */
+  public static long getEncodedRunId(long now) {
     long lastHour = now - (now % 3600);
     return (Long.MAX_VALUE - lastHour);
   }
@@ -66,13 +77,14 @@ public class HdfsStatsService {
    */
   public List<HdfsStats> getAllDirs(String cluster, String pathPrefix, int limit, long runId)
       throws IOException {
-    long lastHourInverted = getLastHourInvertedTimestamp(runId);
-    LOG.info(" last hour ts : " + lastHourInverted);
-    String rowPrefixStr = Long.toString(lastHourInverted) + HdfsConstants.SEP + cluster; 
-    if(StringUtils.isNotEmpty(pathPrefix)) {
+    long encodedRunId = getEncodedRunId(runId);
+    String rowPrefixStr = Long.toString(encodedRunId) + HdfsConstants.SEP + cluster;
+    if (StringUtils.isNotEmpty(pathPrefix)) {
       rowPrefixStr += HdfsConstants.SEP + pathPrefix;
     }
-    LOG.info(" row prefix : " + rowPrefixStr);
+    LOG.info(" Getting all dirs for cluster " + cluster + " with pathPrefix: " + pathPrefix
+        + " for runId " + runId + " encodedRunId: " + encodedRunId + " limit: " + limit
+        + " row prefix : " + rowPrefixStr);
     byte[] rowPrefix = Bytes.toBytes(rowPrefixStr);
     Scan scan = new Scan();
     scan.setStartRow(rowPrefix);
@@ -85,7 +97,8 @@ public class HdfsStatsService {
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.TMP_FILE_COUNT_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.TMP_SPACE_CONSUMED_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.TRASH_FILE_COUNT_COLUMN_BYTES);
-    scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.TRASH_SPACE_CONSUMED_COLUMN_BYTES);
+    scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES,
+      HdfsConstants.TRASH_SPACE_CONSUMED_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.OWNER_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.QUOTA_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.SPACE_QUOTA_COLUMN_BYTES);
@@ -100,7 +113,7 @@ public class HdfsStatsService {
 
   }
 
-  /** 
+  /**
    * Scans the hbase table and populates the hdfs stats
    * @param cluster
    * @param scan
@@ -108,7 +121,8 @@ public class HdfsStatsService {
    * @return
    * @throws IOException
    */
-  private List<HdfsStats> createFromResults(String cluster, Scan scan, int maxCount) throws IOException {
+  private List<HdfsStats> createFromResults(String cluster, Scan scan, int maxCount)
+      throws IOException {
     List<HdfsStats> hdfsStats = new LinkedList<HdfsStats>();
     ResultScanner scanner = null;
     try {
@@ -123,22 +137,21 @@ public class HdfsStatsService {
           rowCount++;
           colCount += result.size();
           resultSize += result.getWritableSize();
-          LOG.info( rowCount + "  row: " + Bytes.toString(result.getRow()));
           HdfsStatsKey currentKey = hdfsStatsKeyConv.fromBytes(result.getRow());
-            // return if we've already hit the limit
-            if (hdfsStats.size() >= maxCount) {
-              break;
-            }
-            currentHdfsStats = new HdfsStats(new HdfsStatsKey(currentKey));
-            currentHdfsStats.populate(result);
-            hdfsStats.add(currentHdfsStats);
+          // return if we've already hit the limit
+          if (hdfsStats.size() >= maxCount) {
+            break;
+          }
+          currentHdfsStats = new HdfsStats(new HdfsStatsKey(currentKey));
+          currentHdfsStats.populate(result);
+          hdfsStats.add(currentHdfsStats);
         }
       }
       timer.stop();
-      LOG.info("For cluster " + cluster + " Fetched from hbase " + rowCount + " rows, "
-          + colCount + " columns, " + resultSize + " bytes ( "
-          + resultSize / (1024 * 1024) + ") MB, in total time of " + timer);
-      } finally {
+      LOG.info("For cluster " + cluster + " Fetched from hbase " + rowCount + " rows, " + colCount
+          + " columns, " + resultSize + " bytes ( " + resultSize / (1024 * 1024)
+          + ") MB, in total time of " + timer);
+    } finally {
       if (scanner != null) {
         scanner.close();
       }
@@ -147,9 +160,37 @@ public class HdfsStatsService {
     return hdfsStats;
   }
 
-  public List<HdfsStats> getPathTimeSeries(String cluster, String path, int limit, long startTime) {
-    // TODO Auto-generated method stub
-    return null;
-  }
+  /**
+   * this function returns an older timestamp
+   * ideally we would be using the daily aggregation table
+   * and be simply looking for last run of the aggregation,
+   * but right now, in the hourly table, we try to look for
+   * certain timestamps in the past instead of scanning the
+   * entire table for the last run.
+   * @param i
+   * @param runId
+   * @return older runId
+   */
+  public static long getOlderRunId(int i, long runId) {
 
+    /**
+     * try to pick a randomized hour around that old date
+     * instead of picking exactly the same hour
+     */
+    int randomizedHourInSeconds = (int) (Math.random() * 23) * 3600;
+    /**
+     * consider the day before old date and add randomizedHour
+     * for example, for retryCount = 0
+     * pick a day which is 2 days before ageMult[0], that is
+     * 2 days before the current date in consideration
+     * and add the randomized hour say 13 hours, so that gives an
+     * hour belonging to one day before current date in consideration
+     */
+     long newTs = runId - (HdfsConstants.ageMult[i] *
+         HdfsConstants.NUM_SECONDS_IN_A_DAY  + randomizedHourInSeconds);
+    LOG.info(" Getting older runId for " + runId + ", returning " + newTs + " since ageMult[" + i + "]="
+        + HdfsConstants.ageMult[i] + " randomizedHourInSeconds=" + randomizedHourInSeconds);
+    return newTs;
+
+  }
 }

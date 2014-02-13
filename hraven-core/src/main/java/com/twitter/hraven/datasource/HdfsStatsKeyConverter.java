@@ -45,15 +45,15 @@ public class HdfsStatsKeyConverter implements ByteConverter<HdfsStatsKey> {
     if (hdfsStatsKey == null || hdfsStatsKey.getQualifiedPathKey() == null) {
       return HdfsConstants.EMPTY_BYTES;
     } else {
-      return ByteUtil.join(      HdfsConstants.SEP_BYTES,
-          Bytes.toBytes(hdfsStatsKey.getEncodedRunId()),
+      return ByteUtil.join(HdfsConstants.SEP_BYTES,
+          Bytes.toBytes(Long.toString(hdfsStatsKey.getEncodedRunId())),
           Bytes.toBytes(hdfsStatsKey.getQualifiedPathKey().getCluster()),
           Bytes.toBytes(hdfsStatsKey.getQualifiedPathKey().getPath()));
     }
   }
 
   /**}
-   * Converts HdfsStatsKeys to its byte encoded representation
+   * Converts HdfsStatsKeys from its byte encoded representation
    * @param bytes the serialized version of a HdfsStatsKey
    * @return a deserialized HdfsStatsKey instance
    */
@@ -81,13 +81,14 @@ public class HdfsStatsKeyConverter implements ByteConverter<HdfsStatsKey> {
   }
 
   /**
-   * Handles splitting the encoded hdfsStats key 
+   * Handles splitting the encoded hdfsStats key
    *
    * @param rawKey byte encoded representation of the path key
    * @return
    */
   static byte[][] splitHdfsStatsKey(byte[] rawKey) {
-    byte[][] splits = ByteUtil.split(rawKey, HdfsConstants.SEP_BYTES, 3);
+    byte[][] splits = ByteUtil.split(rawKey, HdfsConstants.SEP_BYTES,
+          HdfsConstants.NUM_HDFS_USAGE_ROWKEY_COMPONENTS);
     return splits;
   }
 }
