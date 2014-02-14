@@ -20,12 +20,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 
 /**
 */
 public class SerializationContext {
+
+  @SuppressWarnings("unused")
+  private static final Log LOG = LogFactory.getLog(SerializationContext.class);
+
   public enum DetailLevel {
 
     /**

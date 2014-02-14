@@ -46,7 +46,7 @@ public class HdfsConstants {
   public static final String UNKNOWN = "";
 
   /** default number of records returned in json response */
-  public static int RECORDS_RETURNED_LIMIT = 200;
+  public static int RECORDS_RETURNED_LIMIT = 500;
 
   /** Hdfs Stats Table names */
   public static String HDFS_USAGE_TABLE = "chargeback_hdfs_usage";

@@ -30,11 +30,14 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig.Feature;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.module.SimpleModule;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Predicate;
 import com.twitter.hraven.Counter;
 import com.twitter.hraven.CounterMap;
 import com.twitter.hraven.Flow;
+import com.twitter.hraven.HdfsStats;
 
 /**
  * Class that provides custom JSON bindings (where needed) for out object model.
@@ -42,6 +45,9 @@ import com.twitter.hraven.Flow;
 @Provider
 public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   private final ObjectMapper customMapper;
+
+  @SuppressWarnings("unused")
+  private static final Log LOG = LogFactory.getLog(ObjectMapperProvider.class);
 
   public ObjectMapperProvider() {
     customMapper = createCustomMapper();
@@ -65,6 +71,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   private static SimpleModule addJobMappings(SimpleModule module) {
     module.addSerializer(Configuration.class, new ConfigurationSerializer());
     module.addSerializer(CounterMap.class, new CounterSerializer());
+    module.addSerializer(HdfsStats.class, new HdfsStatsSerializer());
     return module;
   }
 
@@ -88,6 +95,112 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
         if (configFilter == null || configFilter.apply(kvp.getKey())) {
           jsonGenerator.writeFieldName(kvp.getKey());
           jsonGenerator.writeString(kvp.getValue());
+        }
+      }
+      jsonGenerator.writeEndObject();
+    }
+  }
+
+  /**
+   * Custom serializer for HdfsStats object
+   */
+  public static class HdfsStatsSerializer extends JsonSerializer<HdfsStats> {
+
+    @Override
+    public void serialize(HdfsStats hdfsStats, JsonGenerator jsonGenerator,
+                          SerializerProvider serializerProvider) throws IOException {
+      SerializationContext context = RestJSONResource.serializationContext.get();
+      Predicate<String> configFilter = context.getConfigurationFilter();
+
+      jsonGenerator.writeStartObject();
+      jsonGenerator.writeFieldName("hdfsStatsKey");
+      jsonGenerator.writeObject(hdfsStats.getHdfsStatsKey());
+
+      if (configFilter == null) {
+        jsonGenerator.writeFieldName("fileCount");
+        jsonGenerator.writeNumber(hdfsStats.getFileCount());
+        jsonGenerator.writeFieldName("dirCount");
+        jsonGenerator.writeNumber(hdfsStats.getDirCount());
+        jsonGenerator.writeFieldName("spaceConsumed");
+        jsonGenerator.writeNumber(hdfsStats.getSpaceConsumed());
+        jsonGenerator.writeFieldName("owner");
+        jsonGenerator.writeString(hdfsStats.getOwner());
+        jsonGenerator.writeFieldName("quota");
+        jsonGenerator.writeNumber(hdfsStats.getQuota());
+        jsonGenerator.writeFieldName("spaceQuota");
+        jsonGenerator.writeNumber(hdfsStats.getSpaceQuota());
+        jsonGenerator.writeFieldName("trashFileCount");
+        jsonGenerator.writeNumber(hdfsStats.getTrashFileCount());
+        jsonGenerator.writeFieldName("trashSpaceConsumed");
+        jsonGenerator.writeNumber(hdfsStats.getTrashSpaceConsumed());
+        jsonGenerator.writeFieldName("tmpFileCount");
+        jsonGenerator.writeNumber(hdfsStats.getTmpFileCount());
+        jsonGenerator.writeFieldName("tmpSpaceConsumed");
+        jsonGenerator.writeNumber(hdfsStats.getTmpSpaceConsumed());
+        jsonGenerator.writeFieldName("accessCountTotal");
+        jsonGenerator.writeNumber(hdfsStats.getAccessCountTotal());
+        jsonGenerator.writeFieldName("accessCost");
+        jsonGenerator.writeNumber(hdfsStats.getAccessCost());
+        jsonGenerator.writeFieldName("storageCost");
+        jsonGenerator.writeNumber(hdfsStats.getStorageCost());
+        jsonGenerator.writeFieldName("hdfsCost");
+        jsonGenerator.writeNumber(hdfsStats.getHdfsCost());
+      } else {
+        if(configFilter.apply("fileCount")) {
+          jsonGenerator.writeFieldName("fileCount");
+          jsonGenerator.writeNumber(hdfsStats.getFileCount());
+        }
+        if(configFilter.apply("dirCount")) {
+          jsonGenerator.writeFieldName("dirCount");
+          jsonGenerator.writeNumber(hdfsStats.getDirCount());
+        }
+        if(configFilter.apply("spaceConsumed")) {
+          jsonGenerator.writeFieldName("spaceConsumed");
+          jsonGenerator.writeNumber(hdfsStats.getSpaceConsumed());
+        }
+        if(configFilter.apply("owner")) {
+          jsonGenerator.writeFieldName("owner");
+          jsonGenerator.writeString(hdfsStats.getOwner());
+        }
+        if(configFilter.apply("quota")) {
+          jsonGenerator.writeFieldName("quota");
+          jsonGenerator.writeNumber(hdfsStats.getQuota());
+        }
+        if(configFilter.apply("spaceQuota")) {
+          jsonGenerator.writeFieldName("spaceQuota");
+          jsonGenerator.writeNumber(hdfsStats.getSpaceQuota());
+        }
+        if(configFilter.apply("trashFileCount")) {
+          jsonGenerator.writeFieldName("trashFileCount");
+          jsonGenerator.writeNumber(hdfsStats.getTrashFileCount());
+        }
+        if(configFilter.apply("trashSpaceConsumed")) {
+          jsonGenerator.writeFieldName("trashSpaceConsumed");
+          jsonGenerator.writeNumber(hdfsStats.getTrashSpaceConsumed());
+        }
+        if(configFilter.apply("tmpFileCount")) {
+          jsonGenerator.writeFieldName("tmpFileCount");
+          jsonGenerator.writeNumber(hdfsStats.getTmpFileCount());
+        }
+        if(configFilter.apply("tmpSpaceConsumed")) {
+          jsonGenerator.writeFieldName("tmpSpaceConsumed");
+          jsonGenerator.writeNumber(hdfsStats.getTmpSpaceConsumed());
+        }
+        if(configFilter.apply("accessCountTotal")) {
+          jsonGenerator.writeFieldName("accessCountTotal");
+          jsonGenerator.writeNumber(hdfsStats.getAccessCountTotal());
+        }
+        if(configFilter.apply("accessCost")) {
+          jsonGenerator.writeFieldName("accessCost");
+          jsonGenerator.writeNumber(hdfsStats.getAccessCost());
+        }
+        if(configFilter.apply("storageCost")) {
+          jsonGenerator.writeFieldName("storageCost");
+          jsonGenerator.writeNumber(hdfsStats.getStorageCost());
+        }
+        if(configFilter.apply("hdfsCost")) {
+          jsonGenerator.writeFieldName("hdfsCost");
+          jsonGenerator.writeNumber(hdfsStats.getHdfsCost());
         }
       }
       jsonGenerator.writeEndObject();

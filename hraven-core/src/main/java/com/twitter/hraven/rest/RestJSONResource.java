@@ -16,6 +16,7 @@ limitations under the License.
 package com.twitter.hraven.rest;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.ws.rs.DefaultValue;
@@ -423,6 +424,74 @@ public class RestJSONResource {
         retryCount++;
       }
     }
+    return hdfsStats;
+  }
+
+  @GET
+  @Path("hdfs/path/{cluster}/{attribute}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<HdfsStats> getHdfsPathTimeSeriesStats(
+                                @PathParam("cluster") String cluster,
+                                @QueryParam("path") String path,
+                                @PathParam("attribute") String attribute,
+                                @QueryParam("starttime") long starttime,
+                                @QueryParam("endtime") long endtime,
+                                @QueryParam("limit") int limit)
+                                    throws IOException {
+    if( StringUtils.isEmpty(path)) {
+      throw new RuntimeException("Required query param missing: path ");
+    }
+
+    if (limit == 0) {
+      limit = HdfsConstants.RECORDS_RETURNED_LIMIT;
+    }
+
+    if (starttime == 0L) {
+      // default it to current hour's top
+      long lastHour = System.currentTimeMillis();
+      // convert milliseconds to seconds
+      starttime = lastHour / 1000L;
+    }
+
+    if (endtime == 0L) {
+      // default it to one week ago
+      long lastHour = System.currentTimeMillis() - 7 * 86400000;
+      // convert milliseconds to seconds
+      endtime = lastHour / 1000L;
+    }
+
+    LOG.info(String.format(
+      "Fetching hdfs timeseries stats for cluster=%s, path=%s attribute=%s limit=%d, starttime=%d endtime=%d", cluster,
+      path, attribute, limit, starttime, endtime));
+    Stopwatch timer = new Stopwatch().start();
+    List<HdfsStats> hdfsStats =
+        getHdfsStatsService().getHdfsTimeSeriesStats(cluster, path, attribute, limit, starttime,
+          endtime);
+    timer.stop();
+
+    if( hdfsStats != null ){
+    LOG.info("For hdfs/path/{cluster}/{attribute} with input query "
+        +  "hdfs/path/" + cluster + SLASH + attribute
+        + "?limit=" + limit + "&path=" + path
+        + " fetched #number of HdfsStats " + hdfsStats.size() + " in " + timer);
+    } else {
+      LOG.info("For hdfs/path/{cluster}/{attribute} with input query "
+          +  "hdfs/path/" + cluster + SLASH + attribute
+          + "?limit=" + limit + "&path=" + path
+          + " fetched 0 HdfsStats in " + timer);
+    }
+
+    /** set the serialization for the response
+     * so that the response does not include all attributes
+     * of hdfs stats, but only the one that is requested for
+     */
+    Predicate<String> configFilter = null;
+    List<String> al = new ArrayList<String>();
+    al.add(attribute);
+    configFilter = new SerializationContext.RegexConfigurationFilter(al);
+    serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING, configFilter));
+
     return hdfsStats;
   }
 

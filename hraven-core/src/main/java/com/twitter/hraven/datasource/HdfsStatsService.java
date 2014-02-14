@@ -16,6 +16,7 @@ limitations under the License.
 package com.twitter.hraven.datasource;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -25,6 +26,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -62,7 +64,9 @@ public class HdfsStatsService {
    * @return
    */
   public static long getEncodedRunId(long now) {
+    // get top of the hour
     long lastHour = now - (now % 3600);
+    // return inverted timestamp
     return (Long.MAX_VALUE - lastHour);
   }
 
@@ -109,7 +113,7 @@ public class HdfsStatsService {
     // require that all rows match the prefix we're looking for
     Filter prefixFilter = new WhileMatchFilter(new PrefixFilter(rowPrefix));
     scan.setFilter(prefixFilter);
-    return createFromResults(cluster, scan, limit);
+    return createFromScanResults(cluster, scan, limit);
 
   }
 
@@ -121,43 +125,90 @@ public class HdfsStatsService {
    * @return
    * @throws IOException
    */
-  private List<HdfsStats> createFromResults(String cluster, Scan scan, int maxCount)
+  private List<HdfsStats> createFromScanResults(String cluster, Scan scan, int maxCount)
       throws IOException {
     List<HdfsStats> hdfsStats = new LinkedList<HdfsStats>();
     ResultScanner scanner = null;
+    Stopwatch timer = new Stopwatch().start();
+    int rowCount = 0;
+    long colCount = 0;
+    long resultSize = 0;
+
     try {
-      Stopwatch timer = new Stopwatch().start();
-      int rowCount = 0;
-      long colCount = 0;
-      long resultSize = 0;
       scanner = hdfsUsageTable.getScanner(scan);
-      HdfsStats currentHdfsStats = null;
       for (Result result : scanner) {
         if (result != null && !result.isEmpty()) {
           rowCount++;
           colCount += result.size();
           resultSize += result.getWritableSize();
-          HdfsStatsKey currentKey = hdfsStatsKeyConv.fromBytes(result.getRow());
+          populateHdfsStats(result, hdfsStats);
           // return if we've already hit the limit
-          if (hdfsStats.size() >= maxCount) {
+          if (rowCount >= maxCount) {
             break;
           }
-          currentHdfsStats = new HdfsStats(new HdfsStatsKey(currentKey));
-          currentHdfsStats.populate(result);
-          hdfsStats.add(currentHdfsStats);
         }
       }
+    } finally {
       timer.stop();
-      LOG.info("For cluster " + cluster + " Fetched from hbase " + rowCount + " rows, " + colCount
+      LOG.info("In createFromScanResults For cluster " + cluster + " Fetched from hbase " + rowCount + " rows, " + colCount
           + " columns, " + resultSize + " bytes ( " + resultSize / (1024 * 1024)
           + ") MB, in total time of " + timer);
-    } finally {
       if (scanner != null) {
         scanner.close();
       }
     }
 
     return hdfsStats;
+  }
+
+  
+  /**
+   * Gets from the hbase table and populates the hdfs stats
+   * @param cluster
+   * @param gets
+   * @param maxCount
+   * @return
+   * @throws IOException
+   */
+  private List<HdfsStats> createFromGetResults(String cluster, List<Get> gets, int maxCount)
+      throws IOException {
+    List<HdfsStats> hdfsStats = new LinkedList<HdfsStats>();
+    Result[] allResults = null;
+    Stopwatch timer = new Stopwatch().start();
+    long resultSize = 0;
+    int rowCount = 0;
+    long colCount = 0;
+
+    try {
+      allResults = hdfsUsageTable.get(gets);
+      for (Result result : allResults) {
+        if (result != null && !result.isEmpty()) {
+          rowCount++;
+          colCount += result.size();
+          resultSize += result.getWritableSize();
+
+          populateHdfsStats(result, hdfsStats);
+          // return if we've already hit the limit
+          if (rowCount >= maxCount) {
+            break;
+          }
+        }
+      }
+    } finally {
+      timer.stop();
+      LOG.info("In createFromGetResults: For cluster " + cluster + " Fetched from hbase " + rowCount + " rows, " + colCount
+          + " columns, " + resultSize + " bytes ( " + resultSize / (1024 * 1024)
+          + ") MB, in total time of " + timer);
+    }
+
+    return hdfsStats;
+  }
+
+  private void populateHdfsStats(Result result, List<HdfsStats> hdfsStats) {
+    HdfsStatsKey currentKey = hdfsStatsKeyConv.fromBytes(result.getRow());
+    HdfsStats currentHdfsStats = new HdfsStats(new HdfsStatsKey(currentKey));
+    currentHdfsStats.populate(result);
+    hdfsStats.add(currentHdfsStats);
   }
 
   /**
@@ -192,5 +243,41 @@ public class HdfsStatsService {
         + HdfsConstants.ageMult[i] + " randomizedHourInSeconds=" + randomizedHourInSeconds);
     return newTs;
 
+  }
+
+  public List<HdfsStats> getHdfsTimeSeriesStats(String cluster, String path, String attribute,
+      int limit, long starttime, long endtime) throws IOException {
+
+    List<Get> gets = GenerateGets(starttime, endtime, cluster, path, attribute, limit);
+    return createFromGetResults(cluster, gets, limit);
+  }
+
+  private List<Get> GenerateGets(long starttime, long endtime, String cluster,
+        String path, String attribute, int limit) {
+    long encodedRunIdStart = 0l;
+    int count = 0;
+    byte[] attributeBytes = Bytes.toBytes(attribute);
+    List<Get> gets = new ArrayList<Get>();
+    LOG.info(" Starting Getting all timeseries stats for cluster " + cluster + " with path: " + path
+      + " for starttime " + starttime + " encodedRunId: " + encodedRunIdStart + " limit: " + limit
+      + " endtime " + endtime);
+    while((starttime >= endtime) && (count <= limit)) {
+      encodedRunIdStart = getEncodedRunId(starttime);
+      StringBuilder rowkey = new StringBuilder();
+      rowkey.append(Long.toString(encodedRunIdStart));
+      rowkey.append(HdfsConstants.SEP);
+      rowkey.append(cluster);
+      rowkey.append(HdfsConstants.SEP);
+      rowkey.append(path);
+      String startRowPrefixStr = rowkey.toString();
+      byte[] rowPrefix = Bytes.toBytes(startRowPrefixStr);
+      Get g = new Get(rowPrefix);
+      g.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, attributeBytes);
+      gets.add(g);
+      count++;
+      // go to previous hour
+      starttime -= 3600;
+    }
+    return gets;
   }
 }
