@@ -408,22 +408,29 @@ public class RestJSONResource {
     List<HdfsStats> hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
     timer.stop();
     /**
-     * consider the case when no runId is passed in
-     * that means user is expecting a default response
-     * we set the default runId to 2 hours back as above
-     * but what if there was an error in collection at that time?
-     * hence we try to look back for some older runIds
+     * if we find NO hdfs stats for the default timestamp
+     * consider the case when no runId is passed
+     * in that means user is expecting a default response
+     * we set the default runId to 2 hours back
+     * as above but what if there was an error in
+     * collection at that time? hence we try to look back
+     * for some older runIds
      */
-    if ( (noRunId == true) && hdfsStats.size() == 0L) {
-      // consider reading the daily aggregation table instead of hourly
-      // or consider reading older data since runId was a default timestamp
-      int retryCount = 0;
-      while (retryCount < HdfsConstants.MAX_RETRIES) {
-        runid = HdfsStatsService.getOlderRunId(retryCount, runid);
-        hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
-        retryCount++;
+    if (hdfsStats == null || hdfsStats.size() == 0L) {
+      if (noRunId == true) {
+        // consider reading the daily aggregation table instead of hourly
+        // or consider reading older data since runId was a default timestamp
+        int retryCount = 0;
+        while (retryCount < HdfsConstants.MAX_RETRIES) {
+          runid = HdfsStatsService.getOlderRunId(retryCount, runid);
+          hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
+          if ((hdfsStats != null) && (hdfsStats.size() != 0L)) {
+            break;
+          }
+          retryCount++;
+        }
       }
-    }
+  }
     return hdfsStats;
   }
 
