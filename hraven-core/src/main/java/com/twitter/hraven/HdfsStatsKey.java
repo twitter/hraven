@@ -16,8 +16,6 @@ limitations under the License.
 package com.twitter.hraven;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * Represents a unique hdfs stats record
@@ -46,9 +44,6 @@ public class HdfsStatsKey {
    * the hdfs stats were collected
    */
   private final long runId;
-
-  @SuppressWarnings("unused")
-  private static Log LOG = LogFactory.getLog(HdfsStatsKey.class);
 
   /**
    * Constructor.

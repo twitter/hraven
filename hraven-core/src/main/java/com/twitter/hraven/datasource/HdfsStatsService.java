@@ -36,7 +36,10 @@ import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.twitter.hraven.*;
+import com.twitter.hraven.HdfsConstants;
+import com.twitter.hraven.HdfsStats;
+import com.twitter.hraven.HdfsStatsKey;
+
 
 /**
  * Service that accesses the hdfs stats tables and populates the HdfsStats object

@@ -52,7 +52,7 @@ public class HdfsStatsKeyConverter implements ByteConverter<HdfsStatsKey> {
     }
   }
 
-  /**}
+  /**
    * Converts HdfsStatsKeys from its byte encoded representation
    * @param bytes the serialized version of a HdfsStatsKey
    * @return a deserialized HdfsStatsKey instance

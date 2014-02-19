@@ -384,7 +384,7 @@ public class RestJSONResource {
   @Produces(MediaType.APPLICATION_JSON)
   public List<HdfsStats> getHdfsStats(@PathParam("cluster") String cluster,
                                 // run Id is timestamp in seconds
-                                @QueryParam("runid") long runid,
+                                @QueryParam("timestamp") long runid,
                                 @QueryParam("path") String pathPrefix,
                                 @QueryParam("limit") int limit)
                                     throws IOException {
@@ -417,7 +417,7 @@ public class RestJSONResource {
      * for some older runIds
      */
     if (hdfsStats == null || hdfsStats.size() == 0L) {
-      if (noRunId == true) {
+      if (noRunId) {
         // consider reading the daily aggregation table instead of hourly
         // or consider reading older data since runId was a default timestamp
         int retryCount = 0;

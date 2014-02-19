@@ -35,25 +35,25 @@ public class HdfsConstants {
   public static final int NUM_SECONDS_IN_A_DAY = 86400;
 
   /** max retries in case of no data */
-  public static int MAX_RETRIES = 10;
+  public static final int MAX_RETRIES = 10;
 
   /**
    * a series of older dates like
    * 1 day ago, 1 week ago, 2 weeks ago, 1 month ago etc
    */
-  public static int ageMult[] = {1, 4, 10, 18, 30, 45, 60, 90, 120, 150};
+  public static final int ageMult[] = {1, 4, 10, 18, 30, 45, 60, 90, 120, 150};
 
   public static final String UNKNOWN = "";
 
   /** default number of records returned in json response */
-  public static int RECORDS_RETURNED_LIMIT = 500;
+  public static final int RECORDS_RETURNED_LIMIT = 500;
 
   /** Hdfs Stats Table names */
-  public static String HDFS_USAGE_TABLE = "chargeback_hdfs_usage";
-  public static byte[] HDFS_USAGE_TABLE_BYTES = Bytes.toBytes(HDFS_USAGE_TABLE);
+  public static final String HDFS_USAGE_TABLE = "chargeback_hdfs_usage";
+  public static final byte[] HDFS_USAGE_TABLE_BYTES = Bytes.toBytes(HDFS_USAGE_TABLE);
 
-  public static String HDFS_USER_ACCESS_TABLE = "chargeback_user_access";
-  public static byte[] HDFS_USER_ACCESS_TABLE_BYTES = Bytes.toBytes(HDFS_USER_ACCESS_TABLE);
+  public static final String HDFS_USER_ACCESS_TABLE = "chargeback_user_access";
+  public static final byte[] HDFS_USER_ACCESS_TABLE_BYTES = Bytes.toBytes(HDFS_USER_ACCESS_TABLE);
 
   public static final int NUM_HDFS_USAGE_ROWKEY_COMPONENTS = 3;
 

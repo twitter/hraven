@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
@@ -62,7 +63,7 @@ public class QualifiedPathKey implements Comparable<Object> {
 
   @Override
   public String toString() {
-    if (this.cluster == null || this.path == null) {
+    if (StringUtils.isBlank(this.cluster) || StringUtils.isBlank(this.path)) {
       return "";
     }
     return this.cluster + HdfsConstants.SEP + this.path;
@@ -77,6 +78,11 @@ public class QualifiedPathKey implements Comparable<Object> {
     return new CompareToBuilder().append(this.cluster, otherKey.getCluster())
         .append(getPath(), otherKey.getPath())
         .toComparison();
+  }
+
+  @Override
+  public int hashCode() {
+    return this.cluster.length() + this.path.length();
   }
 
   @Override
