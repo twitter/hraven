@@ -59,8 +59,5 @@ public class TestHdfsStatsKey {
     long ts = 1392217200L;
     HdfsStatsKey key1 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
     assertEquals(key1.getRunId(), ts);
-    HdfsStatsKey key21 = new HdfsStatsKey(null, "", (Long.MAX_VALUE - ts));
-    QualifiedPathKey q = key21.getQualifiedPathKey();
-    System.out.println(" hash code " + q.hashCode());
   }
 }

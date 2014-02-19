@@ -44,6 +44,15 @@ public class TestQualifiedPathKey {
     assertEquals(key1, key2);
   }
 
+  @Test
+  public void testNullHashCode() throws Exception {
+    QualifiedPathKey key1 = new QualifiedPathKey(null, null);
+    assertEquals(key1.hashCode(), 0);
+    
+    QualifiedPathKey key2 = new QualifiedPathKey(" ", " ");
+    assertEquals(key2.hashCode(), 0);
+  }
+
   private void testKeyComponents( QualifiedPathKey key1) {
     assertNotNull(key1);
     assertEquals(key1.getCluster(), cluster1);
