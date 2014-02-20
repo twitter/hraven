@@ -17,6 +17,7 @@ package com.twitter.hraven;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 /**
@@ -82,7 +83,10 @@ public class QualifiedPathKey implements Comparable<Object> {
 
   @Override
   public int hashCode() {
-    return this.cluster.length() + this.path.length();
+    return new HashCodeBuilder()
+        .append(this.cluster)
+        .append(this.path)
+        .toHashCode();
   }
 
   @Override
