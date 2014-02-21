@@ -28,6 +28,7 @@ import org.junit.Test;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.HdfsStatsKey;
+import com.twitter.hraven.util.StringUtil;
 
 /**
  * Round-trip testing for storage and retrieval of data in job_history table.
@@ -96,11 +97,6 @@ public class TestHdfsStatsService {
   }
 
   @Test
-  public void checkMaxRetriesSize() {
-    assertTrue(HdfsConstants.MAX_RETRIES == HdfsConstants.ageMult.length);
-  }
-
-  @Test
   public void TestGetLastHourInvertedTimestamp() throws IOException {
     long ts = 1391896800L;
     long expectedTop = Long.MAX_VALUE - ts;
@@ -112,12 +108,38 @@ public class TestHdfsStatsService {
   public void TestGetOlderRunId() {
     long ts = 1392123600L;
     int retryCount = 0;
-    for (int i = 0; i < HdfsConstants.MAX_RETRIES; i++) {
+    for (int i = 0; i < HdfsConstants.ageMult.length; i++) {
       long oldts = HdfsStatsService.getOlderRunId(retryCount, ts);
       long diff = (ts - oldts) / HdfsConstants.NUM_SECONDS_IN_A_DAY;
       assertTrue(diff <= HdfsConstants.ageMult[retryCount]);
       retryCount++;
     }
+  }
+
+
+  @Test
+  public void TestGetAllDirsPathSpecialChars() throws IOException {
+    HdfsStatsService hs = new HdfsStatsService(UTIL.getConfiguration());
+    long ts = 1392217200L;
+    String cluster1 = "cluster1";
+    String rootPath = "/dirSpecialChars/";
+    String pathPrefix = "dir2 dir2!!! dir3";
+    loadHdfsUsageStats(cluster1, rootPath + pathPrefix, (Long.MAX_VALUE - ts), 10L, 10L,
+      "user1", 1234L, 20L, ht);
+    List<HdfsStats> h1 = hs.getAllDirs(cluster1, rootPath + pathPrefix, 10, ts);
+    assertEquals(h1.size(), 1);
+    HdfsStats h2 = h1.get(0);
+    String path = h2.getHdfsStatsKey().getQualifiedPathKey().getPath();
+    String[] dirs = path.split("/");
+    assertEquals(dirs.length, 3);
+    assertEquals(dirs[2], StringUtil.cleanseToken(pathPrefix));
+    assertEquals(h2.getAccessCountTotal(), 20L);
+    assertEquals(h2.getHdfsStatsKey().getRunId(),  ts - (ts % 3600));
+    assertEquals(h2.getDirCount(), 10L);
+    assertEquals(h2.getFileCount(), 10L);
+    assertEquals(h2.getOwner(), "user1");
+    assertEquals(h2.getSpaceConsumed(), 1234L);
+
   }
 
   @Test
@@ -135,6 +157,12 @@ public class TestHdfsStatsService {
       loadHdfsUsageStats(cluster1, pathPrefix + pathList.get(i), runId, fc.get(i), dc.get(i),
         ownerList.get(i), sc.get(i), ac.get(i), ht);
     }
+  }
+
+  @Test(expected=ProcessingException.class)
+  public void testGetOlderRunIdsException() {
+    int i = HdfsConstants.ageMult.length + 10;
+    HdfsStatsService.getOlderRunId(i, System.currentTimeMillis()/1000);
   }
 
   private void assertHdfsStats(HdfsStats h2, String cluster1, long runId) {
@@ -192,9 +220,9 @@ public class TestHdfsStatsService {
    * @param htable
    * @throws IOException
    */
-  private void loadHdfsUsageStats(String cluster1, String path, long runId, long fc, long dc,
+  private void loadHdfsUsageStats(String cluster1, String path, long encodedRunId, long fc, long dc,
       String owner, long sc, long ac, HTable ht) throws IOException {
-    HdfsStatsKey key = new HdfsStatsKey(cluster1, path, runId);
+    HdfsStatsKey key = new HdfsStatsKey(cluster1, StringUtil.cleanseToken(path), encodedRunId);
     HdfsStatsKeyConverter hkc = new HdfsStatsKeyConverter();
     Put p = new Put(hkc.toBytes(key));
     p.add(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.FILE_COUNT_COLUMN_BYTES,

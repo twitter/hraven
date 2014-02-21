@@ -38,6 +38,7 @@ import com.twitter.hraven.Counter;
 import com.twitter.hraven.CounterMap;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsStats;
+import com.twitter.hraven.HdfsStatsKey;
 
 /**
  * Class that provides custom JSON bindings (where needed) for out object model.
@@ -114,7 +115,15 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
 
       jsonGenerator.writeStartObject();
       jsonGenerator.writeFieldName("hdfsStatsKey");
-      jsonGenerator.writeObject(hdfsStats.getHdfsStatsKey());
+      HdfsStatsKey hk = hdfsStats.getHdfsStatsKey();
+      jsonGenerator.writeStartObject();
+      jsonGenerator.writeFieldName("cluster");
+      jsonGenerator.writeNumber(hk.getQualifiedPathKey().getCluster());
+      jsonGenerator.writeFieldName("path");
+      jsonGenerator.writeNumber(hk.getQualifiedPathKey().getPath());
+      jsonGenerator.writeFieldName("runId");
+      jsonGenerator.writeNumber(hk.getRunId());
+      jsonGenerator.writeEndObject();
 
       if (configFilter == null) {
         jsonGenerator.writeFieldName("fileCount");

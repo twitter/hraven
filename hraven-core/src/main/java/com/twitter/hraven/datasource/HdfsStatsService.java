@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.HdfsStatsKey;
+import com.twitter.hraven.util.StringUtil;
 
 
 /**
@@ -87,7 +88,8 @@ public class HdfsStatsService {
     long encodedRunId = getEncodedRunId(runId);
     String rowPrefixStr = Long.toString(encodedRunId) + HdfsConstants.SEP + cluster;
     if (StringUtils.isNotEmpty(pathPrefix)) {
-      rowPrefixStr += HdfsConstants.SEP + pathPrefix;
+      // path expected to be cleansed at collection/storage time as well
+      rowPrefixStr += HdfsConstants.SEP + StringUtil.cleanseToken(pathPrefix);
     }
     LOG.info(" Getting all dirs for cluster " + cluster + " with pathPrefix: " + pathPrefix
         + " for runId " + runId + " encodedRunId: " + encodedRunId + " limit: " + limit
@@ -221,9 +223,11 @@ public class HdfsStatsService {
    * but right now, in the hourly table, we try to look for
    * certain timestamps in the past instead of scanning the
    * entire table for the last run.
-   * @param i
+   * @param i (i should always be less than ageMult.size)
    * @param runId
    * @return older runId
+   *
+   * @throws ProcessingException
    */
   public static long getOlderRunId(int i, long runId) {
 
@@ -240,6 +244,10 @@ public class HdfsStatsService {
      * and add the randomized hour say 13 hours, so that gives an
      * hour belonging to one day before current date in consideration
      */
+    if (i >= HdfsConstants.ageMult.length) {
+      throw new ProcessingException("Can't look back in time that far " + i + ", only upto "
+          + HdfsConstants.ageMult.length);
+    }
      long newTs = runId - (HdfsConstants.ageMult[i] *
          HdfsConstants.NUM_SECONDS_IN_A_DAY  + randomizedHourInSeconds);
     LOG.info(" Getting older runId for " + runId + ", returning " + newTs + " since ageMult[" + i + "]="
@@ -271,7 +279,8 @@ public class HdfsStatsService {
       rowkey.append(HdfsConstants.SEP);
       rowkey.append(cluster);
       rowkey.append(HdfsConstants.SEP);
-      rowkey.append(path);
+      // path expected to be cleansed at collection/storage time as well
+      rowkey.append(StringUtil.cleanseToken(path));
       String startRowPrefixStr = rowkey.toString();
       byte[] rowPrefix = Bytes.toBytes(startRowPrefixStr);
       Get g = new Get(rowPrefix);

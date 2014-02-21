@@ -421,7 +421,7 @@ public class RestJSONResource {
         // consider reading the daily aggregation table instead of hourly
         // or consider reading older data since runId was a default timestamp
         int retryCount = 0;
-        while (retryCount < HdfsConstants.MAX_RETRIES) {
+        while (retryCount < HdfsConstants.ageMult.length) {
           runid = HdfsStatsService.getOlderRunId(retryCount, runid);
           hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
           if ((hdfsStats != null) && (hdfsStats.size() != 0L)) {

@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 package com.twitter.hraven;
+import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -26,7 +28,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * where encodedRunId is the inverted timestamp of the
  * top of the hour at which stats were collected
  */
-public class HdfsStatsKey {
+public class HdfsStatsKey implements Comparable<Object> {
 
   /**
    * Fully qualified cluster + path
@@ -38,12 +40,6 @@ public class HdfsStatsKey {
    * at which hdfs stats were collected
    */
   private final long encodedRunId;
-
-  /**
-   * top of the hour timestamp at which
-   * the hdfs stats were collected
-   */
-  private final long runId;
 
   /**
    * Constructor.
@@ -74,7 +70,6 @@ public class HdfsStatsKey {
                 @JsonProperty("encodedRunId") long encodedRunId) {
     this.pathKey = pathKey;
     this.encodedRunId = encodedRunId;
-    this.runId = getRunId(encodedRunId);
   }
 
   /**
@@ -84,7 +79,6 @@ public class HdfsStatsKey {
   public HdfsStatsKey(HdfsStatsKey key) {
     this.pathKey = key.pathKey;
     this.encodedRunId = key.encodedRunId;
-    this.runId = getRunId(encodedRunId);
   }
 
   /**
@@ -92,6 +86,13 @@ public class HdfsStatsKey {
    */
   public static long getRunId(long encodedRunId) {
     return Long.MAX_VALUE - encodedRunId;
+  }
+
+  /**
+   * returns the run id based on the encoded run id
+   */
+  public long getRunId() {
+    return Long.MAX_VALUE - this.encodedRunId;
   }
 
   /**
@@ -105,15 +106,39 @@ public class HdfsStatsKey {
     return this.encodedRunId;
   }
 
-  public long getRunId(){
-    return this.runId;
-  }
-
   @Override
   public String toString() {
     if (this.pathKey == null) {
       return "";
     }
     return this.encodedRunId +  HdfsConstants.SEP + this.pathKey.toString();
+  }
+
+  @Override
+  public int compareTo(Object other) {
+    if (other == null) {
+      return -1;
+    }
+    HdfsStatsKey otherKey = (HdfsStatsKey) other;
+    return new CompareToBuilder()
+        .append(this.pathKey, otherKey.getQualifiedPathKey())
+        .append(this.encodedRunId, otherKey.getEncodedRunId())
+        .toComparison();
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder()
+        .append(this.pathKey)
+        .append(this.encodedRunId)
+        .toHashCode();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other instanceof HdfsStatsKey) {
+      return compareTo((HdfsStatsKey) other) == 0;
+    }
+    return false;
   }
 }

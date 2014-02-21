@@ -34,9 +34,6 @@ public class HdfsConstants {
   public static final byte[] ZERO_SINGLE_BYTE = new byte[] { 0 };
   public static final int NUM_SECONDS_IN_A_DAY = 86400;
 
-  /** max retries in case of no data */
-  public static final int MAX_RETRIES = 10;
-
   /**
    * a series of older dates like
    * 1 day ago, 1 week ago, 2 weeks ago, 1 month ago etc

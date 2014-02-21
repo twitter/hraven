@@ -20,7 +20,9 @@ import org.junit.Test;
 import com.twitter.hraven.HdfsStatsKey;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * tests the {@link HdfsStatsKeyConverter} class
@@ -59,5 +61,32 @@ public class TestHdfsStatsKey {
     long ts = 1392217200L;
     HdfsStatsKey key1 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
     assertEquals(key1.getRunId(), ts);
+  }
+
+  @Test
+  public void testCompareTo() {
+    long ts = 1392217200L;
+    HdfsStatsKey key1 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
+    HdfsStatsKey key2 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts - 10000));
+    assertTrue(key1.compareTo(key2) > 0);
+
+    key2 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts + 10000));
+    assertTrue(key1.compareTo(key2) < 0);
+
+    key2 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
+    assertTrue(key1.compareTo(key2) == 0);
+  }
+
+  @Test
+  public void testEqualsHashCode() {
+    long ts = 1392217200L;
+    HdfsStatsKey key1 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
+    HdfsStatsKey key2 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts - 10000));
+    assertFalse(key1.equals(key2));
+    assertTrue(key1.hashCode() != key2.hashCode());
+
+    key2 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
+    assertTrue(key1.equals(key2));
+    assertEquals(key1.hashCode(), key2.hashCode());
   }
 }
