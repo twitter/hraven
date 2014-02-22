@@ -363,11 +363,11 @@ public class TestJobDetails {
     
     infoValues.put(Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(JobDetailsValues.megabytemillis));
     expVal = JobDetailsValues.megabytemillis;
-    assertEquals(expVal, jd.getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues));
+    assertEquals(expVal, JobDetails.getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues));
 
     // test non existent value
     expVal = 0L;
-    assertEquals(expVal, jd.getValueAsLong(Constants.HRAVEN_QUEUE_BYTES, infoValues));
+    assertEquals(expVal, JobDetails.getValueAsLong(Constants.HRAVEN_QUEUE_BYTES, infoValues));
   }
 
   /**
@@ -389,13 +389,12 @@ public class TestJobDetails {
    */
   @Test
   public void testGetValueAsString2() {
-    JobDetails jd = new JobDetails(null);
     NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
     infoValues.put(Constants.VERSION_COLUMN_BYTES, Bytes.toBytes(JobDetailsValues.version));
     assertEquals(JobDetailsValues.version,
-      jd.getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues));
+      JobDetails.getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues));
     // test non existent values
-    assertEquals("", jd.getValueAsString(Constants.HRAVEN_QUEUE_BYTES, infoValues));
+    assertEquals("", JobDetails.getValueAsString(Constants.HRAVEN_QUEUE_BYTES, infoValues));
   }
 
   /**
