@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import com.twitter.hraven.util.HadoopConfUtil;
 import com.twitter.hraven.util.StringUtil;
@@ -90,11 +91,18 @@ public abstract class JobDescFactoryBase {
     String appId = jobConf.get(Constants.APP_NAME_CONF_KEY);
 
     // If explicit app name isn't set, try to parse it from mapred.job.name
-    if (appId == null) {
+    if (StringUtils.isBlank(appId)) {
       appId = jobConf.get(Constants.JOB_NAME_CONF_KEY);
-      if (appId != null) {
+      if (StringUtils.isNotBlank(appId)) {
         // Allow sub-classes to transform.
         appId = getAppIdFromJobName(appId);
+      } else {
+        // look for a hadoop2 conf key mapreduce.job.name
+        appId = jobConf.get(Constants.JOB_NAME_HADOOP2_CONF_KEY);
+        if (StringUtils.isNotBlank(appId)) {
+          // Allow sub-classes to transform.
+          appId = getAppIdFromJobName(appId);
+        }
       }
     }
 

@@ -262,6 +262,7 @@ public class Constants {
   public static final String DEFAULT_VALUE_QUEUENAME = "default";
 
   public static final String JOB_NAME_CONF_KEY = "mapred.job.name";
+  public static final String JOB_NAME_HADOOP2_CONF_KEY = "mapreduce.job.name";
 
   public static final String PIG_CONF_KEY = "pig.version"; // used to detect a
                                                            // pig job
