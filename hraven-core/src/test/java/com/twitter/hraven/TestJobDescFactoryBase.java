@@ -42,4 +42,20 @@ public class TestJobDescFactoryBase extends JobDescFactoryBase {
     assertEquals(SAFE_NAME, getAppId(conf)); 
   }
 
+  /**
+   * Test the method to get the app ID
+   * from a hadoop2 JobConf
+   */
+  @Test
+  public void testgetAppIdHadoop2() {
+    Configuration conf = new Configuration();
+    // ensure hadoop1 config key is blank
+    conf.set(Constants.JOB_NAME_CONF_KEY, "");
+    // ensure batch.desc is blank
+    conf.set(Constants.APP_NAME_CONF_KEY, "");
+    // set the hadoop2 config key
+    conf.set(Constants.JOB_NAME_HADOOP2_CONF_KEY, "abc.def.xyz");
+    assertEquals("abc.def.xyz", getAppId(conf));
+  }
+
 }
