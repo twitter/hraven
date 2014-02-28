@@ -105,6 +105,20 @@ public class JobFile implements Writable {
   }
 
   /**
+   * based on the input history file name,
+   * return the conf file name
+   *
+   * @param jobHistoryFileName
+   * @return
+   */
+  public static String getConfFileName(String jobHistoryFileName){
+    Matcher matcher = PATTERN.matcher(jobHistoryFileName);
+    if (matcher.matches()) {
+      return  matcher.group(1) +"_conf.xml";
+    }
+    return null;
+  }
+  /**
    * @return the job ID for this job as parsed through the filename or null if
    *         this is not a valid job file.
    */

@@ -26,6 +26,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -44,6 +45,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.etl.ProcessRecordService;
 import com.twitter.hraven.util.BatchUtil;
 import com.twitter.hraven.etl.FileLister;
@@ -79,6 +81,11 @@ public class JobFilePreprocessor extends Configured implements Tool {
    * Maximum number of files to process in one batch.
    */
   private final static int DEFAULT_BATCH_SIZE = 1000;
+
+  /**
+   * Maximum size of file that be loaded into raw table : 400MB
+   */
+  private final static int DEFAULT_RAW_FILE_SIZE_LIMIT = 419430400;
 
   /**
    * Name of the job conf property used to pass the output directory to the
@@ -144,6 +151,21 @@ public class JobFilePreprocessor extends Configured implements Tool {
     o.setRequired(false);
     options.addOption(o);
 
+    // raw file size limit
+    o = new Option("s", "rawFileSize", true,
+        "The max size of file that can be loaded into raw table. Default "
+            + DEFAULT_RAW_FILE_SIZE_LIMIT);
+    o.setArgName("rawfile-size");
+    o.setRequired(false);
+    options.addOption(o);
+
+    // Input
+    o = new Option("r", "relocation", true,
+        "relocation directory in hdfs for huge history files");
+    o.setArgName("relocation-path");
+    o.setRequired(false);
+    options.addOption(o);
+
     // Force
     o = new Option(
         "f",
@@ -202,7 +224,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
     // Grab the input path argument
     String output = commandLine.getOptionValue("o");
-    LOG.info("output=" + output);
+    LOG.info(" output=" + output);
     Path outputPath = new Path(output);
     FileStatus outputFileStatus = hdfs.getFileStatus(outputPath);
 
@@ -255,6 +277,37 @@ public class JobFilePreprocessor extends Configured implements Tool {
     String cluster = commandLine.getOptionValue("c");
     LOG.info("cluster=" + cluster);
 
+    /**
+     * Grab the size of huge files to be moved argument
+     * hbase cell can't store files bigger than
+     * maxFileSize, hence no need to consider them for rawloading
+     * Reference:
+     * {@link https://github.com/twitter/hraven/issues/59}
+     */
+    String maxFileSizeStr = commandLine.getOptionValue("s");
+    LOG.info("maxFileSize=" + maxFileSizeStr);
+    Long maxFileSize = Long.MAX_VALUE;
+    Path hugeFileRelocationRoot = null;
+    try {
+      maxFileSize = Long.parseLong(maxFileSizeStr);
+      // Grab the destination path for such huge files
+      String hugeFileRelocationRootStr = commandLine.getOptionValue("r");
+      if (StringUtils.isBlank(hugeFileRelocationRootStr)) {
+        throw new ProcessingException(" Relocation destination root for huge files is missing");
+      }
+      LOG.info("hugeFileRelocationRoot=" + hugeFileRelocationRootStr);
+      hugeFileRelocationRoot = new Path(hugeFileRelocationRootStr);
+      FileStatus hugeFileRootStatus = hdfs.getFileStatus(hugeFileRelocationRoot);
+
+      if (!hugeFileRootStatus.isDir()) {
+        throw new IOException("hugeFileRelocationRoot is not a directory, please create it"
+            + hugeFileRootStatus.getPath().getName());
+      }
+    } catch (NumberFormatException nfe) {
+      throw new ProcessingException("Caught NumberFormatException during conversion "
+            + " of maxFileSize to long", nfe);
+    }
+
     ProcessRecordService processRecordService = new ProcessRecordService(
         hbaseConf);
 
@@ -301,8 +354,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
       // need to traverse dirs under done recursively for versions
       // that include MAPREDUCE-323: on/after hadoop 0.20.203.0
       // on/after cdh3u5
-      FileStatus[] jobFileStatusses = FileLister.listFiles(true, hdfs, inputPath,
-          jobFileModifiedRangePathFilter);
+      FileStatus[] jobFileStatusses = FileLister.getListFilesToProcess(maxFileSize, true,
+            hdfs, inputPath, jobFileModifiedRangePathFilter, hugeFileRelocationRoot);
 
       LOG.info("Sorting " + jobFileStatusses.length + " job files.");
 
