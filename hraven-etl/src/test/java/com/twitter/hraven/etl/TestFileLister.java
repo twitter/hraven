@@ -23,7 +23,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Calendar;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -76,21 +78,13 @@ public class TestFileLister {
   @Test
   public void testGetDatedRoot() {
     String root = "abc";
-    Calendar now = Calendar.getInstance();
-    StringBuilder rootYMD = new StringBuilder();
-    rootYMD.append(root);
-    rootYMD.append("/");
-    rootYMD.append(Integer.toString(now.get(Calendar.YEAR)));
-    rootYMD.append("/");
-    // month is 0 based
-    rootYMD.append(Integer.toString(now.get(Calendar.MONTH) + 1));
-    rootYMD.append("/");
-    rootYMD.append(Integer.toString(now.get(Calendar.DAY_OF_MONTH)));
-    rootYMD.append("/");
 
+    DateFormat df = new SimpleDateFormat("yyyy/MM/dd");
+    String formatted = df.format(new Date());
+    String expRoot = root + "/" + formatted;
     String actualRoot = FileLister.getDatedRoot(root);
     assertNotNull(actualRoot);
-    assertEquals(actualRoot, rootYMD.toString());
+    assertEquals(actualRoot, expRoot);
   }
 
   @Test

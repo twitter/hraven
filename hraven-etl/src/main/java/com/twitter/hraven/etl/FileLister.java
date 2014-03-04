@@ -16,8 +16,10 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,7 +39,7 @@ import com.twitter.hraven.datasource.ProcessingException;
  */
 public class FileLister {
 
-  private static Log LOG = LogFactory.getLog(FileLister.class);
+  private static final Log LOG = LogFactory.getLog(FileLister.class);
 
   /**
    * Default constructor.
@@ -45,7 +47,7 @@ public class FileLister {
   public FileLister() {
   }
 
-  /*
+  /**
    * Recursively traverses the dirs to get the list of
    * files for a given path filtered as per the input path range filter
    *
@@ -70,7 +72,7 @@ public class FileLister {
     }
   }
 
-  /*
+  /**
    * Gets the list of files for a given path filtered as per the input path range filter
    * Can go into directories recursively
    *
@@ -104,16 +106,16 @@ public class FileLister {
    * hbase cell can't store files bigger than maxFileSize,
    * hence no need to consider them for rawloading
    * Reference: {@link https://github.com/twitter/hraven/issues/59}
-   * @param maxFileSize
-   * @param b
-   * @param hdfs
-   * @param inputPath
-   * @param jobFileModifiedRangePathFilter
-   * @param destPath
-   * @return
+   * @param maxFileSize - max #bytes to be stored in an hbase cell
+   * @param recurse - whether to recurse or not
+   * @param hdfs - filesystem to be looked at
+   * @param inputPath - root dir of the path containing history files
+   * @param jobFileModifiedRangePathFilter - to filter out files
+   * @param destPath - relocation dir for huge files
+   * @return - array of FileStatus of files to be processed
    * @throws IOException
    */
-  public static FileStatus[] getListFilesToProcess(Long maxFileSize, boolean b,
+  public static FileStatus[] getListFilesToProcess(long maxFileSize, boolean recurse,
       FileSystem hdfs, Path inputPath, JobFileModifiedRangePathFilter pathFilter,
       Path destPath)
       throws IOException {
@@ -121,7 +123,7 @@ public class FileLister {
     LOG.info(" in getListFilesToProcess maxFileSize=" + maxFileSize
         + " inputPath= " + inputPath.toUri()
         + " destPath=" + destPath.toUri());
-    FileStatus[] origList = listFiles(b, hdfs, inputPath, pathFilter);
+    FileStatus[] origList = listFiles(recurse, hdfs, inputPath, pathFilter);
     if (origList == null) {
       LOG.info(" No files found, orig list returning 0");
       return new FileStatus[0];
@@ -132,14 +134,14 @@ public class FileLister {
   /**
    * prunes the given list/array of files based on their sizes
    *
-   * @param maxFileSize
-   * @param origList
-   * @param hdfs
-   * @param inputPath
-   * @param destPath
-   * @return
+   * @param maxFileSize -max #bytes to be stored in an hbase cell
+   * @param origList - input list of files to be processed
+   * @param hdfs - filesystem to be looked at
+   * @param inputPath - root dir of the path containing history files
+   * @param destPath - relocation dir for huge files
+   * @return - pruned array of FileStatus of files to be processed
    */
-  static FileStatus[] pruneFileListBySize(Long maxFileSize, FileStatus[] origList, FileSystem hdfs,
+  static FileStatus[] pruneFileListBySize(long maxFileSize, FileStatus[] origList, FileSystem hdfs,
       Path inputPath, Path destPath) {
     LOG.info(" Pruning orig list  of size " + origList.length + " for source" + inputPath.toUri()
         + " to move to " + destPath.toUri());
@@ -154,7 +156,7 @@ public class FileLister {
     for (int i = 0; i < origList.length; i++) {
       fileSize = origList[i].getLen();
 
-      /**
+      /*
        * check if hbase can store this file if yes, consider it for processing
        */
       if (fileSize <= maxFileSize) {
@@ -163,23 +165,23 @@ public class FileLister {
         LOG.info(" in getListFilesToProcess filesize " + fileSize + " has exceeded maxFileSize "
             + maxFileSize + " for " + origList[i].getPath().toUri());
 
-        /**
+        /*
          * if this file is huge, move both the job history and job conf files so that they are
          * retained together for processing in the future
          */
         String fileName = relocateFiles(hdfs, origList[i].getPath(), destYMDPath);
 
-        /**
+        /*
          * the (jobConf, jobHistory) pair was relocated on hdfs but now remove it from processing
          * list Many a times, the files occur one after the other on hdfs try to see if that's the
          * case, else store the filename to be removed later
          */
-        /**
+        /*
          * check if the other file in (jobConf, jobHistory) pair is stored AFTER the huge file
          */
         if ((i < (origList.length - 1))
             && (fileName.equalsIgnoreCase(origList[i + 1].getPath().getName()))) {
-          /**
+          /*
            * skip the next record in origList since we dont want to process it at this time and we
            * already moved this file to relocation Dir
            */
@@ -187,7 +189,7 @@ public class FileLister {
               + origList[i].getPath().toUri());
           i++;
         } else {
-          /**
+          /*
            * the other file could be on hdfs right before the huge file and maybe we have already
            * stored it in prunedList So then remove it
            */
@@ -197,7 +199,7 @@ public class FileLister {
                 + origList[i].getPath().toUri());
             prunedFileList.remove(i - 1);
           } else {
-            /**
+            /*
              * Since we've looked at one file before and one file after the huge file and did not
              * find the other file in the (jobConf, jobHistory) pair, it's possibly on hdfs
              * somewhere far away from the huge file So now, store this name so that we can remove
@@ -229,9 +231,9 @@ public class FileLister {
 
   /**
    * creates dest root and relocates the job conf and job history files
-   * @param hdfs
-   * @param sourcePath
-   * @param destPath
+   * @param hdfs - filesystem to be looked at
+   * @param sourcePath - source path of the file to be moved
+   * @param destPath - relocation destination root dir
    */
   static String relocateFiles(FileSystem hdfs, Path sourcePath, Path destPath) {
 
@@ -240,7 +242,7 @@ public class FileLister {
       if (!hdfs.exists(destPath)) {
         LOG.info("Attempting to create " + destPath);
         boolean dirCreated = hdfs.mkdirs(destPath);
-        if (dirCreated != true) {
+        if (!dirCreated) {
           throw new ProcessingException("Could not create " + destPath.toUri());
         }
       }
@@ -248,12 +250,12 @@ public class FileLister {
       throw new ProcessingException("Could not check/create " + destPath.toUri(), ioe);
     }
 
-    /**
-    * move this huge file to relocation dir
-    */
+    /*
+     * move this huge file to relocation dir
+     */
     moveFileHdfs(hdfs, sourcePath, destPath);
 
-    /**
+    /*
      * now move the corresponding file in the
      * (jobConf, jobHistory) pair as well
      */
@@ -266,10 +268,9 @@ public class FileLister {
    * relocate the corresponding other file in
    * the (jobConf, jobHistory) pair as well
    *
-   * @param hdfs
-   * @param path
-   * @param destPath
-   * @param prunedFileList
+   * @param hdfs - filesystem to be looked at
+   * @param sourcePath - input source path
+   * @param destPath - relocation dir
    */
   static String relocateConfPairFile (FileSystem hdfs, Path sourcePath, Path destPath) {
     JobFile jf = new JobFile(sourcePath.getName());
@@ -287,7 +288,6 @@ public class FileLister {
    * constructs a string for
    * givenPath/year/month/day
    *
-   * @param root
    * @return path/year/month/day
    */
   static String getDatedRoot(String root) {
@@ -295,26 +295,13 @@ public class FileLister {
     if(root == null) {
       return null;
     }
-    Calendar now = Calendar.getInstance();
-    StringBuilder rootYMD = new StringBuilder();
-    rootYMD.append(root);
-    rootYMD.append("/");
-    rootYMD.append(Integer.toString(now.get(Calendar.YEAR)));
-    rootYMD.append("/");
-    // month is 0 based
-    rootYMD.append(Integer.toString(now.get(Calendar.MONTH) + 1));
-    rootYMD.append("/");
-    rootYMD.append(Integer.toString(now.get(Calendar.DAY_OF_MONTH)));
-    rootYMD.append("/");
-
-    return rootYMD.toString();
+    DateFormat df = new SimpleDateFormat("yyyy/MM/dd");
+    String formatted = df.format(new Date());
+    return root + "/" + formatted ;
 
   }
   /**
    * moves a file on hdfs from sourcePath to a subdir under destPath
-   *
-   * @param sourcePath
-   * @param destPath
    */
   public static void moveFileHdfs(FileSystem hdfs, Path sourcePath, Path destPath) {
     if (destPath == null || sourcePath == null) {

@@ -286,7 +286,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
      */
     String maxFileSizeStr = commandLine.getOptionValue("s");
     LOG.info("maxFileSize=" + maxFileSizeStr);
-    Long maxFileSize = Long.MAX_VALUE;
+    long maxFileSize = Long.MAX_VALUE;
     Path hugeFileRelocationRoot = null;
     try {
       maxFileSize = Long.parseLong(maxFileSizeStr);
