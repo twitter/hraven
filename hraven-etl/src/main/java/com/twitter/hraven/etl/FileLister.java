@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -149,6 +150,7 @@ public class FileLister {
     long fileSize = 0L;
     List<FileStatus> prunedFileList = new ArrayList<FileStatus>();
     Set<String> toBeRemovedFileList = new HashSet<String>();
+    Set<String> alreadyMovedFileList = new HashSet<String>();
     // append the destination root dir with year/month/day
     String rootYMD = getDatedRoot(destPath.toUri().toString());
     LOG.info(" root YMD: " + rootYMD);
@@ -169,7 +171,15 @@ public class FileLister {
          * if this file is huge, move both the job history and job conf files so that they are
          * retained together for processing in the future
          */
+        /* the file may already have been moved as part of pair relocation */
+        if(alreadyMovedFileList.contains(origList[i].getPath().getName())) {
+          continue;
+        }
         String fileName = relocateFiles(hdfs, origList[i].getPath(), destYMDPath);
+        alreadyMovedFileList.add(origList[i].getPath().getName());
+        if(StringUtils.isNotBlank(fileName)) {
+          alreadyMovedFileList.add(fileName);
+        }
 
         /*
          * the (jobConf, jobHistory) pair was relocated on hdfs but now remove it from processing
@@ -193,11 +203,12 @@ public class FileLister {
            * the other file could be on hdfs right before the huge file and maybe we have already
            * stored it in prunedList So then remove it
            */
-          if ((i > 0) && (prunedFileList.size() > 0)
-              && (fileName.equalsIgnoreCase(prunedFileList.get(i - 1).getPath().getName()))) {
-            LOG.info("Removing from pruneList " + origList[i - 1].getPath().toUri() + " for "
+          int prunedSize = prunedFileList.size();
+          if ((i > 0) && (prunedSize > 0) && (fileName.equalsIgnoreCase(
+                  prunedFileList.get(prunedSize-1).getPath().getName()))) {
+            LOG.info("Removing from pruneList " + prunedFileList.get(prunedSize-1).getPath().toUri() + " for "
                 + origList[i].getPath().toUri());
-            prunedFileList.remove(i - 1);
+            prunedFileList.remove(prunedSize-1);
           } else {
             /*
              * Since we've looked at one file before and one file after the huge file and did not
