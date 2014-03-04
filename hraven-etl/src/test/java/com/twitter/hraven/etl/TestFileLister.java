@@ -144,6 +144,52 @@ public class TestFileLister {
 
   }
 
+  /**
+   * removes conf file which has already been put in prunedList
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testPruneFileListRemovingConfFromPruneList() throws IOException {
+
+    long maxFileSize = 20L;
+    FileStatus[] origList = new FileStatus[2];
+    FileSystem hdfs = FileSystem.get(UTIL.getConfiguration());
+    Path inputPath = new Path("/inputdir_filesize_pruneList");
+    boolean os = hdfs.mkdirs(inputPath);
+    assertTrue(os);
+    assertTrue(hdfs.exists(inputPath));
+
+    Path relocationPath = new Path("/relocation_filesize_pruneList");
+    os = hdfs.mkdirs(relocationPath);
+    assertTrue(os);
+    assertTrue(hdfs.exists(relocationPath));
+
+    Path emptyConfFile = new Path(inputPath.toUri() + "/" + "job_1329348432655_0001_conf.xml");
+    os = hdfs.createNewFile(emptyConfFile);
+    assertTrue(os);
+    assertTrue(hdfs.exists(emptyConfFile));
+    origList[0] = hdfs.getFileStatus(emptyConfFile);
+
+    final String JOB_HISTORY_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001-1329348443227-user-Sleep+job-1329348468601-10-1-SUCCEEDED-default.jhist";
+    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
+    Path srcPath = new Path(jobHistoryfile.toURI());
+    hdfs.copyFromLocalFile(srcPath, inputPath);
+    Path expPath = new Path(inputPath.toUri() + "/" + srcPath.getName());
+    assertTrue(hdfs.exists(expPath));
+    origList[1] = hdfs.getFileStatus(expPath);
+
+    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, relocationPath);
+    assertNotNull(prunedList);
+    assertTrue(prunedList.length == 0);
+  }
+
+  /**
+   * tests the case when several files are spread out in the dir and need to be removed
+   *
+   * @throws IOException
+   */
   @Test
   public void testPruneFileListMultipleFilesAlreadyMovedCases() throws IOException {
 

@@ -144,7 +144,7 @@ public class FileLister {
    */
   static FileStatus[] pruneFileListBySize(long maxFileSize, FileStatus[] origList, FileSystem hdfs,
       Path inputPath, Path destPath) {
-    LOG.info(" Pruning orig list  of size " + origList.length + " for source" + inputPath.toUri()
+    LOG.info("Pruning orig list  of size " + origList.length + " for source" + inputPath.toUri()
         + " to move to " + destPath.toUri());
 
     long fileSize = 0L;
@@ -153,7 +153,7 @@ public class FileLister {
     Set<String> alreadyMovedFileList = new HashSet<String>();
     // append the destination root dir with year/month/day
     String rootYMD = getDatedRoot(destPath.toUri().toString());
-    LOG.info(" root YMD: " + rootYMD);
+    LOG.info("Root YMD: " + rootYMD);
     Path destYMDPath = new Path(rootYMD);
     for (int i = 0; i < origList.length; i++) {
       fileSize = origList[i].getLen();
@@ -164,7 +164,7 @@ public class FileLister {
       if (fileSize <= maxFileSize) {
         prunedFileList.add(origList[i]);
       } else {
-        LOG.info(" in getListFilesToProcess filesize " + fileSize + " has exceeded maxFileSize "
+        LOG.info("In getListFilesToProcess filesize " + fileSize + " has exceeded maxFileSize "
             + maxFileSize + " for " + origList[i].getPath().toUri());
 
         /*
@@ -232,7 +232,7 @@ public class FileLister {
       }
       String fileName = prunedFileList.get(i).getPath().getName();
       if (toBeRemovedFileList.contains(fileName)) {
-        LOG.info(" removing from prunedList " + fileName);
+        LOG.info("Removing from prunedList " + fileName);
         prunedFileList.remove(i);
         toBeRemovedFileList.remove(fileName);
       }
@@ -289,7 +289,7 @@ public class FileLister {
     if(jf.isJobHistoryFile()){
       confFileName = JobFile.getConfFileName(jf.getFilename());
       Path confPath = new Path(sourcePath.getParent().toUri() + "/" + confFileName);
-      LOG.info(" Relocating confFile " + confPath.toUri() + " to " + destPath.toUri());
+      LOG.info("Relocating confFile " + confPath.toUri() + " to " + destPath.toUri());
       moveFileHdfs(hdfs, confPath, destPath);
     }
     return confFileName;
@@ -326,7 +326,7 @@ public class FileLister {
     Path destFullPath = new Path(destFullPathStr);
 
     try {
-      LOG.info(" moving " + sourcePath.toUri() + " to " + destFullPathStr);
+      LOG.info("Moving " + sourcePath.toUri() + " to " + destFullPathStr);
       // move the file on hdfs from source to destination
       boolean moved = hdfs.rename(sourcePath, destFullPath);
       if (moved != true) {
