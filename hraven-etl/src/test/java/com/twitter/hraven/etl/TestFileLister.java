@@ -35,6 +35,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.twitter.hraven.datasource.ProcessingException;
+
 public class TestFileLister {
   private static HBaseTestingUtility UTIL;
 
@@ -289,6 +291,38 @@ public class TestFileLister {
     FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, relocationPath);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 4);
+  }
+
+  @Test
+  public void testGetJobIdFromPath() {
+    String JOB_HISTORY_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001-1329348443227-user-Sleep+job-1329348468601-10-1-SUCCEEDED-default.jhist";
+    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
+    Path srcPath = new Path(jobHistoryfile.toURI());
+    String jobId = FileLister.getJobIdFromPath(srcPath);
+    String expJobId = "job_1329348432655_0001";
+    assertEquals(expJobId, jobId);
+
+    String JOB_CONF_FILE_NAME = "src/test/resources/job_1329348432655_0001_conf.xml";
+    File jobConfFile = new File(JOB_CONF_FILE_NAME);
+    srcPath = new Path(jobConfFile.toURI());
+    jobId = FileLister.getJobIdFromPath(srcPath);
+    assertEquals(expJobId, jobId);
+
+    jobConfFile = new File("job_201311192236_3583_1386370578196_user1_Sleep+job");
+    srcPath = new Path(jobConfFile.toURI());
+    jobId = FileLister.getJobIdFromPath(srcPath);
+    expJobId = "job_201311192236_3583";
+    assertEquals(expJobId, jobId);
+
+  }
+
+  @Test(expected=ProcessingException.class)
+  public void testGetJobIdFromIncorrectPath() {
+    final String JOB_HISTORY_FILE_NAME = "abcd.jhist";
+    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
+    Path srcPath = new Path(jobHistoryfile.toURI());
+    FileLister.getJobIdFromPath(srcPath);
   }
 
   @AfterClass

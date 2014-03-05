@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileStatus;
@@ -150,8 +149,8 @@ public class FileLister {
 
     long fileSize = 0L;
     List<FileStatus> prunedFileList = new ArrayList<FileStatus>();
-    Set<String> toBeRemovedFileList = new HashSet<String>();
-    Set<String> alreadyMovedFileList = new HashSet<String>();
+
+    Set<String> toBeRemovedJobId = new HashSet<String>();
     // append the destination root dir with year/month/day
     String rootYMD = getDatedRoot(destPath.toUri().toString());
     LOG.info("Root YMD: " + rootYMD);
@@ -159,67 +158,18 @@ public class FileLister {
     for (int i = 0; i < origList.length; i++) {
       fileSize = origList[i].getLen();
 
-      /*
-       * check if hbase can store this file if yes, consider it for processing
-       */
+      // check if hbase can store this file if yes, consider it for processing
       if (fileSize <= maxFileSize) {
         prunedFileList.add(origList[i]);
       } else {
+        Path hugeFile = origList[i].getPath();
         LOG.info("In getListFilesToProcess filesize " + fileSize + " has exceeded maxFileSize "
-            + maxFileSize + " for " + origList[i].getPath().toUri());
+            + maxFileSize + " for " + hugeFile.toUri());
 
-        /*
-         * if this file is huge, move both the job history and job conf files so that they are
-         * retained together for processing in the future
-         */
-        /* the file may already have been moved as part of pair relocation */
-        if(alreadyMovedFileList.contains(origList[i].getPath().getName())) {
-          continue;
-        }
-        String confFileName = relocateFiles(hdfs, origList[i].getPath(), destYMDPath);
-        alreadyMovedFileList.add(origList[i].getPath().getName());
-        if(StringUtils.isNotBlank(confFileName)) {
-          alreadyMovedFileList.add(confFileName);
-        }
-
-        /*
-         * the (jobConf, jobHistory) pair was relocated on hdfs but now remove it from processing
-         * list Many a times, the files occur one after the other on hdfs try to see if that's the
-         * case, else store the filename to be removed later
-         */
-        /*
-         * check if the other file in (jobConf, jobHistory) pair is stored AFTER the huge file
-         */
-        if ((i < (origList.length - 1))
-            && (confFileName.equalsIgnoreCase(origList[i + 1].getPath().getName()))) {
-          /*
-           * skip the next record in origList since we dont want to process it at this time and we
-           * already moved this file to relocation Dir
-           */
-          LOG.info("Skipping the next file " + origList[i + 1].getPath().toUri() + " for "
-              + origList[i].getPath().toUri());
-          i++;
-        } else {
-          /*
-           * the other file could be on hdfs right before the huge file and maybe we have already
-           * stored it in prunedList So then remove it
-           */
-          int prunedSize = prunedFileList.size();
-          if ((i > 0) && (prunedSize > 0) && (confFileName.equalsIgnoreCase(
-                  prunedFileList.get(prunedSize-1).getPath().getName()))) {
-            LOG.info("Removing from pruneList " + prunedFileList.get(prunedSize-1).getPath().toUri() + " for "
-                + origList[i].getPath().toUri());
-            prunedFileList.remove(prunedSize-1);
-          } else {
-            /*
-             * Since we've looked at one file before and one file after the huge file and did not
-             * find the other file in the (jobConf, jobHistory) pair, it's possibly on hdfs
-             * somewhere far away from the huge file So now, store this name so that we can remove
-             * it later
-             */
-            toBeRemovedFileList.add(confFileName);
-          }
-        }
+         // if this file is huge, relocate it
+        relocateFiles(hdfs, hugeFile, destYMDPath);
+        // note the job id so that we can remove the other file (job conf or job history)
+        toBeRemovedJobId.add(getJobIdFromPath(hugeFile));
       }
     }
     if (prunedFileList.size() == 0) {
@@ -227,20 +177,38 @@ public class FileLister {
       return new FileStatus[0];
     }
 
-    ListIterator<FileStatus> it =  prunedFileList.listIterator();
+    String jobId = null;
+    ListIterator<FileStatus> it = prunedFileList.listIterator();
     while (it.hasNext()) {
-      if (toBeRemovedFileList.size() == 0) {
+      if (toBeRemovedJobId.size() == 0) {
         // no files to remove
         break;
       }
-      String fileName = it.next().getPath().getName();
-      if (toBeRemovedFileList.contains(fileName)) {
-        LOG.info("Removing from prunedList " + fileName);
+      Path curFile = it.next().getPath();
+      jobId = getJobIdFromPath(curFile);
+      if (toBeRemovedJobId.contains(jobId)) {
+        LOG.info("Relocating and removing from prunedList " + curFile.toUri());
+        relocateFiles(hdfs, curFile, destYMDPath);
         it.remove();
-        toBeRemovedFileList.remove(fileName);
+        toBeRemovedJobId.remove(jobId);
       }
     }
     return prunedFileList.toArray(new FileStatus[prunedFileList.size()]);
+  }
+
+  /**
+   * extracts the job id from a Path
+   * @param input Path
+   * @return job id as string
+   */
+  static String getJobIdFromPath(Path aPath) {
+    String fileName = aPath.getName();
+    JobFile jf = new JobFile(fileName);
+    String jobId = jf.getJobid();
+    if(jobId == null) {
+      throw new ProcessingException("job id is null for " + aPath.toUri());
+    }
+    return jobId;
   }
 
   /**
@@ -249,7 +217,7 @@ public class FileLister {
    * @param sourcePath - source path of the file to be moved
    * @param destPath - relocation destination root dir
    */
-  static String relocateFiles(FileSystem hdfs, Path sourcePath, Path destPath) {
+  static void relocateFiles(FileSystem hdfs, Path sourcePath, Path destPath) {
 
     try {
       // create it on hdfs if it does not exist
@@ -264,38 +232,9 @@ public class FileLister {
       throw new ProcessingException("Could not check/create " + destPath.toUri(), ioe);
     }
 
-    /*
-     * move this huge file to relocation dir
-     */
+    // move this huge file to relocation dir
     moveFileHdfs(hdfs, sourcePath, destPath);
 
-    /*
-     * now move the corresponding file in the
-     * (jobConf, jobHistory) pair as well
-     */
-    return relocateConfPairFile(hdfs, sourcePath, destPath);
-
-  }
-
-  /**
-   * Once the huge file  has been moved,
-   * relocate the corresponding other file in
-   * the (jobConf, jobHistory) pair as well
-   *
-   * @param hdfs - filesystem to be looked at
-   * @param sourcePath - input source path
-   * @param destPath - relocation dir
-   */
-  static String relocateConfPairFile (FileSystem hdfs, Path sourcePath, Path destPath) {
-    JobFile jf = new JobFile(sourcePath.getName());
-    String confFileName = "";
-    if(jf.isJobHistoryFile()){
-      confFileName = JobFile.getConfFileName(jf.getFilename());
-      Path confPath = new Path(sourcePath.getParent().toUri() + "/" + confFileName);
-      LOG.info("Relocating confFile " + confPath.toUri() + " to " + destPath.toUri());
-      moveFileHdfs(hdfs, confPath, destPath);
-    }
-    return confFileName;
   }
 
   /**
@@ -312,8 +251,8 @@ public class FileLister {
     DateFormat df = new SimpleDateFormat("yyyy/MM/dd");
     String formatted = df.format(new Date());
     return root + "/" + formatted ;
-
   }
+
   /**
    * moves a file on hdfs from sourcePath to a subdir under destPath
    */
