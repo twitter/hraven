@@ -176,10 +176,10 @@ public class FileLister {
         if(alreadyMovedFileList.contains(origList[i].getPath().getName())) {
           continue;
         }
-        String fileName = relocateFiles(hdfs, origList[i].getPath(), destYMDPath);
+        String confFileName = relocateFiles(hdfs, origList[i].getPath(), destYMDPath);
         alreadyMovedFileList.add(origList[i].getPath().getName());
-        if(StringUtils.isNotBlank(fileName)) {
-          alreadyMovedFileList.add(fileName);
+        if(StringUtils.isNotBlank(confFileName)) {
+          alreadyMovedFileList.add(confFileName);
         }
 
         /*
@@ -191,7 +191,7 @@ public class FileLister {
          * check if the other file in (jobConf, jobHistory) pair is stored AFTER the huge file
          */
         if ((i < (origList.length - 1))
-            && (fileName.equalsIgnoreCase(origList[i + 1].getPath().getName()))) {
+            && (confFileName.equalsIgnoreCase(origList[i + 1].getPath().getName()))) {
           /*
            * skip the next record in origList since we dont want to process it at this time and we
            * already moved this file to relocation Dir
@@ -205,7 +205,7 @@ public class FileLister {
            * stored it in prunedList So then remove it
            */
           int prunedSize = prunedFileList.size();
-          if ((i > 0) && (prunedSize > 0) && (fileName.equalsIgnoreCase(
+          if ((i > 0) && (prunedSize > 0) && (confFileName.equalsIgnoreCase(
                   prunedFileList.get(prunedSize-1).getPath().getName()))) {
             LOG.info("Removing from pruneList " + prunedFileList.get(prunedSize-1).getPath().toUri() + " for "
                 + origList[i].getPath().toUri());
@@ -217,7 +217,7 @@ public class FileLister {
              * somewhere far away from the huge file So now, store this name so that we can remove
              * it later
              */
-            toBeRemovedFileList.add(fileName);
+            toBeRemovedFileList.add(confFileName);
           }
         }
       }
@@ -332,7 +332,7 @@ public class FileLister {
       LOG.info("Moving " + sourcePath.toUri() + " to " + destFullPathStr);
       // move the file on hdfs from source to destination
       boolean moved = hdfs.rename(sourcePath, destFullPath);
-      if (moved != true) {
+      if (!moved) {
         throw new ProcessingException("Could not move from " + src
             + " to " + destFullPathStr);
       }
