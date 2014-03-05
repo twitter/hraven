@@ -194,7 +194,7 @@ public class TestFileLister {
   public void testPruneFileListMultipleFilesAlreadyMovedCases() throws IOException {
 
     long maxFileSize = 20L;
-    FileStatus[] origList = new FileStatus[10];
+    FileStatus[] origList = new FileStatus[12];
     FileSystem hdfs = FileSystem.get(UTIL.getConfiguration());
     Path inputPath = new Path("/inputdir_filesize_multiple");
     boolean os = hdfs.mkdirs(inputPath);
@@ -247,29 +247,44 @@ public class TestFileLister {
     assertTrue(hdfs.exists(inputPath3));
     origList[5] = hdfs.getFileStatus( inputPath3);
 
+    Path inputPath4 = new Path(inputPath.toUri() + "/" + "job_1399977777177_0771-1311111143227-user3321-TeraSort-1-SUCCEEDED-default.jhist");
+    hdfs.copyFromLocalFile(srcPath, inputPath4);
+    assertTrue(hdfs.exists(inputPath4));
+    origList[6] = hdfs.getFileStatus( inputPath4);
+
     Path emptyFile2 = new Path(inputPath.toUri() + "/" + "job_1329343333333_5551-1329111113227-user2-SomethingElse.jhist");
     os = hdfs.createNewFile(emptyFile2);
     assertTrue(os);
     assertTrue(hdfs.exists(emptyFile2));
-    origList[6] = hdfs.getFileStatus(emptyFile2);
+    origList[7] = hdfs.getFileStatus(emptyFile2);
 
     Path emptyConfFile2 = new Path(inputPath.toUri() + "/" + "job_1329343333333_5551_conf.xml");
     os = hdfs.createNewFile(emptyConfFile2);
     assertTrue(os);
     assertTrue(hdfs.exists(emptyConfFile2));
-    origList[7] = hdfs.getFileStatus(emptyConfFile2);
+    origList[8] = hdfs.getFileStatus(emptyConfFile2);
+
+    // this is an empty file which tests the toBeRemovedFileList
+    // at the end of function pruneFileListBySize
+    Path emptyConfFile3 = new Path(inputPath.toUri() + "/" + "job_1399999999155_0991_conf.xml");
+    os = hdfs.createNewFile(emptyConfFile3);
+    assertTrue(os);
+    assertTrue(hdfs.exists(emptyConfFile3));
+    origList[9] = hdfs.getFileStatus(emptyConfFile3);
 
     Path inputConfPath2 = new Path(inputPath.toUri() + "/" + "job_1311222222255_0221_conf.xml");
     srcPath = new Path(jobConfFile.toURI());
     hdfs.copyFromLocalFile(srcPath, inputConfPath2);
     assertTrue(hdfs.exists(inputConfPath2));
-    origList[8] = hdfs.getFileStatus(inputConfPath2);
+    origList[10] = hdfs.getFileStatus(inputConfPath2);
 
-    Path inputConfPath3 = new Path(inputPath.toUri() + "/" + "job_1399999999155_0991_conf.xml");
-    srcPath = new Path(jobConfFile.toURI());
-    hdfs.copyFromLocalFile(srcPath, inputConfPath3);
-    assertTrue(hdfs.exists(inputConfPath2));
-    origList[9] = hdfs.getFileStatus(inputConfPath3);
+    // this is an empty file which tests the toBeRemovedFileList
+    // at the end of function pruneFileListBySize
+    Path emptyConfFile4 = new Path(inputPath.toUri() + "/" + "job_1399977777177_0771_conf.xml");
+    os = hdfs.createNewFile(emptyConfFile4);
+    assertTrue(os);
+    assertTrue(hdfs.exists(emptyConfFile4));
+    origList[11] = hdfs.getFileStatus(emptyConfFile4);
 
     FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, relocationPath);
     assertNotNull(prunedList);

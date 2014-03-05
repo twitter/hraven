@@ -22,14 +22,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
 
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 import com.twitter.hraven.datasource.ProcessingException;
 
@@ -225,15 +226,17 @@ public class FileLister {
       LOG.info("Found no files worth processing. Returning 0 sized array");
       return new FileStatus[0];
     }
-    for (int i = 0; i < prunedFileList.size(); i++) {
+
+    ListIterator<FileStatus> it =  prunedFileList.listIterator();
+    while (it.hasNext()) {
       if (toBeRemovedFileList.size() == 0) {
         // no files to remove
         break;
       }
-      String fileName = prunedFileList.get(i).getPath().getName();
+      String fileName = it.next().getPath().getName();
       if (toBeRemovedFileList.contains(fileName)) {
         LOG.info("Removing from prunedList " + fileName);
-        prunedFileList.remove(i);
+        it.remove();
         toBeRemovedFileList.remove(fileName);
       }
     }
