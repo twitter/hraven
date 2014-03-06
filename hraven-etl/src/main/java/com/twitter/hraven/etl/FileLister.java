@@ -167,7 +167,7 @@ public class FileLister {
             + maxFileSize + " for " + hugeFile.toUri());
 
          // if this file is huge, relocate it
-        relocateFiles(hdfs, hugeFile, destYMDPath);
+        relocateFile(hdfs, hugeFile, destYMDPath);
         // note the job id so that we can remove the other file (job conf or job history)
         toBeRemovedJobId.add(getJobIdFromPath(hugeFile));
       }
@@ -188,8 +188,13 @@ public class FileLister {
       jobId = getJobIdFromPath(curFile);
       if (toBeRemovedJobId.contains(jobId)) {
         LOG.info("Relocating and removing from prunedList " + curFile.toUri());
-        relocateFiles(hdfs, curFile, destYMDPath);
+        relocateFile(hdfs, curFile, destYMDPath);
         it.remove();
+        /*
+         * removing the job id from the hash set since there would be only
+         * one file with this job id in the prunedList, the other file with
+         * this job id was huge and was already moved out
+         */
         toBeRemovedJobId.remove(jobId);
       }
     }
@@ -217,7 +222,7 @@ public class FileLister {
    * @param sourcePath - source path of the file to be moved
    * @param destPath - relocation destination root dir
    */
-  static void relocateFiles(FileSystem hdfs, Path sourcePath, Path destPath) {
+  static void relocateFile(FileSystem hdfs, Path sourcePath, Path destPath) {
 
     try {
       // create it on hdfs if it does not exist

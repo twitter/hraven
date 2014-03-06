@@ -83,9 +83,9 @@ public class JobFilePreprocessor extends Configured implements Tool {
   private final static int DEFAULT_BATCH_SIZE = 1000;
 
   /**
-   * Maximum size of file that be loaded into raw table : 400MB
+   * Maximum size of file that be loaded into raw table : 779 MB
    */
-  private final static int DEFAULT_RAW_FILE_SIZE_LIMIT = 419430400;
+  private final static int DEFAULT_RAW_FILE_SIZE_LIMIT = 817387220;
 
   /**
    * Name of the job conf property used to pass the output directory to the
