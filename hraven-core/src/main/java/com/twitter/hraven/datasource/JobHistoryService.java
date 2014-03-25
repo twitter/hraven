@@ -189,10 +189,39 @@ public class JobHistoryService {
   }
 
   /**
+   * creates a scan for flow data
+   * @param rowPrefix - start row prefix
+   * @param limit - limit on scanned results
+   * @param version - version to match
+   * @return Scan
+   */
+  private Scan createFlowScan(byte[] rowPrefix, int limit, String version) {
+    Scan scan = new Scan();
+    scan.setStartRow(rowPrefix);
+
+    // using a large scanner caching value with a small limit can mean we scan a lot more data than
+    // necessary, so lower the caching for low limits
+    scan.setCaching(Math.min(limit, defaultScannerCaching));
+    // require that all rows match the prefix we're looking for
+    Filter prefixFilter = new WhileMatchFilter(new PrefixFilter(rowPrefix));
+    // if version is passed, restrict the rows returned to that version
+    if (version != null && version.length() > 0) {
+      FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+      filters.addFilter(prefixFilter);
+      filters.addFilter(new SingleColumnValueFilter(Constants.INFO_FAM_BYTES,
+          Constants.VERSION_COLUMN_BYTES, CompareFilter.CompareOp.EQUAL, Bytes.toBytes(version)));
+      scan.setFilter(filters);
+    } else {
+      scan.setFilter(prefixFilter);
+    }
+    return scan;
+  }
+
+  /**
    * Returns the most recent {@link Flow} runs, up to {@code limit} instances.
    * If the {@code version} parameter is non-null, the returned results will be
    * restricted to those matching this app version.
-   * 
+   *
    * @param cluster
    *          the cluster where the jobs were run
    * @param user
@@ -213,23 +242,57 @@ public class JobHistoryService {
     // TODO: use RunMatchFilter to limit scan on the server side
     byte[] rowPrefix = Bytes.toBytes(cluster + Constants.SEP + user
         + Constants.SEP + appId + Constants.SEP);
-    Scan scan = new Scan();
-    scan.setStartRow(rowPrefix);
-    // using a large scanner caching value with a small limit can mean we scan a lot more data than
-    // necessary, so lower the caching for low limits
-    scan.setCaching(Math.min(limit, defaultScannerCaching));
-    // require that all rows match the prefix we're looking for
-    Filter prefixFilter = new WhileMatchFilter(new PrefixFilter(rowPrefix));
-    // if version is passed, restrict the rows returned to that version
-    if (version != null && version.length() > 0) {
-      FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-      filters.addFilter(prefixFilter);
-      filters.addFilter(new SingleColumnValueFilter(Constants.INFO_FAM_BYTES,
-          Constants.VERSION_COLUMN_BYTES, CompareFilter.CompareOp.EQUAL, Bytes
-              .toBytes(version)));
-      scan.setFilter(filters);
-    } else {
-      scan.setFilter(prefixFilter);
+    Scan scan = createFlowScan(rowPrefix, limit, version);
+    return createFromResults(scan, populateTasks, limit);
+  }
+
+  /**
+   * Returns the most recent {@link Flow} runs within that time range,
+   * up to {@code limit} instances.
+   * If the {@code version} parameter is non-null, the returned results will be
+   * restricted to those matching this app version.
+   *
+   * @param cluster
+   *          the cluster where the jobs were run
+   * @param user
+   *          the user running the jobs
+   * @param appId
+   *          the application identifier for the jobs
+   * @param version
+   *          if non-null, only flows matching this application version will be
+   *          returned
+   * @param startTime
+   *          the start time for the flows to be looked at
+   * @param endTime
+   *          the end time for the flows to be looked at
+   * @param populateTasks
+   *          if {@code true}, then TaskDetails will be populated for each job
+   * @param limit
+   *          the maximum number of flows to return
+   * @return
+   */
+  public List<Flow> getFlowSeries(String cluster, String user, String appId, String version,
+      boolean populateTasks, long startTime, long endTime, int limit) throws IOException {
+    // TODO: use RunMatchFilter to limit scan on the server side
+    byte[] rowPrefix =
+        Bytes.toBytes(cluster + Constants.SEP + user + Constants.SEP + appId + Constants.SEP);
+    Scan scan = createFlowScan(rowPrefix, limit, version);
+
+    // set the start and stop rows for scan so that it's time bound
+    if (endTime != 0) {
+      byte[] scanStartRow;
+      // use end time in start row, if present
+      long endRunId = FlowKey.encodeRunId(endTime);
+      scanStartRow = Bytes.add(rowPrefix, Bytes.toBytes(endRunId), Constants.SEP_BYTES);
+      scan.setStartRow(scanStartRow);
+    }
+
+    if (startTime != 0) {
+      byte[] scanStopRow;
+      // use start time in stop row, if present
+      long stopRunId = FlowKey.encodeRunId(startTime);
+      scanStopRow = Bytes.add(rowPrefix, Bytes.toBytes(stopRunId), Constants.SEP_BYTES);
+      scan.setStopRow(scanStopRow);
     }
 
     return createFromResults(scan, populateTasks, limit);
