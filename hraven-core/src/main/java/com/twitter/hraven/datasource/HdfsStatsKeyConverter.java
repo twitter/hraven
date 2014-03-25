@@ -16,6 +16,7 @@ limitations under the License.
 package com.twitter.hraven.datasource;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -45,10 +46,20 @@ public class HdfsStatsKeyConverter implements ByteConverter<HdfsStatsKey> {
     if (hdfsStatsKey == null || hdfsStatsKey.getQualifiedPathKey() == null) {
       return HdfsConstants.EMPTY_BYTES;
     } else {
-      return ByteUtil.join(HdfsConstants.SEP_BYTES,
+      if (StringUtils.isBlank(hdfsStatsKey.getQualifiedPathKey().getNamespace())) {
+        // hadoop1 or non federated namespace
+        return ByteUtil.join(HdfsConstants.SEP_BYTES,
           Bytes.toBytes(Long.toString(hdfsStatsKey.getEncodedRunId())),
           Bytes.toBytes(hdfsStatsKey.getQualifiedPathKey().getCluster()),
           Bytes.toBytes(hdfsStatsKey.getQualifiedPathKey().getPath()));
+      } else {
+        // include federated namespace
+        return ByteUtil.join(HdfsConstants.SEP_BYTES,
+          Bytes.toBytes(Long.toString(hdfsStatsKey.getEncodedRunId())),
+          Bytes.toBytes(hdfsStatsKey.getQualifiedPathKey().getCluster()),
+          Bytes.toBytes(hdfsStatsKey.getQualifiedPathKey().getPath()),
+          Bytes.toBytes(hdfsStatsKey.getQualifiedPathKey().getNamespace()));
+      }
     }
   }
 
@@ -75,7 +86,9 @@ public class HdfsStatsKeyConverter implements ByteConverter<HdfsStatsKey> {
         // cluster:
         (keyComponents.length > 1 ? Bytes.toString(keyComponents[1]) : null),
         // path:
-        (keyComponents.length > 2 ? Bytes.toString(keyComponents[2]) : null)),
+        (keyComponents.length > 2 ? Bytes.toString(keyComponents[2]) : null),
+        // namespace:
+        (keyComponents.length > 3 ? Bytes.toString(keyComponents[3]) : null)),
         // encodedRunId:
         (keyComponents.length > 0 ? Long.parseLong(Bytes.toString(keyComponents[0])) : null));
   }

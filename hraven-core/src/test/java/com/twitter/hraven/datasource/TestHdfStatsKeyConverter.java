@@ -48,6 +48,23 @@ public class TestHdfStatsKeyConverter {
   }
 
   @Test
+  public void testHdfsStatsKeyConversionNS() throws Exception {
+    HdfsStatsKeyConverter conv = new HdfsStatsKeyConverter();
+
+    long now = System.currentTimeMillis();
+    HdfsStatsKey key1 = new HdfsStatsKey("cluster1", "/dir1/dir2", "namespace1", now);
+
+    byte[] key1Bytes = conv.toBytes(key1);
+    HdfsStatsKey key2 = conv.fromBytes(key1Bytes);
+    assertNotNull(key2);
+    assertEquals(key1.getEncodedRunId(), key2.getEncodedRunId());
+    assertEquals(key1.getQualifiedPathKey().getCluster(), key2.getQualifiedPathKey().getCluster());
+    assertEquals(key1.getQualifiedPathKey().getPath(), key2.getQualifiedPathKey().getPath());
+    assertEquals(key1.getQualifiedPathKey().getNamespace(), key2.getQualifiedPathKey().getNamespace());
+    assertEquals(key1.getQualifiedPathKey(), key2.getQualifiedPathKey());
+  }
+
+  @Test
   public void testNullEmptyToBytes() {
     HdfsStatsKeyConverter conv = new HdfsStatsKeyConverter();
     byte[] keyNullBytes = conv.toBytes(null);
@@ -71,6 +88,18 @@ public class TestHdfStatsKeyConverter {
   }
 
   @Test
+  public void testToBytesNS() {
+    HdfsStatsKeyConverter conv = new HdfsStatsKeyConverter();
+    long now = System.currentTimeMillis();
+    HdfsStatsKey key1 = new HdfsStatsKey("cluster1", "/dir1/dir2", "namespace1", now);
+    byte[] key1Bytes = conv.toBytes(key1);
+    byte[] key1ExpectedBytes =
+        ByteUtil.join(HdfsConstants.SEP_BYTES, Bytes.toBytes(Long.toString(now)),
+          Bytes.toBytes("cluster1"), Bytes.toBytes("/dir1/dir2"), Bytes.toBytes("namespace1"));
+    assertTrue(Bytes.equals(key1Bytes, key1ExpectedBytes));
+  }
+
+  @Test
   public void testSplitHdfsStatsKey() {
     long now = System.currentTimeMillis();
     byte[] nowBytes = Bytes.toBytes(Long.toString(now));
@@ -79,9 +108,27 @@ public class TestHdfStatsKeyConverter {
 
     byte[] key = ByteUtil.join(HdfsConstants.SEP_BYTES, nowBytes, clusterBytes, pathBytes);
     byte[][] splits = HdfsStatsKeyConverter.splitHdfsStatsKey(key);
-    assertEquals(splits.length, HdfsConstants.NUM_HDFS_USAGE_ROWKEY_COMPONENTS);
+    assertEquals(splits.length, 3);
     assertTrue(Bytes.equals(splits[0], nowBytes));
     assertTrue(Bytes.equals(splits[1], clusterBytes));
     assertTrue(Bytes.equals(splits[2], pathBytes));
   }
+
+  @Test
+  public void testSplitHdfsStatsKeyNS() {
+    long now = System.currentTimeMillis();
+    byte[] nowBytes = Bytes.toBytes(Long.toString(now));
+    byte[] clusterBytes = Bytes.toBytes("cluster1");
+    byte[] nsBytes = Bytes.toBytes("namespace1");
+    byte[] pathBytes = Bytes.toBytes("/dir1/dir2");
+
+    byte[] key = ByteUtil.join(HdfsConstants.SEP_BYTES, nowBytes, clusterBytes, pathBytes, nsBytes);
+    byte[][] splits = HdfsStatsKeyConverter.splitHdfsStatsKey(key);
+    assertEquals(splits.length, HdfsConstants.NUM_HDFS_USAGE_ROWKEY_COMPONENTS);
+    assertTrue(Bytes.equals(splits[0], nowBytes));
+    assertTrue(Bytes.equals(splits[1], clusterBytes));
+    assertTrue(Bytes.equals(splits[2], pathBytes));
+    assertTrue(Bytes.equals(splits[3], nsBytes));
+  }
+
 }

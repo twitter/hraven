@@ -42,7 +42,7 @@ public class HdfsStatsKey implements Comparable<Object> {
   private final long encodedRunId;
 
   /**
-   * Constructor.
+   * Constructor for hadoop1
    *
    * @param cluster
    *          the Hadoop cluster for the hdfs stats.
@@ -57,6 +57,27 @@ public class HdfsStatsKey implements Comparable<Object> {
                 @JsonProperty("encodedRunId") long encodedRunId) {
 
     this(new QualifiedPathKey(cluster, path), encodedRunId);
+  }
+
+  /**
+   * Constructor for federated namespace (hadoop2)
+   *
+   * @param cluster
+   *          the Hadoop cluster for the hdfs stats
+   * @param path
+   *          the hdfs path
+   * @param namespace
+   *          Namespace name
+   * @param encodedRunId
+   *          Inverted top of the hour collection timestamp
+   */
+  @JsonCreator
+  public HdfsStatsKey(@JsonProperty("cluster") String cluster,
+                @JsonProperty("path") String path,
+                @JsonProperty("namespace") String namespace,
+                @JsonProperty("encodedRunId") long encodedRunId) {
+
+    this(new QualifiedPathKey(cluster, path, namespace), encodedRunId);
   }
 
   /**
@@ -104,6 +125,10 @@ public class HdfsStatsKey implements Comparable<Object> {
 
   public long getEncodedRunId() {
     return this.encodedRunId;
+  }
+
+  public boolean hasFederatedNS() {
+    return this.pathKey.hasFederatedNS();
   }
 
   @Override

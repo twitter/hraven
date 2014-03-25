@@ -38,6 +38,11 @@ public class QualifiedPathKey implements Comparable<Object> {
   private final String path;
 
   /**
+   * The hadoop 2.0 namespace name.
+   */
+  private final String namespace;
+
+  /**
    * Constructor.
    *
    * @param cluster
@@ -46,6 +51,21 @@ public class QualifiedPathKey implements Comparable<Object> {
   public QualifiedPathKey(String cluster, String path) {
     this.cluster = (cluster != null ? cluster.trim() : "");
     this.path = (path != null ? path.trim() : "");
+    // hadoop1 clusters don't have namespace
+    this.namespace = null;
+  }
+
+  /**
+   * Constructor for federated namespace (hadoop2)
+   *
+   * @param cluster
+   * @param path
+   * @param namespace
+   */
+  public QualifiedPathKey(String cluster, String path, String namespace) {
+    this.cluster = (cluster != null ? cluster.trim() : "");
+    this.path = (path != null ? path.trim() : "");
+    this.namespace = (namespace != null ? namespace.trim() : "");
   }
 
   /**
@@ -62,12 +82,24 @@ public class QualifiedPathKey implements Comparable<Object> {
     return path;
   }
 
+  /**
+   * @return the namespace name
+   */
+  public String getNamespace() {
+    return namespace;
+  }
+
   @Override
   public String toString() {
     if (StringUtils.isBlank(this.cluster) || StringUtils.isBlank(this.path)) {
       return "";
     }
-    return this.cluster + HdfsConstants.SEP + this.path;
+    if (StringUtils.isBlank(namespace)) {
+      return this.cluster + HdfsConstants.SEP + this.path;
+    } else {
+      return this.cluster + HdfsConstants.SEP + this.path
+          + HdfsConstants.SEP + this.namespace;
+    }
   }
 
   @Override
@@ -76,9 +108,18 @@ public class QualifiedPathKey implements Comparable<Object> {
       return -1;
     }
     QualifiedPathKey otherKey = (QualifiedPathKey) other;
-    return new CompareToBuilder().append(this.cluster, otherKey.getCluster())
+    if (StringUtils.isNotBlank(this.namespace)) {
+      return new CompareToBuilder()
+          .append(this.cluster, otherKey.getCluster())
+          .append(getPath(), otherKey.getPath())
+          .append(this.namespace, otherKey.getNamespace())
+          .toComparison();
+    } else {
+      return new CompareToBuilder()
+        .append(this.cluster, otherKey.getCluster())
         .append(getPath(), otherKey.getPath())
         .toComparison();
+    }
   }
 
   @Override
@@ -86,6 +127,7 @@ public class QualifiedPathKey implements Comparable<Object> {
     return new HashCodeBuilder()
         .append(this.cluster)
         .append(this.path)
+        .append(this.namespace)
         .toHashCode();
   }
 
@@ -95,5 +137,12 @@ public class QualifiedPathKey implements Comparable<Object> {
       return compareTo((QualifiedPathKey)other) == 0;
     }
     return false;
+  }
+
+  /**
+   * returns true if namespace exists in qualified path
+   */
+  public boolean hasFederatedNS() {
+    return StringUtils.isNotBlank(namespace);
   }
 }
