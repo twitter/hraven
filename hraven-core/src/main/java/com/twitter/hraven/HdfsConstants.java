@@ -104,7 +104,7 @@ public class HdfsConstants {
   public static final String ACCESS_COST_COLUMN = "accessCost";
   public static final byte[] ACCESS_COST_COLUMN_BYTES = Bytes.toBytes(ACCESS_COST_COLUMN);
 
-  public static final String STORAGE_COST_COLUMN = "accessCost";
+  public static final String STORAGE_COST_COLUMN = "storageCost";
   public static final byte[] STORAGE_COST_COLUMN_BYTES = Bytes.toBytes(STORAGE_COST_COLUMN);
 
 }
