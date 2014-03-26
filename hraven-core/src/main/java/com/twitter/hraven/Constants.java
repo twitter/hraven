@@ -361,4 +361,9 @@ public class Constants {
    * Used to pass boolean to mappers to indicate that items are to be reprocessed.
    */
   public static final String FORCE_REPROCESS_CONF_KEY = "force.reprocess";
+
+  /**
+   * number of milli seconds in 30 days
+   */
+  public static final long THIRTY_DAYS_MILLIS = 86400000L * 30L;
 }

@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
@@ -160,11 +161,24 @@ public class RestJSONResource {
                                    @PathParam("appId") String appId,
                                    @PathParam("version") String version,
                                    @QueryParam("limit") int limit,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
 
     Stopwatch timer = new Stopwatch().start();
+
+    if(startTime == 0) {
+      // look back one month
+      startTime = System.currentTimeMillis() - Constants.THIRTY_DAYS_MILLIS;
+    }
+
+    if(endTime == 0) {
+      // default to now
+      endTime = System.currentTimeMillis();
+    }
+
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
       configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
@@ -173,7 +187,7 @@ public class RestJSONResource {
     }
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    List<Flow> flows = getFlowList(cluster, user, appId, version, limit);
+    List<Flow> flows = getFlowList(cluster, user, appId, version, startTime, endTime, limit);
     timer.stop();
 
     StringBuilder builderIncludeConfigs = new StringBuilder();
@@ -187,14 +201,16 @@ public class RestJSONResource {
 
     if (flows != null) {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
-          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched "
-          + flows.size() + " flows " + " in " + timer);
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+          + " startTime=" + startTime + " endTime=" + endTime
+          + " &includeConf=" + builderIncludeConfigs + " &includeConfRegex="
+          + builderIncludeConfigRegex + " fetched " + flows.size() + " flows " + " in " + timer);
     } else {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
-          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex
-          + " No flows fetched, spent " + timer);
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+          + " startTime=" + startTime + " endTime=" + endTime
+          + " &includeConf=" + builderIncludeConfigs + "&includeConfRegex="
+          + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
     }
     return flows;
   }
@@ -361,6 +377,27 @@ public class RestJSONResource {
        + " fetched #number of VersionInfo " + distinctVersions.size() + " in " + timer);
 
      return distinctVersions;
+  }
+
+  private List<Flow> getFlowList(String cluster,
+                                 String user,
+                                 String appId,
+                                 String version,
+                                 long startTime,
+                                 long endTime,
+                                 int limit) throws IOException {
+    if (limit < 1) {
+      limit = 1;
+    }
+    LOG.info(String.format(
+      "Fetching Flow series for cluster=%s, user=%s, appId=%s, version=%s, limit=%s", cluster,
+      user, appId, version, limit));
+
+    List<Flow> flows =
+        getJobHistoryService().getFlowSeries(cluster, user, appId, version, false, startTime,
+          endTime, limit);
+    LOG.info(String.format("Found %s flows", flows.size()));
+    return flows;
   }
 
   private List<Flow> getFlowList(String cluster,
