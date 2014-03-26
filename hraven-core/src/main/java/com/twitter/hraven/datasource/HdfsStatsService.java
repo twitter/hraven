@@ -17,8 +17,11 @@ package com.twitter.hraven.datasource;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Stopwatch;
 
@@ -26,19 +29,21 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.FuzzyRowFilter;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.HdfsStatsKey;
+import com.twitter.hraven.QualifiedPathKey;
 import com.twitter.hraven.util.StringUtil;
 
 
@@ -95,8 +100,24 @@ public class HdfsStatsService {
         + " for runId " + runId + " encodedRunId: " + encodedRunId + " limit: " + limit
         + " row prefix : " + rowPrefixStr);
     byte[] rowPrefix = Bytes.toBytes(rowPrefixStr);
-    Scan scan = new Scan();
+    Scan scan = createScanWithAllColumns();
     scan.setStartRow(rowPrefix);
+
+    // require that all rows match the prefix we're looking for
+    Filter prefixFilter = new WhileMatchFilter(new PrefixFilter(rowPrefix));
+    scan.setFilter(prefixFilter);
+    // using a large scanner caching value with a small limit can mean we scan a lot more data than
+    // necessary, so lower the caching for low limits
+    scan.setCaching(Math.min(limit, defaultScannerCaching));
+    // we need only the latest cell version
+    scan.setMaxVersions(1);
+
+    return createFromScanResults(cluster, null, scan, limit, Boolean.FALSE, 0l, 0l);
+
+  }
+
+  private Scan createScanWithAllColumns() {
+    Scan scan = new Scan();
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.FILE_COUNT_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.DIR_COUNT_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.ACCESS_COUNT_TOTAL_COLUMN_BYTES);
@@ -112,14 +133,7 @@ public class HdfsStatsService {
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.QUOTA_COLUMN_BYTES);
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.SPACE_QUOTA_COLUMN_BYTES);
 
-    // using a large scanner caching value with a small limit can mean we scan a lot more data than
-    // necessary, so lower the caching for low limits
-    scan.setCaching(Math.min(limit, defaultScannerCaching));
-    // require that all rows match the prefix we're looking for
-    Filter prefixFilter = new WhileMatchFilter(new PrefixFilter(rowPrefix));
-    scan.setFilter(prefixFilter);
-    return createFromScanResults(cluster, scan, limit);
-
+    return scan;
   }
 
   /**
@@ -130,9 +144,10 @@ public class HdfsStatsService {
    * @return
    * @throws IOException
    */
-  private List<HdfsStats> createFromScanResults(String cluster, Scan scan, int maxCount)
+  private List<HdfsStats> createFromScanResults(String cluster, String path, Scan scan, int maxCount, boolean checkPath,
+    long starttime, long endtime)
       throws IOException {
-    List<HdfsStats> hdfsStats = new LinkedList<HdfsStats>();
+    Map<HdfsStatsKey, HdfsStats> hdfsStats = new HashMap<HdfsStatsKey, HdfsStats>();
     ResultScanner scanner = null;
     Stopwatch timer = new Stopwatch().start();
     int rowCount = 0;
@@ -143,10 +158,9 @@ public class HdfsStatsService {
       scanner = hdfsUsageTable.getScanner(scan);
       for (Result result : scanner) {
         if (result != null && !result.isEmpty()) {
-          rowCount++;
           colCount += result.size();
           resultSize += result.getWritableSize();
-          populateHdfsStats(result, hdfsStats);
+          rowCount = populateHdfsStats(result, hdfsStats, checkPath, path, starttime, endtime, rowCount);
           // return if we've already hit the limit
           if (rowCount >= maxCount) {
             break;
@@ -163,57 +177,52 @@ public class HdfsStatsService {
       }
     }
 
-    return hdfsStats;
+    List<HdfsStats> values = new ArrayList<HdfsStats>(hdfsStats.values());
+    // sort so that timestamps are arranged in descending order
+    Collections.sort(values);
+    return values;
   }
 
-  
   /**
-   * Gets from the hbase table and populates the hdfs stats
-   * @param cluster
-   * @param gets
-   * @param maxCount
-   * @return
-   * @throws IOException
+   * Populates the hdfs stats for a cluster based on the hbase Result
+   *
+   * For federated hadoop2 clusters, there are multiple namespaces
+   * Since the namespace is part of the rowkey, we need to create an
+   * hdfs key without namespace so that we can aggregate across namespaces
+   *
+   * @param hbase scan result
+   * @param map of hdfsStats
    */
-  private List<HdfsStats> createFromGetResults(String cluster, List<Get> gets, int maxCount)
-      throws IOException {
-    List<HdfsStats> hdfsStats = new LinkedList<HdfsStats>();
-    Result[] allResults = null;
-    Stopwatch timer = new Stopwatch().start();
-    long resultSize = 0;
-    int rowCount = 0;
-    long colCount = 0;
+  private int populateHdfsStats(Result result, Map<HdfsStatsKey, HdfsStats> hdfsStats,
+      boolean checkPath, String path, long starttime, long endtime, int rowCount) {
+    HdfsStatsKey currentFullKey = hdfsStatsKeyConv.fromBytes(result.getRow());
+    QualifiedPathKey qpk = currentFullKey.getQualifiedPathKey();
 
-    try {
-      allResults = hdfsUsageTable.get(gets);
-      for (Result result : allResults) {
-        if (result != null && !result.isEmpty()) {
-          rowCount++;
-          colCount += result.size();
-          resultSize += result.getWritableSize();
-
-          populateHdfsStats(result, hdfsStats);
-          // return if we've already hit the limit
-          if (rowCount >= maxCount) {
-            break;
-          }
-        }
+    // we check for exact match of path
+    // since the scan does a prefix match, we need to filter out
+    // other paths
+    if(checkPath) {
+      if(!qpk.getPath().equalsIgnoreCase(StringUtil.cleanseToken(path))) {
+        return rowCount;
       }
-    } finally {
-      timer.stop();
-      LOG.info("In createFromGetResults: For cluster " + cluster + " Fetched from hbase " + rowCount + " rows, " + colCount
-          + " columns, " + resultSize + " bytes ( " + resultSize / (1024 * 1024)
-          + ") MB, in total time of " + timer);
+      // sanity check
+      if((currentFullKey.getRunId() < endtime) || (currentFullKey.getRunId() > starttime)) {
+        return rowCount;
+      }
     }
-
-    return hdfsStats;
-  }
-
-  private void populateHdfsStats(Result result, List<HdfsStats> hdfsStats) {
-    HdfsStatsKey currentKey = hdfsStatsKeyConv.fromBytes(result.getRow());
-    HdfsStats currentHdfsStats = new HdfsStats(new HdfsStatsKey(currentKey));
-    currentHdfsStats.populate(result);
-    hdfsStats.add(currentHdfsStats);
+    // create a hdfs stats key object per path without namespace
+    // that will enable aggregating stats across all namespaces
+    HdfsStatsKey currentKey = new HdfsStatsKey(qpk.getCluster(), qpk.getPath(),
+          currentFullKey.getEncodedRunId());
+    HdfsStats currentHdfsStats = hdfsStats.get(currentKey);
+    if (currentHdfsStats != null) {
+      currentHdfsStats.populate(result);
+    } else {
+      currentHdfsStats = new HdfsStats(new HdfsStatsKey(currentKey));
+      currentHdfsStats.populate(result);
+      hdfsStats.put(currentKey, currentHdfsStats);
+    }
+    return rowCount+1;
   }
 
   /**
@@ -256,40 +265,49 @@ public class HdfsStatsService {
 
   }
 
-  public List<HdfsStats> getHdfsTimeSeriesStats(String cluster, String path, String attribute,
+  public List<HdfsStats> getHdfsTimeSeriesStats(String cluster, String path,
       int limit, long starttime, long endtime) throws IOException {
 
-    List<Get> gets = GenerateGets(starttime, endtime, cluster, path, attribute, limit);
-    return createFromGetResults(cluster, gets, limit);
+    /* a better way to get timeseries info would be to have an aggregated stats
+     * table which can be queried better for 2.0 clusters
+     */
+    Scan scan = GenerateScanFuzzy(starttime, endtime, cluster, path);
+    return createFromScanResults(cluster, path, scan, limit, Boolean.TRUE, starttime, endtime);
   }
 
-  private List<Get> GenerateGets(long starttime, long endtime, String cluster,
-        String path, String attribute, int limit) {
-    long encodedRunIdStart = 0l;
-    int count = 0;
-    byte[] attributeBytes = Bytes.toBytes(attribute);
-    List<Get> gets = new ArrayList<Get>();
-    LOG.info(" Starting Getting all timeseries stats for cluster " + cluster + " with path: " + path
-      + " for starttime " + starttime + " encodedRunId: " + encodedRunIdStart + " limit: " + limit
-      + " endtime " + endtime);
-    while((starttime >= endtime) && (count <= limit)) {
-      encodedRunIdStart = getEncodedRunId(starttime);
-      StringBuilder rowkey = new StringBuilder();
-      rowkey.append(Long.toString(encodedRunIdStart));
-      rowkey.append(HdfsConstants.SEP);
-      rowkey.append(cluster);
-      rowkey.append(HdfsConstants.SEP);
-      // path expected to be cleansed at collection/storage time as well
-      rowkey.append(StringUtil.cleanseToken(path));
-      String startRowPrefixStr = rowkey.toString();
-      byte[] rowPrefix = Bytes.toBytes(startRowPrefixStr);
-      Get g = new Get(rowPrefix);
-      g.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES, attributeBytes);
-      gets.add(g);
-      count++;
-      // go to previous hour
-      starttime -= 3600;
+  Scan GenerateScanFuzzy(long starttime, long endtime, String cluster, String path)
+      throws IOException {
+
+    Scan scan = createScanWithAllColumns();
+
+    String rowKeySuffix =
+        HdfsConstants.SEP + cluster + HdfsConstants.SEP + StringUtil.cleanseToken(path);
+    String rowKey = HdfsConstants.INVERTED_TIMESTAMP_FUZZY_INFO + rowKeySuffix;
+    int fuzzyLength = HdfsConstants.NUM_CHARS_INVERTED_TIMESTAMP + rowKeySuffix.length();
+
+    byte[] fuzzyInfo = new byte[fuzzyLength];
+
+    for (int i = 0; i < HdfsConstants.NUM_CHARS_INVERTED_TIMESTAMP; i++) {
+      fuzzyInfo[i] = 1;
     }
-    return gets;
+    for (int i = HdfsConstants.NUM_CHARS_INVERTED_TIMESTAMP; i < fuzzyLength; i++) {
+      fuzzyInfo[i] = 0;
+    }
+
+    @SuppressWarnings("unchecked")
+    FuzzyRowFilter rowFilter =
+        new FuzzyRowFilter(Arrays.asList(
+          new Pair<byte[], byte[]>(Bytes.toBytesBinary(rowKey), fuzzyInfo)));
+
+    scan.setFilter(rowFilter);
+    String minStartKey = Long.toString(getEncodedRunId(starttime));
+    String maxEndKey = Long.toString(getEncodedRunId(endtime));
+    LOG.info(starttime + " " + getEncodedRunId(starttime) + " min " + minStartKey + " " + endtime
+        + " " + maxEndKey + " " + getEncodedRunId(endtime));
+    scan.setStartRow(Bytes.toBytes(minStartKey + rowKeySuffix));
+    scan.setStopRow(Bytes.toBytes(maxEndKey + rowKeySuffix));
+
+    LOG.info(" scan: " + scan.toJSON());
+    return scan;
   }
 }

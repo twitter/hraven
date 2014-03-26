@@ -30,6 +30,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig.Feature;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.module.SimpleModule;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -39,6 +40,7 @@ import com.twitter.hraven.CounterMap;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.HdfsStatsKey;
+import com.twitter.hraven.QualifiedPathKey;
 
 /**
  * Class that provides custom JSON bindings (where needed) for out object model.
@@ -116,11 +118,16 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       jsonGenerator.writeStartObject();
       jsonGenerator.writeFieldName("hdfsStatsKey");
       HdfsStatsKey hk = hdfsStats.getHdfsStatsKey();
+      QualifiedPathKey qpk = hk.getQualifiedPathKey();
       jsonGenerator.writeStartObject();
       jsonGenerator.writeFieldName("cluster");
-      jsonGenerator.writeNumber(hk.getQualifiedPathKey().getCluster());
+      jsonGenerator.writeNumber(qpk.getCluster());
+      if (StringUtils.isNotBlank(qpk.getNamespace())) {
+        jsonGenerator.writeFieldName("namespace");
+        jsonGenerator.writeNumber(qpk.getNamespace());
+      }
       jsonGenerator.writeFieldName("path");
-      jsonGenerator.writeNumber(hk.getQualifiedPathKey().getPath());
+      jsonGenerator.writeNumber(qpk.getPath());
       jsonGenerator.writeFieldName("runId");
       jsonGenerator.writeNumber(hk.getRunId());
       jsonGenerator.writeEndObject();

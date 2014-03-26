@@ -17,8 +17,11 @@ package com.twitter.hraven;
 
 import java.util.NavigableMap;
 
+import org.apache.commons.lang.builder.CompareToBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.client.Result;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
+
 
 /**
  * An HdfsStats object represents information about a particular
@@ -26,7 +29,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
  * access details and cost of that path
  */
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
-public class HdfsStats {
+public class HdfsStats implements Comparable<HdfsStats> {
 
   /** the key that uniquely identifies this hdfs stats record */
   private HdfsStatsKey hdfsStatsKey;
@@ -91,17 +94,17 @@ public class HdfsStats {
   /** represents the total hdfs cost for the path that's
    * defined by the {@link HdfsStatsKey}
    */
-  private long hdfsCost;
+  private double hdfsCost;
 
   /** represents the cost of access for the path that's
    * defined by the {@link HdfsStatsKey}
    */
-  private long accessCost;
+  private double accessCost;
 
   /** represents the storage cost for the path that's
    * defined by the {@link HdfsStatsKey}
    */
-  private long storageCost;
+  private double storageCost;
 
   /** default constructor */
   public HdfsStats() {
@@ -207,11 +210,11 @@ public class HdfsStats {
     this.accessCountTotal = accessCountTotal;
   }
 
-  public long getHdfsCost() {
+  public double getHdfsCost() {
     return hdfsCost;
   }
 
-  public void setHdfsCost(long cost) {
+  public void setHdfsCost(double cost) {
     this.hdfsCost = cost;
   }
 
@@ -219,23 +222,23 @@ public class HdfsStats {
    * hdfs cost is the sum of access Cost and Storage Cost
    * @return hdfs cost as long
    */
-  public long calculateHDFSCost(){
+  public double calculateHDFSCost(){
     return accessCost + storageCost;
   }
 
-  public long getAccessCost() {
+  public double getAccessCost() {
     return accessCost;
   }
 
-  public void setAccessCost(long accessCost) {
+  public void setAccessCost(double accessCost) {
     this.accessCost = accessCost;
   }
 
-  public long getStorageCost() {
+  public double getStorageCost() {
     return storageCost;
   }
 
-  public void setStorageCost(long storageCost) {
+  public void setStorageCost(double storageCost) {
     this.storageCost = storageCost;
   }
 
@@ -248,22 +251,47 @@ public class HdfsStats {
     NavigableMap<byte[], byte[]> infoValues =
         result.getFamilyMap(HdfsConstants.DISK_INFO_FAM_BYTES);
 
-    this.fileCount = JobDetails.getValueAsLong(HdfsConstants.FILE_COUNT_COLUMN_BYTES, infoValues);
-    this.dirCount = JobDetails.getValueAsLong(HdfsConstants.DIR_COUNT_COLUMN_BYTES, infoValues);
-    this.spaceConsumed = JobDetails.getValueAsLong(HdfsConstants.SPACE_CONSUMED_COLUMN_BYTES,
+    this.fileCount += JobDetails.getValueAsLong(HdfsConstants.FILE_COUNT_COLUMN_BYTES, infoValues);
+    this.dirCount += JobDetails.getValueAsLong(HdfsConstants.DIR_COUNT_COLUMN_BYTES, infoValues);
+    this.spaceConsumed += JobDetails.getValueAsLong(HdfsConstants.SPACE_CONSUMED_COLUMN_BYTES,
           infoValues);
-    this.accessCountTotal = JobDetails.getValueAsLong(HdfsConstants.ACCESS_COUNT_TOTAL_COLUMN_BYTES,
+    this.accessCountTotal += JobDetails.getValueAsLong(HdfsConstants.ACCESS_COUNT_TOTAL_COLUMN_BYTES,
       infoValues);
     this.owner = JobDetails.getValueAsString(HdfsConstants.OWNER_COLUMN_BYTES, infoValues);
-    this.quota = JobDetails.getValueAsLong(HdfsConstants.QUOTA_COLUMN_BYTES, infoValues);
-    this.spaceQuota = JobDetails.getValueAsLong(HdfsConstants.SPACE_QUOTA_COLUMN_BYTES, infoValues);
-    this.tmpFileCount = JobDetails.getValueAsLong(HdfsConstants.TMP_FILE_COUNT_COLUMN_BYTES, infoValues);
-    this.tmpSpaceConsumed = JobDetails.getValueAsLong(HdfsConstants.TMP_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
-    this.trashFileCount = JobDetails.getValueAsLong(HdfsConstants.TRASH_FILE_COUNT_COLUMN_BYTES, infoValues);
-    this.trashSpaceConsumed = JobDetails.getValueAsLong(HdfsConstants.TRASH_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
-    this.accessCost = JobDetails.getValueAsLong(HdfsConstants.ACCESS_COST_COLUMN_BYTES, infoValues);
-    this.storageCost = JobDetails.getValueAsLong(HdfsConstants.STORAGE_COST_COLUMN_BYTES, infoValues);
+    this.quota += JobDetails.getValueAsLong(HdfsConstants.QUOTA_COLUMN_BYTES, infoValues);
+    this.spaceQuota += JobDetails.getValueAsLong(HdfsConstants.SPACE_QUOTA_COLUMN_BYTES, infoValues);
+    this.tmpFileCount += JobDetails.getValueAsLong(HdfsConstants.TMP_FILE_COUNT_COLUMN_BYTES, infoValues);
+    this.tmpSpaceConsumed += JobDetails.getValueAsLong(HdfsConstants.TMP_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
+    this.trashFileCount += JobDetails.getValueAsLong(HdfsConstants.TRASH_FILE_COUNT_COLUMN_BYTES, infoValues);
+    this.trashSpaceConsumed += JobDetails.getValueAsLong(HdfsConstants.TRASH_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
+    this.accessCost += JobDetails.getValueAsDouble(HdfsConstants.ACCESS_COST_COLUMN_BYTES, infoValues);
+    this.storageCost += JobDetails.getValueAsDouble(HdfsConstants.STORAGE_COST_COLUMN_BYTES, infoValues);
+    this.hdfsCost = calculateHDFSCost();
 
+  }
+
+  public int compareTo(HdfsStats other) {
+    if (other == null) {
+      return -1;
+    }
+    return new CompareToBuilder()
+        .append(this.hdfsStatsKey, other.getHdfsStatsKey())
+        .toComparison();
+  }
+
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder()
+        .append(this.hdfsStatsKey)
+        .toHashCode();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other instanceof HdfsStats) {
+      return compareTo((HdfsStats) other) == 0;
+    }
+    return false;
   }
 
 }
