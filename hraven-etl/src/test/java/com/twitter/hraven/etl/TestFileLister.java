@@ -16,16 +16,11 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -44,49 +39,6 @@ public class TestFileLister {
   public static void setupBeforeClass() throws Exception {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
-  }
-
-  @Test
-  public void testMoveFileHdfs() throws IOException {
-    Path src = new Path("/dir1/file1234.txt");
-    Path dest = new Path("/dir3/dir00004");
-    FileSystem hdfs = FileSystem.get(UTIL.getConfiguration());
-    boolean os = hdfs.createNewFile(src);
-    assertTrue(os);
-    os = hdfs.mkdirs(dest);
-    assertTrue(os);
-    FileLister.moveFileHdfs(hdfs, src, dest);
-    String destFullPathStr = dest.toUri() + "/" + src.getName();
-    Path expFile = new Path(destFullPathStr);
-    assertTrue(hdfs.exists(expFile));
-    assertFalse(hdfs.exists(src));
-  }
-
-  @Test
-  public void testMoveFileHdfsNullDest() throws IOException {
-    Path src = new Path("/dir1/dir12345");
-    FileSystem hdfs = FileSystem.get(UTIL.getConfiguration());
-    boolean os = hdfs.createNewFile(src);
-    assertTrue(os);
-    FileLister.moveFileHdfs(hdfs, src, null);
-    assertTrue(hdfs.exists(src));
-  }
-
-  @Test
-  public void testGetDatedRootNull() {
-    assertNull(FileLister.getDatedRoot(null));
-  }
-
-  @Test
-  public void testGetDatedRoot() {
-    String root = "abc";
-
-    DateFormat df = new SimpleDateFormat("yyyy/MM/dd");
-    String formatted = df.format(new Date());
-    String expRoot = root + "/" + formatted;
-    String actualRoot = FileLister.getDatedRoot(root);
-    assertNotNull(actualRoot);
-    assertEquals(actualRoot, expRoot);
   }
 
   @Test
@@ -118,12 +70,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(expPath));
     origList[1] = hdfs.getFileStatus(expPath);
 
-    Path relocationPath = new Path("/relocation_filesize");
-    os = hdfs.mkdirs(relocationPath);
-    assertTrue(os);
-    assertTrue(hdfs.exists(relocationPath));
-
-    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, relocationPath);
+    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 0);
 
@@ -140,7 +87,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(emptyConfFile));
     origList[1] = hdfs.getFileStatus(emptyConfFile);
 
-    prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, relocationPath);
+    prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 2);
 
@@ -182,7 +129,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(expPath));
     origList[1] = hdfs.getFileStatus(expPath);
 
-    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, relocationPath);
+    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 0);
   }
@@ -288,7 +235,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(emptyConfFile4));
     origList[11] = hdfs.getFileStatus(emptyConfFile4);
 
-    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, relocationPath);
+    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 4);
   }

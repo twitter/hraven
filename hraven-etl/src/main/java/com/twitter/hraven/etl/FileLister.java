@@ -16,10 +16,7 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -112,24 +109,21 @@ public class FileLister {
    * @param hdfs - filesystem to be looked at
    * @param inputPath - root dir of the path containing history files
    * @param jobFileModifiedRangePathFilter - to filter out files
-   * @param destPath - relocation dir for huge files
    * @return - array of FileStatus of files to be processed
    * @throws IOException
    */
   public static FileStatus[] getListFilesToProcess(long maxFileSize, boolean recurse,
-      FileSystem hdfs, Path inputPath, JobFileModifiedRangePathFilter pathFilter,
-      Path destPath)
+      FileSystem hdfs, Path inputPath, JobFileModifiedRangePathFilter pathFilter)
       throws IOException {
 
     LOG.info(" in getListFilesToProcess maxFileSize=" + maxFileSize
-        + " inputPath= " + inputPath.toUri()
-        + " destPath=" + destPath.toUri());
+        + " inputPath= " + inputPath.toUri());
     FileStatus[] origList = listFiles(recurse, hdfs, inputPath, pathFilter);
     if (origList == null) {
       LOG.info(" No files found, orig list returning 0");
       return new FileStatus[0];
     }
-    return pruneFileListBySize(maxFileSize, origList, hdfs, inputPath, destPath);
+    return pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
    }
 
   /**
@@ -139,22 +133,17 @@ public class FileLister {
    * @param origList - input list of files to be processed
    * @param hdfs - filesystem to be looked at
    * @param inputPath - root dir of the path containing history files
-   * @param destPath - relocation dir for huge files
    * @return - pruned array of FileStatus of files to be processed
    */
   static FileStatus[] pruneFileListBySize(long maxFileSize, FileStatus[] origList, FileSystem hdfs,
-      Path inputPath, Path destPath) {
-    LOG.info("Pruning orig list  of size " + origList.length + " for source" + inputPath.toUri()
-        + " to move to " + destPath.toUri());
+      Path inputPath) {
+    LOG.info("Pruning orig list  of size " + origList.length + " for source" + inputPath.toUri());
 
     long fileSize = 0L;
     List<FileStatus> prunedFileList = new ArrayList<FileStatus>();
 
     Set<String> toBeRemovedJobId = new HashSet<String>();
     // append the destination root dir with year/month/day
-    String rootYMD = getDatedRoot(destPath.toUri().toString());
-    LOG.info("Root YMD: " + rootYMD);
-    Path destYMDPath = new Path(rootYMD);
     for (int i = 0; i < origList.length; i++) {
       fileSize = origList[i].getLen();
 
@@ -166,8 +155,6 @@ public class FileLister {
         LOG.info("In getListFilesToProcess filesize " + fileSize + " has exceeded maxFileSize "
             + maxFileSize + " for " + hugeFile.toUri());
 
-         // if this file is huge, relocate it
-        relocateFile(hdfs, hugeFile, destYMDPath);
         // note the job id so that we can remove the other file (job conf or job history)
         toBeRemovedJobId.add(getJobIdFromPath(hugeFile));
       }
@@ -187,8 +174,7 @@ public class FileLister {
       Path curFile = it.next().getPath();
       jobId = getJobIdFromPath(curFile);
       if (toBeRemovedJobId.contains(jobId)) {
-        LOG.info("Relocating and removing from prunedList " + curFile.toUri());
-        relocateFile(hdfs, curFile, destYMDPath);
+        LOG.info("Removing from prunedList " + curFile.toUri());
         it.remove();
         /*
          * removing the job id from the hash set since there would be only
@@ -214,75 +200,5 @@ public class FileLister {
       throw new ProcessingException("job id is null for " + aPath.toUri());
     }
     return jobId;
-  }
-
-  /**
-   * creates dest root and relocates the job conf and job history files
-   * @param hdfs - filesystem to be looked at
-   * @param sourcePath - source path of the file to be moved
-   * @param destPath - relocation destination root dir
-   */
-  static void relocateFile(FileSystem hdfs, Path sourcePath, Path destPath) {
-
-    try {
-      // create it on hdfs if it does not exist
-      if (!hdfs.exists(destPath)) {
-        LOG.info("Attempting to create " + destPath);
-        boolean dirCreated = hdfs.mkdirs(destPath);
-        if (!dirCreated) {
-          throw new ProcessingException("Could not create " + destPath.toUri());
-        }
-      }
-    } catch (IOException ioe) {
-      throw new ProcessingException("Could not check/create " + destPath.toUri(), ioe);
-    }
-
-    // move this huge file to relocation dir
-    moveFileHdfs(hdfs, sourcePath, destPath);
-
-  }
-
-  /**
-   * constructs a string for
-   * givenPath/year/month/day
-   *
-   * @return path/year/month/day
-   */
-  static String getDatedRoot(String root) {
-
-    if(root == null) {
-      return null;
-    }
-    DateFormat df = new SimpleDateFormat("yyyy/MM/dd");
-    String formatted = df.format(new Date());
-    return root + "/" + formatted ;
-  }
-
-  /**
-   * moves a file on hdfs from sourcePath to a subdir under destPath
-   */
-  public static void moveFileHdfs(FileSystem hdfs, Path sourcePath, Path destPath) {
-    if (destPath == null || sourcePath == null) {
-      LOG.error("source or destination path is null, not moving ");
-      return;
-    }
-
-    String src = sourcePath.toUri().toString();
-    // construct the final destination path including file name
-    String destFullPathStr = destPath.toUri() + "/" + sourcePath.getName();
-    Path destFullPath = new Path(destFullPathStr);
-
-    try {
-      LOG.info("Moving " + sourcePath.toUri() + " to " + destFullPathStr);
-      // move the file on hdfs from source to destination
-      boolean moved = hdfs.rename(sourcePath, destFullPath);
-      if (!moved) {
-        throw new ProcessingException("Could not move from " + src
-            + " to " + destFullPathStr);
-      }
-    } catch (IOException ioe) {
-      throw new ProcessingException("Could not move from " + src
-            + " to " + destFullPathStr, ioe);
-    }
   }
 }

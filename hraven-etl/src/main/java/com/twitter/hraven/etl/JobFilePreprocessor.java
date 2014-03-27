@@ -26,7 +26,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -159,13 +158,6 @@ public class JobFilePreprocessor extends Configured implements Tool {
     o.setRequired(false);
     options.addOption(o);
 
-    // Input
-    o = new Option("r", "relocation", true,
-        "relocation directory in hdfs for huge history files");
-    o.setArgName("relocation-path");
-    o.setRequired(false);
-    options.addOption(o);
-
     // Force
     o = new Option(
         "f",
@@ -287,22 +279,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
     String maxFileSizeStr = commandLine.getOptionValue("s");
     LOG.info("maxFileSize=" + maxFileSizeStr);
     long maxFileSize = Long.MAX_VALUE;
-    Path hugeFileRelocationRoot = null;
     try {
       maxFileSize = Long.parseLong(maxFileSizeStr);
-      // Grab the destination path for such huge files
-      String hugeFileRelocationRootStr = commandLine.getOptionValue("r");
-      if (StringUtils.isBlank(hugeFileRelocationRootStr)) {
-        throw new ProcessingException(" Relocation destination root for huge files is missing");
-      }
-      LOG.info("hugeFileRelocationRoot=" + hugeFileRelocationRootStr);
-      hugeFileRelocationRoot = new Path(hugeFileRelocationRootStr);
-      FileStatus hugeFileRootStatus = hdfs.getFileStatus(hugeFileRelocationRoot);
-
-      if (!hugeFileRootStatus.isDir()) {
-        throw new IOException("hugeFileRelocationRoot is not a directory, please create it"
-            + hugeFileRootStatus.getPath().getName());
-      }
     } catch (NumberFormatException nfe) {
       throw new ProcessingException("Caught NumberFormatException during conversion "
             + " of maxFileSize to long", nfe);
@@ -355,7 +333,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
       // that include MAPREDUCE-323: on/after hadoop 0.20.203.0
       // on/after cdh3u5
       FileStatus[] jobFileStatusses = FileLister.getListFilesToProcess(maxFileSize, true,
-            hdfs, inputPath, jobFileModifiedRangePathFilter, hugeFileRelocationRoot);
+            hdfs, inputPath, jobFileModifiedRangePathFilter);
 
       LOG.info("Sorting " + jobFileStatusses.length + " job files.");
 
