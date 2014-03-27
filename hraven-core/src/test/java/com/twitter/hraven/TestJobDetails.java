@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
@@ -368,6 +369,12 @@ public class TestJobDetails {
     // test non existent value
     expVal = 0L;
     assertEquals(expVal, JobDetails.getValueAsLong(Constants.HRAVEN_QUEUE_BYTES, infoValues));
+
+    infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
+    infoValues.put(Bytes.toBytes("checking_iae"),
+      Bytes.toBytes("abc"));
+    assertEquals(expVal, JobDetails.getValueAsLong(Bytes.toBytes("checking_iae"), infoValues));
+
   }
 
   /**
@@ -395,6 +402,25 @@ public class TestJobDetails {
       JobDetails.getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues));
     // test non existent values
     assertEquals("", JobDetails.getValueAsString(Constants.HRAVEN_QUEUE_BYTES, infoValues));
+  }
+
+  /**
+   * test get value as long
+   */
+  @Test
+  public void testGetValueAsDouble() {
+    NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
+    double value = 34.567;
+    double delta = 0.01;
+    byte[] key = Bytes.toBytes("testingForDouble");
+    infoValues.put(key, Bytes.toBytes(value));
+    assertEquals(value, JobDetails.getValueAsDouble(key, infoValues), delta);
+
+    // test non existent value
+    double expVal = 0.0;
+    key = Bytes.toBytes("testingForDoubleNonExistent");
+    assertEquals(expVal, JobDetails.getValueAsDouble(key, infoValues), delta);
+
   }
 
   /**

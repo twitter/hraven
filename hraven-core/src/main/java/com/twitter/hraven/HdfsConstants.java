@@ -43,7 +43,7 @@ public class HdfsConstants {
   public static final String UNKNOWN = "";
 
   /** default number of records returned in json response */
-  public static final int RECORDS_RETURNED_LIMIT = 500;
+  public static final int RECORDS_RETURNED_LIMIT = Integer.MAX_VALUE;
 
   /** Hdfs Stats Table names */
   public static final String HDFS_USAGE_TABLE = "chargeback_hdfs_usage";
@@ -52,7 +52,12 @@ public class HdfsConstants {
   public static final String HDFS_USER_ACCESS_TABLE = "chargeback_user_access";
   public static final byte[] HDFS_USER_ACCESS_TABLE_BYTES = Bytes.toBytes(HDFS_USER_ACCESS_TABLE);
 
-  public static final int NUM_HDFS_USAGE_ROWKEY_COMPONENTS = 3;
+  public static final int NUM_HDFS_USAGE_ROWKEY_COMPONENTS = 4;
+
+  /** inverted timestamp is part of rowkey, it's long.max_value - unix timestamp */
+  public static final int NUM_CHARS_INVERTED_TIMESTAMP = 19;
+  public static final String INVERTED_TIMESTAMP_FUZZY_INFO =
+      "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00";
 
   public static final String DISK_INFO_FAM = "disk_info";
   public static final byte[] DISK_INFO_FAM_BYTES = Bytes.toBytes(DISK_INFO_FAM);
@@ -99,7 +104,7 @@ public class HdfsConstants {
   public static final String ACCESS_COST_COLUMN = "accessCost";
   public static final byte[] ACCESS_COST_COLUMN_BYTES = Bytes.toBytes(ACCESS_COST_COLUMN);
 
-  public static final String STORAGE_COST_COLUMN = "accessCost";
+  public static final String STORAGE_COST_COLUMN = "storageCost";
   public static final byte[] STORAGE_COST_COLUMN_BYTES = Bytes.toBytes(STORAGE_COST_COLUMN);
 
 }

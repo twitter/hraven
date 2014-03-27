@@ -16,7 +16,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven</artifactId>
-  <version>0.9.9-SNAPSHOT</version>
+  <version>0.9.11-SNAPSHOT</version>
   <name>hRaven Project</name>
   <url>https://github.com/twitter/hraven</url>
   <description>
@@ -120,7 +120,7 @@
   <properties>
     <compileSource>1.6</compileSource>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <hbase.version>0.94.3</hbase.version>
+    <hbase.version>0.94.10</hbase.version>
     <hadoop.version>1.0.4</hadoop.version>
 
     <commons-logging.version>1.1.1</commons-logging.version>

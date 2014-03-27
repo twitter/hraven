@@ -16,7 +16,6 @@ limitations under the License.
 package com.twitter.hraven.rest;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.ws.rs.DefaultValue;
@@ -36,6 +35,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
@@ -160,11 +160,24 @@ public class RestJSONResource {
                                    @PathParam("appId") String appId,
                                    @PathParam("version") String version,
                                    @QueryParam("limit") int limit,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
 
     Stopwatch timer = new Stopwatch().start();
+
+    if(startTime == 0) {
+      // look back one month
+      startTime = System.currentTimeMillis() - Constants.THIRTY_DAYS_MILLIS;
+    }
+
+    if(endTime == 0) {
+      // default to now
+      endTime = System.currentTimeMillis();
+    }
+
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
       configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
@@ -173,7 +186,7 @@ public class RestJSONResource {
     }
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    List<Flow> flows = getFlowList(cluster, user, appId, version, limit);
+    List<Flow> flows = getFlowList(cluster, user, appId, version, startTime, endTime, limit);
     timer.stop();
 
     StringBuilder builderIncludeConfigs = new StringBuilder();
@@ -187,14 +200,16 @@ public class RestJSONResource {
 
     if (flows != null) {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
-          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched "
-          + flows.size() + " flows " + " in " + timer);
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+          + " startTime=" + startTime + " endTime=" + endTime
+          + " &includeConf=" + builderIncludeConfigs + " &includeConfRegex="
+          + builderIncludeConfigRegex + " fetched " + flows.size() + " flows " + " in " + timer);
     } else {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
-          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex
-          + " No flows fetched, spent " + timer);
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+          + " startTime=" + startTime + " endTime=" + endTime
+          + " &includeConf=" + builderIncludeConfigs + "&includeConfRegex="
+          + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
     }
     return flows;
   }
@@ -367,6 +382,27 @@ public class RestJSONResource {
                                  String user,
                                  String appId,
                                  String version,
+                                 long startTime,
+                                 long endTime,
+                                 int limit) throws IOException {
+    if (limit < 1) {
+      limit = 1;
+    }
+    LOG.info(String.format(
+      "Fetching Flow series for cluster=%s, user=%s, appId=%s, version=%s, limit=%s", cluster,
+      user, appId, version, limit));
+
+    List<Flow> flows =
+        getJobHistoryService().getFlowSeries(cluster, user, appId, version, false, startTime,
+          endTime, limit);
+    LOG.info(String.format("Found %s flows", flows.size()));
+    return flows;
+  }
+
+  private List<Flow> getFlowList(String cluster,
+                                 String user,
+                                 String appId,
+                                 String version,
                                  int limit) throws IOException {
     if (limit < 1) { limit = 1; }
     LOG.info(String.format(
@@ -435,12 +471,11 @@ public class RestJSONResource {
   }
 
   @GET
-  @Path("hdfs/path/{cluster}/{attribute}")
+  @Path("hdfs/path/{cluster}/")
   @Produces(MediaType.APPLICATION_JSON)
   public List<HdfsStats> getHdfsPathTimeSeriesStats(
                                 @PathParam("cluster") String cluster,
                                 @QueryParam("path") String path,
-                                @PathParam("attribute") String attribute,
                                 @QueryParam("starttime") long starttime,
                                 @QueryParam("endtime") long endtime,
                                 @QueryParam("limit") int limit)
@@ -462,42 +497,33 @@ public class RestJSONResource {
 
     if (endtime == 0L) {
       // default it to one week ago
-      long lastHour = System.currentTimeMillis() - 7 * 86400000;
-      // convert milliseconds to seconds
-      endtime = lastHour / 1000L;
+      endtime = starttime - 7 * 86400;
+    }
+
+    if(endtime > starttime) {
+      throw new RuntimeException("Ensure endtime " + endtime + " is older than starttime " + starttime);
     }
 
     LOG.info(String.format(
-      "Fetching hdfs timeseries stats for cluster=%s, path=%s attribute=%s limit=%d, starttime=%d endtime=%d", cluster,
-      path, attribute, limit, starttime, endtime));
+      "Fetching hdfs timeseries stats for cluster=%s, path=%s limit=%d, starttime=%d endtime=%d", cluster,
+      path, limit, starttime, endtime));
     Stopwatch timer = new Stopwatch().start();
     List<HdfsStats> hdfsStats =
-        getHdfsStatsService().getHdfsTimeSeriesStats(cluster, path, attribute, limit, starttime,
+        getHdfsStatsService().getHdfsTimeSeriesStats(cluster, path, limit, starttime,
           endtime);
     timer.stop();
 
     if( hdfsStats != null ){
     LOG.info("For hdfs/path/{cluster}/{attribute} with input query "
-        +  "hdfs/path/" + cluster + SLASH + attribute
+        +  "hdfs/path/" + cluster
         + "?limit=" + limit + "&path=" + path
         + " fetched #number of HdfsStats " + hdfsStats.size() + " in " + timer);
     } else {
       LOG.info("For hdfs/path/{cluster}/{attribute} with input query "
-          +  "hdfs/path/" + cluster + SLASH + attribute
+          +  "hdfs/path/" + cluster
           + "?limit=" + limit + "&path=" + path
           + " fetched 0 HdfsStats in " + timer);
     }
-
-    /** set the serialization for the response
-     * so that the response does not include all attributes
-     * of hdfs stats, but only the one that is requested for
-     */
-    Predicate<String> configFilter = null;
-    List<String> al = new ArrayList<String>();
-    al.add(attribute);
-    configFilter = new SerializationContext.RegexConfigurationFilter(al);
-    serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING, configFilter));
 
     return hdfsStats;
   }

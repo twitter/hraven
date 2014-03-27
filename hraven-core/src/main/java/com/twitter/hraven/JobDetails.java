@@ -43,7 +43,7 @@ import com.twitter.hraven.datasource.JobHistoryService;
   include= JsonSerialize.Inclusion.NON_NULL
 )
 public class JobDetails implements Comparable<JobDetails> {
-  @SuppressWarnings("unused")
+
   private static Log LOG = LogFactory.getLog(JobDetails.class);
 
   // job key -- maps to row key
@@ -420,7 +420,20 @@ public class JobDetails implements Comparable<JobDetails> {
   static Long getValueAsLong(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(key);
     if (value != null) {
-      return Bytes.toLong(value);
+      try {
+      long retValue = Bytes.toLong(value);
+      return retValue;
+      } catch (NumberFormatException nfe) {
+        LOG.error("Caught NFE while converting to long " + nfe.getMessage());
+        nfe.printStackTrace();
+        return 0L;
+      } catch (IllegalArgumentException iae ) {
+        // for exceptions like java.lang.IllegalArgumentException:
+        // offset (0) + length (8) exceed the capacity of the array: 7
+        LOG.error("Caught IAE while converting to long " +  iae.getMessage());
+        iae.printStackTrace();
+        return 0L;
+      }
     } else {
       return 0L;
     }
@@ -455,6 +468,21 @@ public class JobDetails implements Comparable<JobDetails> {
       return Bytes.toString(value);
     } else {
       return "";
+    }
+  }
+
+  /**
+   * return a value from the NavigableMap as a Double
+   * @param key to be looked up for the value
+   * @param infoValues - the map containing the key values
+   * @return value as Double or 0.0
+   */
+  public static double getValueAsDouble(byte[] key, NavigableMap<byte[], byte[]> infoValues) {
+    byte[] value = infoValues.get(key);
+    if (value != null) {
+      return Bytes.toDouble(value);
+    } else {
+      return 0.0;
     }
   }
 

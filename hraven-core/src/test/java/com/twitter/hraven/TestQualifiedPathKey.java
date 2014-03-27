@@ -19,6 +19,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 /**
  * tests the {@link HdfsStatsKeyConverter} class
@@ -27,12 +28,22 @@ public class TestQualifiedPathKey {
 
   private static final String cluster1 = "cluster1";
   private static final String path1 = "path1";
+  private static final String namespace1 = "namespace1";
+  private static final String namespace2 = "namespace2";
 
   @Test
   public void testConstructor1() throws Exception {
-
     QualifiedPathKey key1 = new QualifiedPathKey(cluster1, path1);
     testKeyComponents(key1);
+    assertNull(key1.getNamespace());
+  }
+
+  @Test
+  public void testConstructor2() throws Exception {
+    QualifiedPathKey key1 = new QualifiedPathKey(cluster1, path1, namespace1);
+    testKeyComponents(key1);
+    assertNotNull(key1.getNamespace());
+    assertEquals(key1.getNamespace(), namespace1);
   }
 
   @Test
@@ -45,14 +56,21 @@ public class TestQualifiedPathKey {
   }
 
   @Test
+  public void testInEqualityWithNamespace() throws Exception {
+    // keep only the namespace name different
+    QualifiedPathKey key1 = new QualifiedPathKey(cluster1, path1, namespace1);
+    QualifiedPathKey key2 = new QualifiedPathKey(cluster1, path1, namespace2);
+    assertEquals(key1.compareTo(key2), -1);
+  }
+
+  @Test
   public void testNullHashCode() throws Exception {
     QualifiedPathKey key1 = new QualifiedPathKey(null, null);
-    
     QualifiedPathKey key2 = new QualifiedPathKey(" ", " ");
     assertEquals(key1.hashCode(), key2.hashCode());
   }
 
-  private void testKeyComponents( QualifiedPathKey key1) {
+  private void testKeyComponents(QualifiedPathKey key1) {
     assertNotNull(key1);
     assertEquals(key1.getCluster(), cluster1);
     assertEquals(key1.getPath(), path1);

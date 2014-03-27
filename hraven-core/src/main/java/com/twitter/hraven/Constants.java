@@ -262,6 +262,7 @@ public class Constants {
   public static final String DEFAULT_VALUE_QUEUENAME = "default";
 
   public static final String JOB_NAME_CONF_KEY = "mapred.job.name";
+  public static final String JOB_NAME_HADOOP2_CONF_KEY = "mapreduce.job.name";
 
   public static final String PIG_CONF_KEY = "pig.version"; // used to detect a
                                                            // pig job
@@ -360,4 +361,9 @@ public class Constants {
    * Used to pass boolean to mappers to indicate that items are to be reprocessed.
    */
   public static final String FORCE_REPROCESS_CONF_KEY = "force.reprocess";
+
+  /**
+   * number of milli seconds in 30 days
+   */
+  public static final long THIRTY_DAYS_MILLIS = 86400000L * 30L;
 }

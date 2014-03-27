@@ -22,6 +22,7 @@ import com.twitter.hraven.HdfsStatsKey;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -31,6 +32,7 @@ public class TestHdfsStatsKey {
 
   private static final String cluster1 = "cluster1";
   private static final String path1 = "path1";
+  private static final String namespace1 = "namespace1";
   private static final long now1 =  Long.MAX_VALUE - System.currentTimeMillis()/1000;
 
   @Test
@@ -39,6 +41,15 @@ public class TestHdfsStatsKey {
     HdfsStatsKey key1 = new HdfsStatsKey(cluster1, path1, now1);
     testKeyComponents(key1);
     assertEquals(key1.getQualifiedPathKey(), new QualifiedPathKey(cluster1, path1));
+    assertNull(key1.getQualifiedPathKey().getNamespace());
+  }
+
+  @Test
+  public void testConstructorFederatedNS() throws Exception {
+    HdfsStatsKey key1 = new HdfsStatsKey(cluster1, path1, namespace1, now1);
+    testKeyComponents(key1);
+    assertEquals(key1.getQualifiedPathKey(), new QualifiedPathKey(cluster1, path1, namespace1));
+    assertEquals(key1.getQualifiedPathKey().getNamespace(), namespace1);
   }
 
   private void testKeyComponents( HdfsStatsKey key1) {
@@ -75,6 +86,11 @@ public class TestHdfsStatsKey {
 
     key2 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
     assertTrue(key1.compareTo(key2) == 0);
+
+    // test for federated ns key
+    key1 = new HdfsStatsKey(cluster1, path1, namespace1, (Long.MAX_VALUE - ts));
+    key2 = new HdfsStatsKey(cluster1, path1, namespace1, (Long.MAX_VALUE - ts - 10000));
+    assertTrue(key1.compareTo(key2) > 0);
   }
 
   @Test
@@ -88,5 +104,12 @@ public class TestHdfsStatsKey {
     key2 = new HdfsStatsKey(cluster1, path1, (Long.MAX_VALUE - ts));
     assertTrue(key1.equals(key2));
     assertEquals(key1.hashCode(), key2.hashCode());
+
+    // test for federated ns key
+    key1 = new HdfsStatsKey(cluster1, path1, namespace1, (Long.MAX_VALUE - ts));
+    key2 = new HdfsStatsKey(cluster1, path1, namespace1, (Long.MAX_VALUE - ts));
+    assertTrue(key1.equals(key2));
+    assertEquals(key1.hashCode(), key2.hashCode());
+
   }
 }

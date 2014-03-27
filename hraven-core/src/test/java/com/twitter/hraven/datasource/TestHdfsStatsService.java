@@ -24,7 +24,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.HdfsStatsKey;
@@ -183,8 +182,8 @@ public class TestHdfsStatsService {
   public void TestGetAllDirs() throws IOException {
     HdfsStatsService hs = new HdfsStatsService(UTIL.getConfiguration());
     long ts = 1392217200L;
-    String cluster1 = "cluster1";
-    String pathPrefix = "/dir1/";
+    String cluster1 = "getAllDirsCluster1";
+    String pathPrefix = "/all_dirs_dir1/";
     long encodedRunId = (Long.MAX_VALUE - ts);
     loadHdfsData(encodedRunId, cluster1, pathPrefix);
     List<HdfsStats> h1 = hs.getAllDirs(cluster1, pathPrefix, 10, ts);
@@ -223,6 +222,7 @@ public class TestHdfsStatsService {
   private void loadHdfsUsageStats(String cluster1, String path, long encodedRunId, long fc, long dc,
       String owner, long sc, long ac, HTable ht) throws IOException {
     HdfsStatsKey key = new HdfsStatsKey(cluster1, StringUtil.cleanseToken(path), encodedRunId);
+
     HdfsStatsKeyConverter hkc = new HdfsStatsKeyConverter();
     Put p = new Put(hkc.toBytes(key));
     p.add(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.FILE_COUNT_COLUMN_BYTES,
@@ -235,6 +235,56 @@ public class TestHdfsStatsService {
     p.add(HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.SPACE_CONSUMED_COLUMN_BYTES,
       Bytes.toBytes(sc));
     ht.put(p);
+  }
+
+  private long loadTimeSeries(String cluster, String path, int limit, long startts) throws IOException {
+
+    long ts = startts;
+    long encodedRunId = (Long.MAX_VALUE - ts);
+    int count = 0;
+    while (count < limit) {
+      loadHdfsUsageStats(cluster, path, encodedRunId, count * 10, count * 30, "user123",
+        count * 1000, count * 100, ht);
+      ts += 7200;
+      encodedRunId = (Long.MAX_VALUE - ts);
+      count++;
+    }
+    long endts = ts;
+    return endts;
+  }
+
+  @Test
+  public void testFuzzy() throws IOException {
+
+    final long startts = 1392217200L;
+    String cluster1 = "cluster1_timeseries";
+    String pathPrefix = "/dir_timeseries/dir12345";
+    String pathhello = "/hello1/hello2";
+    int numberStatsExpected = 5;
+    loadTimeSeries(cluster1, pathPrefix, numberStatsExpected, startts);
+    loadTimeSeries(cluster1, pathhello, numberStatsExpected, startts);
+
+    String cluster4 = "yet_another_one";
+    String pathPrefix4 = "/dir_timeseries/dir12345";
+    int numberStatsExpected4 = 5;
+    loadTimeSeries(cluster4, pathPrefix4, numberStatsExpected4, startts);
+
+    String cluster3 = "abc_something_else";
+    String pathPrefix3 = "/dir_timeseries/dir12345";
+    int numberStatsExpected3 = 5;
+    long endts3 = loadTimeSeries(cluster3, pathPrefix3, numberStatsExpected3, startts);
+
+    HdfsStatsService hs = new HdfsStatsService(UTIL.getConfiguration());
+    List<HdfsStats> h3 = hs.getHdfsTimeSeriesStats(cluster1, pathPrefix,
+          Integer.MAX_VALUE, startts + 7200*3 + 1, startts - 3600);
+    assertEquals(4, h3.size());
+
+    HdfsStatsService hs2 = new HdfsStatsService(UTIL.getConfiguration());
+
+   List<HdfsStats> h5 = hs2.getHdfsTimeSeriesStats(cluster3, pathPrefix3,
+      Integer.MAX_VALUE, endts3, startts - 3600);
+    assertEquals(numberStatsExpected3, h5.size());
+
   }
 
   @AfterClass
