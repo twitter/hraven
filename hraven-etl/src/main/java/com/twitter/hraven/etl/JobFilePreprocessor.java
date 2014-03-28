@@ -82,9 +82,9 @@ public class JobFilePreprocessor extends Configured implements Tool {
   private final static int DEFAULT_BATCH_SIZE = 1000;
 
   /**
-   * Maximum size of file that be loaded into raw table : 779 MB
+   * Maximum size of file that be loaded into raw table : 500 MB
    */
-  private final static int DEFAULT_RAW_FILE_SIZE_LIMIT = 817387220;
+  private final static long DEFAULT_RAW_FILE_SIZE_LIMIT = 524288000;
 
   /**
    * Name of the job conf property used to pass the output directory to the
@@ -278,7 +278,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
      */
     String maxFileSizeStr = commandLine.getOptionValue("s");
     LOG.info("maxFileSize=" + maxFileSizeStr);
-    long maxFileSize = Long.MAX_VALUE;
+    long maxFileSize = DEFAULT_RAW_FILE_SIZE_LIMIT;
     try {
       maxFileSize = Long.parseLong(maxFileSizeStr);
     } catch (NumberFormatException nfe) {

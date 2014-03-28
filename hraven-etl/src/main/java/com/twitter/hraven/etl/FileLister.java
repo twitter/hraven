@@ -143,7 +143,6 @@ public class FileLister {
     List<FileStatus> prunedFileList = new ArrayList<FileStatus>();
 
     Set<String> toBeRemovedJobId = new HashSet<String>();
-    // append the destination root dir with year/month/day
     for (int i = 0; i < origList.length; i++) {
       fileSize = origList[i].getLen();
 
