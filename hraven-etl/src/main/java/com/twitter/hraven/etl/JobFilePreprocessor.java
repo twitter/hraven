@@ -44,6 +44,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.etl.ProcessRecordService;
 import com.twitter.hraven.util.BatchUtil;
 import com.twitter.hraven.etl.FileLister;
@@ -79,6 +80,11 @@ public class JobFilePreprocessor extends Configured implements Tool {
    * Maximum number of files to process in one batch.
    */
   private final static int DEFAULT_BATCH_SIZE = 1000;
+
+  /**
+   * Maximum size of file that be loaded into raw table : 500 MB
+   */
+  private final static long DEFAULT_RAW_FILE_SIZE_LIMIT = 524288000;
 
   /**
    * Name of the job conf property used to pass the output directory to the
@@ -144,6 +150,14 @@ public class JobFilePreprocessor extends Configured implements Tool {
     o.setRequired(false);
     options.addOption(o);
 
+    // raw file size limit
+    o = new Option("s", "rawFileSize", true,
+        "The max size of file that can be loaded into raw table. Default "
+            + DEFAULT_RAW_FILE_SIZE_LIMIT);
+    o.setArgName("rawfile-size");
+    o.setRequired(false);
+    options.addOption(o);
+
     // Force
     o = new Option(
         "f",
@@ -202,7 +216,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
     // Grab the input path argument
     String output = commandLine.getOptionValue("o");
-    LOG.info("output=" + output);
+    LOG.info(" output=" + output);
     Path outputPath = new Path(output);
     FileStatus outputFileStatus = hdfs.getFileStatus(outputPath);
 
@@ -255,6 +269,23 @@ public class JobFilePreprocessor extends Configured implements Tool {
     String cluster = commandLine.getOptionValue("c");
     LOG.info("cluster=" + cluster);
 
+    /**
+     * Grab the size of huge files to be moved argument
+     * hbase cell can't store files bigger than
+     * maxFileSize, hence no need to consider them for rawloading
+     * Reference:
+     * {@link https://github.com/twitter/hraven/issues/59}
+     */
+    String maxFileSizeStr = commandLine.getOptionValue("s");
+    LOG.info("maxFileSize=" + maxFileSizeStr);
+    long maxFileSize = DEFAULT_RAW_FILE_SIZE_LIMIT;
+    try {
+      maxFileSize = Long.parseLong(maxFileSizeStr);
+    } catch (NumberFormatException nfe) {
+      throw new ProcessingException("Caught NumberFormatException during conversion "
+            + " of maxFileSize to long", nfe);
+    }
+
     ProcessRecordService processRecordService = new ProcessRecordService(
         hbaseConf);
 
@@ -301,8 +332,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
       // need to traverse dirs under done recursively for versions
       // that include MAPREDUCE-323: on/after hadoop 0.20.203.0
       // on/after cdh3u5
-      FileStatus[] jobFileStatusses = FileLister.listFiles(true, hdfs, inputPath,
-          jobFileModifiedRangePathFilter);
+      FileStatus[] jobFileStatusses = FileLister.getListFilesToProcess(maxFileSize, true,
+            hdfs, inputPath, jobFileModifiedRangePathFilter);
 
       LOG.info("Sorting " + jobFileStatusses.length + " job files.");
 
