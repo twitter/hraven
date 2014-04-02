@@ -17,142 +17,18 @@ package com.twitter.hraven.datasource;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import com.twitter.hraven.JobId;
 import com.twitter.hraven.Range;
-import com.twitter.hraven.datasource.JobHistoryRawService;
 import com.twitter.hraven.util.BatchUtil;
 
 public class TestJobHistoryRawService {
 
-  private static final String JOB_HISTORY_FILE_NAME = "src/test/resources/done/something.example.com_1337787092259_job_201205231531_256984_userName1_App1";
-
-  /**
-   * Normal example
-   */
-  private static final String JOB_HISTORY = "Meta VERSION=\"1\" ."
-      + "Job JOBID=\"job_201206061540_11222\""
-      + "JOBNAME=\"App1:some_project_one_day\""
-      + "USER=\"someone\" SUBMIT_TIME=\"1339063492288\"" + "JOBCONF=\"";
-
-  /**
-   * Submit time at the end of the string, but still includes quote
-   */
-  private static final String JOB_HISTORY2 = "Meta VERSION=\"1\" ."
-      + "Job JOBID=\"job_201206061540_11222\""
-      + "JOBNAME=\"App1:some_project_one_day\""
-      + "USER=\"someone\" SUBMIT_TIME=\"1339063492288\"";
-
-  /**
-   * Submit time is the only thing in the string.
-   */
-  private static final String JOB_HISTORY3 = "SUBMIT_TIME=\"1339063492288\"";
-
-  private static final String BAD_JOB_HISTORY = "SUBMIT_TIME=\"";
-
-  private static final String BAD_JOB_HISTORY2 = "SUBMIT_TIME=\"\"";
-
-  /**
-   * Missing quote at the end
-   */
-  private static final String BAD_JOB_HISTORY3 = "Meta VERSION=\"1\" ."
-      + "Job JOBID=\"job_201206061540_11222\""
-      + "JOBNAME=\"App1:some_project_one_day\""
-      + "USER=\"someone2\" SUBMIT_TIME=\"1339063492288";
-
-  /**
-   * Missing start quote
-   */
-  private static final String BAD_JOB_HISTORY4 = "Meta VERSION=\"1\" ."
-      + "Job JOBID=\"job_201206061540_11222\""
-      + "JOBNAME=\"App1:some_project_one_day\""
-      + "USER=\"someone3\" SUBMIT_TIME=1339063492288\"";
-
-  /**
-   * Confirm that we can properly find the submit timestamp.
-   */
-  @Test
-  public void testGetSubmitTimeMillisFromJobHistory() {
-    byte[] jobHistoryBytes = Bytes.toBytes(JOB_HISTORY);
-    long submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(1339063492288L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(JOB_HISTORY2);
-    submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(1339063492288L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(JOB_HISTORY3);
-    submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(1339063492288L, submitTimeMillis);
-
-    // Now some cases where we should not be able to find any timestamp.
-    jobHistoryBytes = Bytes.toBytes("");
-    submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY);
-    submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY2);
-    submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY3);
-    submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY4);
-    submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-  }
-
-  /**
-   * Confirm that we can properly find the submit timestamp.
-   * 
-   * @throws IOException
-   */
-  @Test
-  public void testGetSubmitTimeMillisFromJobHistoryFile() throws IOException {
-    byte[] jobHistoryBytes = null;
-
-    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-
-    FileInputStream fis = new FileInputStream(jobHistoryfile);
-    try {
-      byte[] buffer = new byte[1024];
-      int length = 0;
-      while ((length = fis.read(buffer)) > 0) {
-        bos.write(buffer, 0, length);
-      }
-      jobHistoryBytes = bos.toByteArray();
-    } finally {
-      fis.close();
-    }
-
-    long submitTimeMillis = JobHistoryRawService
-        .getSubmitTimeMillisFromJobHistory(jobHistoryBytes);
-    assertEquals(1338958320124L, submitTimeMillis);
-  }
 
   /**
    * Does not test a specific method, but tests the algorithm used to get

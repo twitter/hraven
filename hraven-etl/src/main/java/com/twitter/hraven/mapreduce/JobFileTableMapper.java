@@ -43,6 +43,7 @@ import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
 import com.twitter.hraven.etl.JobHistoryFileParser;
+import com.twitter.hraven.etl.JobHistoryFileParserBase;
 import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
 
@@ -128,7 +129,9 @@ public class JobFileTableMapper extends
       Configuration jobConf = rawService.createConfigurationFromResult(value);
       context.progress();
 
-      long submitTimeMillis = rawService.getSubmitTimeMillisFromResult(value);
+      byte[] jobhistoryraw = rawService.getJobHistoryRawFromResult(value);
+      long submitTimeMillis = JobHistoryFileParserBase.getSubmitTimeMillisFromJobHistory(
+            jobhistoryraw);
       context.progress();
 
       Put submitTimePut = rawService.getJobSubmitTimePut(value.getRow(),
