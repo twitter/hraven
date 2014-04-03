@@ -136,7 +136,7 @@ public class JobFileTableMapper extends
 
       if (submitTimeMillis == 0L) {
         LOG.info("NOTE: Since submitTimeMillis from job history is 0, now attempting to "
-            + "pproximate job start time based on last modification time from the raw table");
+            + "approximate job start time based on last modification time from the raw table");
         // get an approximate submit time based on job history file's last modification time
         submitTimeMillis = rawService.getApproxSubmitTime(value);
         context.progress();
