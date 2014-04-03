@@ -256,7 +256,7 @@ public class Constants {
    * when the submit time for a job can't be figured out
    * https://github.com/twitter/hraven/issues/67
    */
-  public static int AVERGAE_JOB_DURATION = 3600000;
+  public static final int AVERGAE_JOB_DURATION = 3600000;
 
   public static final String QUOTE = "\"";
   public static final byte[] QUOTE_BYTES = Bytes.toBytes(QUOTE);
