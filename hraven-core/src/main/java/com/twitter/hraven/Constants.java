@@ -247,7 +247,7 @@ public class Constants {
    * this length will be correct till Sat, 20 Nov 2286 which is
    * 9999999999999 in epoch time
    */
-  public static int EPOCH_TIMESTAMP_STRING_LENGTH = 13;
+  public static final int EPOCH_TIMESTAMP_STRING_LENGTH = 13;
 
   /**
    * an approximation for job run time in milliseconds
