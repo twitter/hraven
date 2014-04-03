@@ -249,6 +249,15 @@ public class Constants {
    */
   public static int EPOCH_TIMESTAMP_STRING_LENGTH = 13;
 
+  /**
+   * an approximation for job run time in milliseconds
+   *
+   * used in estimating job start time
+   * when the submit time for a job can't be figured out
+   * https://github.com/twitter/hraven/issues/67
+   */
+  public static int AVERGAE_JOB_DURATION = 3600000;
+
   public static final String QUOTE = "\"";
   public static final byte[] QUOTE_BYTES = Bytes.toBytes(QUOTE);
 

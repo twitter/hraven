@@ -17,18 +17,33 @@ package com.twitter.hraven.datasource;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobId;
 import com.twitter.hraven.Range;
 import com.twitter.hraven.util.BatchUtil;
 
 public class TestJobHistoryRawService {
 
+  private static HBaseTestingUtility UTIL;
+
+  @BeforeClass
+  public static void setupBeforeClass() throws Exception {
+    UTIL = new HBaseTestingUtility();
+    UTIL.startMiniCluster();
+    HRavenTestUtil.createSchema(UTIL);
+  }
 
   /**
    * Does not test a specific method, but tests the algorithm used to get
@@ -113,4 +128,37 @@ public class TestJobHistoryRawService {
     assertEquals(aEpoch, ranges.get(0).getMin().getJobEpoch());
     assertEquals(cEpoch, ranges.get(0).getMax().getJobEpoch());
   }
+
+  @Test(expected=IllegalArgumentException.class)
+  public void testGetApproxSubmitTimeNull() throws IOException,
+        MissingColumnInResultException {
+    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
+    long st = rawService.getApproxSubmitTime(null);
+    assertEquals(0L, st);
+  }
+
+  @Test(expected=MissingColumnInResultException.class)
+  public void testGetApproxSubmitTimeMissingCol() throws IOException,
+        MissingColumnInResultException {
+    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
+    Result result = new Result();
+    long st = rawService.getApproxSubmitTime(result);
+    assertEquals(0L, st);
+  }
+
+  @Test
+  public void testGetApproxSubmitTime() throws IOException,
+      MissingColumnInResultException {
+    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
+    KeyValue[] kvs = new KeyValue[1];
+    long modts = 1396550668000L;
+    kvs[0] = new KeyValue(Bytes.toBytes("someRowKey"),
+            Constants.INFO_FAM_BYTES, Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES,
+            Bytes.toBytes(modts));
+    Result result = new Result(kvs);
+    long st = rawService.getApproxSubmitTime(result);
+    long expts = modts - Constants.AVERGAE_JOB_DURATION;
+    assertEquals(expts, st);
+  }
+
 }

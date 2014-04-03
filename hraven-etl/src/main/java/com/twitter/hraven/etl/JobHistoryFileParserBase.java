@@ -225,9 +225,6 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
       break;
     }
 
-    if(submitTimeMillis == 0L) {
-      LOG.info("NOTE: submitTimeMillis is 0, need to check this file");
-    }
     return submitTimeMillis;
   }
 }

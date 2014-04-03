@@ -472,6 +472,36 @@ public class JobHistoryRawService {
   }
 
   /**
+   * attempts to approximately set the job submit time based on the last modification time of the
+   * job history file
+   * @param hbase result
+   * @return approximate job submit time
+   * @throws MissingColumnInResultException
+   */
+  public long getApproxSubmitTime(Result value) throws MissingColumnInResultException {
+    if (value == null) {
+      throw new IllegalArgumentException("Cannot get last modification time from "
+          + "a null hbase result");
+    }
+
+    KeyValue keyValue = value.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
+
+    if (keyValue == null) {
+      throw new MissingColumnInResultException(Constants.INFO_FAM_BYTES,
+          Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
+    }
+
+    byte[] lastModTimeBytes = keyValue.getValue();
+    // we try to approximately set the job submit time based on when the job history file
+    // was last modified and an average job duration
+    long lastModTime = Bytes.toLong(lastModTimeBytes);
+    long jobSubmitTimeMillis = lastModTime - Constants.AVERGAE_JOB_DURATION;
+    LOG.debug("Approximate job submit time is " + jobSubmitTimeMillis + " based on " + lastModTime);
+    return jobSubmitTimeMillis;
+  }
+
+  /**
    * @param row
    *          the identifier for the row in the RAW table. Cannot be null.
    * @param submitTimeMillis
