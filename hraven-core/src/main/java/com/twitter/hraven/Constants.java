@@ -210,7 +210,7 @@ public class Constants {
       .toBytes(JOB_PROCESSED_SUCCESS_COL);
 
   /**
-   * The string preceding the job submit time in a job history file.
+   * The string preceding the job submit time in an hadoop1 job history file.
    */
   public static final String SUBMIT_TIME_PREFIX = "SUBMIT_TIME=\"";
 
@@ -219,6 +219,44 @@ public class Constants {
    */
   public static final byte[] SUBMIT_TIME_PREFIX_BYTES = Bytes
       .toBytes(SUBMIT_TIME_PREFIX);
+
+  /**
+   * The string representing the job submit event in a hadoop2 job history file.
+   */
+  public static final String JOB_SUBMIT_EVENT = "{\"type\":\"JOB_SUBMITTED";
+
+  /**
+   * Raw bytes representation of {@link #JOB_SUBMIT_EVENT};
+   */
+  public static final byte[] JOB_SUBMIT_EVENT_BYTES = Bytes
+      .toBytes(JOB_SUBMIT_EVENT);
+
+  /**
+   * The string representing the submit time in a hadoop2 job history file.
+   */
+  public static final String SUBMIT_TIME_PREFIX_HADOOP2 = "\"submitTime\":";
+
+  /**
+   * Raw bytes representation of {@link #SUBMIT_TIME_PREFIX_HADOOP2};
+   */
+  public static final byte[] SUBMIT_TIME_PREFIX_HADOOP2_BYTES = Bytes
+      .toBytes(SUBMIT_TIME_PREFIX_HADOOP2);
+
+  /**
+   * length of string that contains a unix timestamp in milliseconds
+   * this length will be correct till Sat, 20 Nov 2286 which is
+   * 9999999999999 in epoch time
+   */
+  public static final int EPOCH_TIMESTAMP_STRING_LENGTH = 13;
+
+  /**
+   * an approximation for job run time in milliseconds
+   *
+   * used in estimating job start time
+   * when the submit time for a job can't be figured out
+   * https://github.com/twitter/hraven/issues/67
+   */
+  public static final int AVERGAE_JOB_DURATION = 3600000;
 
   public static final String QUOTE = "\"";
   public static final byte[] QUOTE_BYTES = Bytes.toBytes(QUOTE);

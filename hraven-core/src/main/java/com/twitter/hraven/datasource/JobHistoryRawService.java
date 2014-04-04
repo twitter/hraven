@@ -41,7 +41,6 @@ import com.twitter.hraven.JobId;
 import com.twitter.hraven.QualifiedJobId;
 import com.twitter.hraven.Range;
 import com.twitter.hraven.util.BatchUtil;
-import com.twitter.hraven.util.ByteUtil;
 
 /**
  * Used to store and retrieve {@link ProcessRecord} objects.
@@ -436,22 +435,7 @@ public class JobHistoryRawService {
   public InputStream getJobHistoryInputStreamFromResult(Result result)
       throws MissingColumnInResultException {
 
-    if (result == null) {
-      throw new IllegalArgumentException("Cannot create InputStream from null");
-    }
-
-    KeyValue keyValue = result.getColumnLatest(Constants.RAW_FAM_BYTES,
-        Constants.JOBHISTORY_COL_BYTES);
-
-    byte[] jobHistoryRaw = null;
-    if (keyValue == null) {
-      throw new MissingColumnInResultException(Constants.RAW_FAM_BYTES,
-          Constants.JOBHISTORY_COL_BYTES);
-    } else {
-      jobHistoryRaw = keyValue.getValue();
-    }
-
-    InputStream is = new ByteArrayInputStream(jobHistoryRaw);
+    InputStream is = new ByteArrayInputStream(getJobHistoryRawFromResult(result));
     return is;
   }
 
@@ -466,89 +450,6 @@ public class JobHistoryRawService {
     if (rawTable != null) {
       rawTable.close();
     }
-  }
-
-  /**
-   * @param result
-   *          from the {@link Scan} from
-   *          {@link #getHistoryRawTableScan(String, String, String, boolean, boolean, boolean)}
-   *          this cannot be null;
-   * @return the job submit time in milliseconds since January 1, 1970 UTC; or 0
-   *         if not value can be found
-   * @throws MissingColumnInResultException
-   *           when the result does not contain {@link Constants#RAW_FAM},
-   *           {@link Constants#JOBHISTORY_COL}.
-   */
-  public long getSubmitTimeMillisFromResult(Result result)
-      throws MissingColumnInResultException {
-
-    if (result == null) {
-      throw new IllegalArgumentException("Cannot create InputStream from null");
-    }
-
-    KeyValue keyValue = result.getColumnLatest(Constants.RAW_FAM_BYTES,
-        Constants.JOBHISTORY_COL_BYTES);
-
-    // Could be that there is no conf file (only a history file).
-    if (keyValue == null) {
-      throw new MissingColumnInResultException(Constants.RAW_FAM_BYTES,
-          Constants.JOBHISTORY_COL_BYTES);
-    }
-
-    byte[] jobHistoryRaw = keyValue.getValue();
-
-    return getSubmitTimeMillisFromJobHistory(jobHistoryRaw);
-
-  }
-
-  /**
-   * Not for public use, package private for testing purposes.
-   * 
-   * @param jobHistoryRaw
-   *          from which to pull the SUBMIT_TIME
-   * @return the job submit time in milliseconds since January 1, 1970 UTC; or 0
-   *         if no value can be found.
-   * 
-   */
-  static long getSubmitTimeMillisFromJobHistory(byte[] jobHistoryRaw) {
-
-    long submitTimeMillis = 0;
-
-    // The start of the history file looks like this:
-    // Meta VERSION="1" .
-    // Job JOBID="job_20120101120000_12345" JOBNAME="..."
-    // USER="username" SUBMIT_TIME="1339063492288" JOBCONF="
-
-    // First we look for the first occurrence of SUBMIT_TIME="
-    // Then we find the place of the next close quote "
-    // Then our value is in between those two if valid at all.
-
-    if (null == jobHistoryRaw) {
-      return submitTimeMillis;
-    }
-
-    int startIndex = ByteUtil.indexOf(jobHistoryRaw,
-        Constants.SUBMIT_TIME_PREFIX_BYTES, 0);
-    if (startIndex != -1) {
-      int prefixEndIndex = startIndex
-          + Constants.SUBMIT_TIME_PREFIX_BYTES.length;
-
-      // Find close quote in the snippet, start looking where the prefix ends.
-      int secondQuoteIndex = ByteUtil.indexOf(jobHistoryRaw,
-          Constants.QUOTE_BYTES, prefixEndIndex);
-      if (secondQuoteIndex != -1) {
-        int numberLength = secondQuoteIndex - prefixEndIndex;
-        String submitTimeMillisString = Bytes.toString(jobHistoryRaw,
-            prefixEndIndex, numberLength);
-        try {
-          submitTimeMillis = Long.parseLong(submitTimeMillisString);
-        } catch (NumberFormatException nfe) {
-          submitTimeMillis = 0;
-        }
-      }
-    }
-
-    return submitTimeMillis;
   }
 
   /**
@@ -568,6 +469,36 @@ public class JobHistoryRawService {
           Bytes.toBytes(false));
     }
     return put;
+  }
+
+  /**
+   * attempts to approximately set the job submit time based on the last modification time of the
+   * job history file
+   * @param hbase result
+   * @return approximate job submit time
+   * @throws MissingColumnInResultException
+   */
+  public long getApproxSubmitTime(Result value) throws MissingColumnInResultException {
+    if (value == null) {
+      throw new IllegalArgumentException("Cannot get last modification time from "
+          + "a null hbase result");
+    }
+
+    KeyValue keyValue = value.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
+
+    if (keyValue == null) {
+      throw new MissingColumnInResultException(Constants.INFO_FAM_BYTES,
+          Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
+    }
+
+    byte[] lastModTimeBytes = keyValue.getValue();
+    // we try to approximately set the job submit time based on when the job history file
+    // was last modified and an average job duration
+    long lastModTime = Bytes.toLong(lastModTimeBytes);
+    long jobSubmitTimeMillis = lastModTime - Constants.AVERGAE_JOB_DURATION;
+    LOG.debug("Approximate job submit time is " + jobSubmitTimeMillis + " based on " + lastModTime);
+    return jobSubmitTimeMillis;
   }
 
   /**
@@ -594,5 +525,30 @@ public class JobHistoryRawService {
         Bytes.toBytes(true));
 
     rawTable.put(p);
+  }
+
+  /**
+   * returns the raw byte representation of job history from the result value
+   * @param hbase result
+   * @return byte array of job history raw
+   *
+   * @throws MissingColumnInResultException
+   */
+  public byte[] getJobHistoryRawFromResult(Result value) throws MissingColumnInResultException {
+    if (value == null) {
+      throw new IllegalArgumentException("Cannot create InputStream from null");
+    }
+
+    KeyValue keyValue =
+        value.getColumnLatest(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
+
+    // Could be that there is no conf file (only a history file).
+    if (keyValue == null) {
+      throw new MissingColumnInResultException(Constants.RAW_FAM_BYTES,
+          Constants.JOBHISTORY_COL_BYTES);
+    }
+
+    byte[] jobHistoryRaw = keyValue.getValue();
+    return jobHistoryRaw;
   }
 }

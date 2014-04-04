@@ -43,6 +43,7 @@ import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
 import com.twitter.hraven.etl.JobHistoryFileParser;
+import com.twitter.hraven.etl.JobHistoryFileParserBase;
 import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
 
@@ -128,8 +129,18 @@ public class JobFileTableMapper extends
       Configuration jobConf = rawService.createConfigurationFromResult(value);
       context.progress();
 
-      long submitTimeMillis = rawService.getSubmitTimeMillisFromResult(value);
+      byte[] jobhistoryraw = rawService.getJobHistoryRawFromResult(value);
+      long submitTimeMillis = JobHistoryFileParserBase.getSubmitTimeMillisFromJobHistory(
+            jobhistoryraw);
       context.progress();
+
+      if (submitTimeMillis == 0L) {
+        LOG.info("NOTE: Since submitTimeMillis from job history is 0, now attempting to "
+            + "approximate job start time based on last modification time from the raw table");
+        // get an approximate submit time based on job history file's last modification time
+        submitTimeMillis = rawService.getApproxSubmitTime(value);
+        context.progress();
+      }
 
       Put submitTimePut = rawService.getJobSubmitTimePut(value.getRow(),
           submitTimeMillis);
