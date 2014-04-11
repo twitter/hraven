@@ -65,7 +65,7 @@ public class TestJobHistoryFileParserHadoop2 {
     historyFileParser.parse(contents, jobKey);
 
     List<Put> jobPuts = historyFileParser.getJobPuts();
-    assertEquals(5, jobPuts.size());
+    assertEquals(6, jobPuts.size());
 
     JobKeyConverter jobKeyConv = new JobKeyConverter();
     assertEquals("cluster1!user!Sleep!1!job_1329348432655_0001",
@@ -98,6 +98,33 @@ public class TestJobHistoryFileParserHadoop2 {
     }
     // ensure that we got the hadoop2 version put
     assertTrue(foundVersion2);
+
+    // check job status
+    boolean foundJobStatus = false;
+    for (Put p : jobPuts) {
+      List<KeyValue> kv2 =
+          p.get(Constants.INFO_FAM_BYTES,
+            Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase()));
+      if (kv2.size() == 0) {
+        // we are interested in JobStatus put only
+        // hence continue
+        continue;
+      }
+      assertEquals(1, kv2.size());
+
+      for (KeyValue kv : kv2) {
+        // ensure we have a job status value as the value
+        assertEquals(Bytes.toString(kv.getValue()),
+          JobHistoryFileParserHadoop2.JOB_STATUS_SUCCEEDED);
+
+        // ensure we don't see the same put twice
+        assertFalse(foundJobStatus);
+        // now set this to true
+        foundJobStatus = true;
+      }
+    }
+    // ensure that we got the JobStatus put
+    assertTrue(foundJobStatus);
 
     List<Put> taskPuts = historyFileParser.getTaskPuts();
     assertEquals(taskPuts.size(), 45);
