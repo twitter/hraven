@@ -25,6 +25,11 @@ public class JobDescFactory {
   public static final String JOBTRACKER_KEY = "mapred.job.tracker";
   public static final String RESOURCE_MANAGER_KEY = "yarn.resourcemanager.address";
 
+  private static final MRJobDescFactory MR_JOB_DESC_FACTORY = new MRJobDescFactory();
+  private static final PigJobDescFactory PIG_JOB_DESC_FACTORY = new PigJobDescFactory();
+  private static final ScaldingJobDescFactory SCALDING_JOB_DESC_FACTORY =
+      new ScaldingJobDescFactory();
+
   /**
    * get framework specific JobDescFactory based on configuration
    * @param jobConf configuration of the job
@@ -35,11 +40,11 @@ public class JobDescFactory {
 
     switch (framework) {
     case PIG:
-      return new PigJobDescFactory();
+      return PIG_JOB_DESC_FACTORY;
     case SCALDING:
-      return new ScaldingJobDescFactory();
+      return SCALDING_JOB_DESC_FACTORY;
     default:
-      return new MRJobDescFactory();
+      return MR_JOB_DESC_FACTORY;
     }
   }
 
