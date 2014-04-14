@@ -41,6 +41,7 @@ public class PigJobDescFactory extends JobDescFactoryBase {
    * com.twitter.hraven.JobKeyFactoryBase#create(com.twitter.corestorage
    * .rhaven.QualifiedJobId, long, org.apache.hadoop.conf.Configuration)
    */
+  @Override
   public JobDesc create(QualifiedJobId qualifiedJobId, long submitTimeMillis,
       Configuration jobConf) {
     String appId = getAppId(jobConf);
@@ -71,6 +72,7 @@ public class PigJobDescFactory extends JobDescFactoryBase {
    * @see
    * com.twitter.hraven.JobDescFactoryBase#getAppIdFromJobName(java.lang.String)
    */
+  @Override
   String getAppIdFromJobName(String jobName) {
     if (jobName == null) {
       return null;

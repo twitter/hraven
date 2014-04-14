@@ -25,10 +25,18 @@ public class JobDescFactory {
   public static final String JOBTRACKER_KEY = "mapred.job.tracker";
   public static final String RESOURCE_MANAGER_KEY = "yarn.resourcemanager.address";
 
-  private static final MRJobDescFactory MR_JOB_DESC_FACTORY = new MRJobDescFactory();
-  private static final PigJobDescFactory PIG_JOB_DESC_FACTORY = new PigJobDescFactory();
-  private static final ScaldingJobDescFactory SCALDING_JOB_DESC_FACTORY =
-      new ScaldingJobDescFactory();
+  public static JobDescFactoryBase getJobDescFactory(Configuration jobConf) {
+    Framework framework = getFramework(jobConf);
+
+    switch (framework) {
+    case PIG:
+      return new PigJobDescFactory();
+    case SCALDING:
+      return new ScaldingJobDescFactory();
+    default:
+      return new MRJobDescFactory();
+    }
+  }
 
   /**
    * @param submitTimeMillis
@@ -40,27 +48,8 @@ public class JobDescFactory {
    */
   public static JobDesc createJobDesc(QualifiedJobId qualifiedJobId,
       long submitTimeMillis, Configuration jobConf) {
-    JobDesc jobDesc = null;
-
-    Framework framework = getFramework(jobConf);
-
-    switch (framework) {
-    case PIG:
-      jobDesc = PIG_JOB_DESC_FACTORY.create(qualifiedJobId, submitTimeMillis,
-          jobConf);
-      break;
-    case SCALDING:
-      jobDesc = SCALDING_JOB_DESC_FACTORY.create(qualifiedJobId, submitTimeMillis,
-          jobConf);
-      break;
-
-    default:
-      jobDesc = MR_JOB_DESC_FACTORY.create(qualifiedJobId, submitTimeMillis,
-          jobConf);
-      break;
-    }
-
-    return jobDesc;
+    return getJobDescFactory(jobConf).create(qualifiedJobId, submitTimeMillis,
+        jobConf);
   }
 
   /**
