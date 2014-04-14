@@ -25,7 +25,12 @@ public class JobDescFactory {
   public static final String JOBTRACKER_KEY = "mapred.job.tracker";
   public static final String RESOURCE_MANAGER_KEY = "yarn.resourcemanager.address";
 
-  public static JobDescFactoryBase getJobDescFactory(Configuration jobConf) {
+  /**
+   * get framework specific JobDescFactory based on configuration
+   * @param jobConf configuration of the job
+   * @return framework specific JobDescFactory
+   */
+  public static JobDescFactoryBase getFrameworkSpecificJobDescFactory(Configuration jobConf) {
     Framework framework = getFramework(jobConf);
 
     switch (framework) {
@@ -48,7 +53,7 @@ public class JobDescFactory {
    */
   public static JobDesc createJobDesc(QualifiedJobId qualifiedJobId,
       long submitTimeMillis, Configuration jobConf) {
-    return getJobDescFactory(jobConf).create(qualifiedJobId, submitTimeMillis,
+    return getFrameworkSpecificJobDescFactory(jobConf).create(qualifiedJobId, submitTimeMillis,
         jobConf);
   }
 

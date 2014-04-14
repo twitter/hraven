@@ -81,7 +81,7 @@ public abstract class JobDescFactoryBase {
    * @return a non-empty non-null string with the jobId. If the jobId cannot be
    *         parsed, then {@link Constants#UNKNOWN} will be returned.
    */
-  protected String getAppId(Configuration jobConf) {
+  public String getAppId(Configuration jobConf) {
 
     // Defensive coding
     if (jobConf == null) {
