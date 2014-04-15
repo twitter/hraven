@@ -31,6 +31,24 @@ public class JobDescFactory {
       new ScaldingJobDescFactory();
 
   /**
+   * get framework specific JobDescFactory based on configuration
+   * @param jobConf configuration of the job
+   * @return framework specific JobDescFactory
+   */
+  public static JobDescFactoryBase getFrameworkSpecificJobDescFactory(Configuration jobConf) {
+    Framework framework = getFramework(jobConf);
+
+    switch (framework) {
+    case PIG:
+      return PIG_JOB_DESC_FACTORY;
+    case SCALDING:
+      return SCALDING_JOB_DESC_FACTORY;
+    default:
+      return MR_JOB_DESC_FACTORY;
+    }
+  }
+
+  /**
    * @param submitTimeMillis
    * @param qualifiedJobId
    *          Identifier for the job for the given {@link Configuration}
@@ -40,27 +58,8 @@ public class JobDescFactory {
    */
   public static JobDesc createJobDesc(QualifiedJobId qualifiedJobId,
       long submitTimeMillis, Configuration jobConf) {
-    JobDesc jobDesc = null;
-
-    Framework framework = getFramework(jobConf);
-
-    switch (framework) {
-    case PIG:
-      jobDesc = PIG_JOB_DESC_FACTORY.create(qualifiedJobId, submitTimeMillis,
-          jobConf);
-      break;
-    case SCALDING:
-      jobDesc = SCALDING_JOB_DESC_FACTORY.create(qualifiedJobId, submitTimeMillis,
-          jobConf);
-      break;
-
-    default:
-      jobDesc = MR_JOB_DESC_FACTORY.create(qualifiedJobId, submitTimeMillis,
-          jobConf);
-      break;
-    }
-
-    return jobDesc;
+    return getFrameworkSpecificJobDescFactory(jobConf).create(qualifiedJobId, submitTimeMillis,
+        jobConf);
   }
 
   /**
