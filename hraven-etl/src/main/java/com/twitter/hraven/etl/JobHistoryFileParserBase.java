@@ -152,4 +152,15 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
   public static Long getXmxTotal(final long xmx75) {
     return (xmx75 * 100 / 75);
   }
+
+  /**
+   * calculates the cost of a job in dollars
+   * jobCost = thisJobMbMillis * computeTco / mbMillisInOneday
+   * @param mb millis
+   */
+  public static Double calculateJobCost(Long mbMillis, Double computeTco, Long machineMemory) {
+    Double jobCost = (mbMillis * computeTco) / (Constants.MILLIS_ONE_DAY * machineMemory);
+    return jobCost;
+  }
+
 }
