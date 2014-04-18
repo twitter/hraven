@@ -375,8 +375,8 @@ public class Constants {
   public static final long THIRTY_DAYS_MILLIS = MILLIS_ONE_DAY * 30L;
 
   /** hdfs location where the properties file is placed */
-  public static final String COST_PROPERTIES_HDFS_DIR =
-      "/user/hadoop/hraven/conf/";
+  public static final String COST_PROPERTIES_HDFS_DIR = "/user/hadoop/hraven/conf/";
+
   /** Cost properties file name */
   public static final String COST_PROPERTIES_FILENAME = "hRavenCostDetails.properties";
 
