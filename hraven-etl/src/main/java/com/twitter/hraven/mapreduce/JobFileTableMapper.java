@@ -240,8 +240,8 @@ public class JobFileTableMapper extends
       context.write(JOB_TABLE, mbPut);
       context.progress();
 
-      /** post processing steps on job puts and job conf puts */
-      Double jobCost = getJobCost(historyFileParser, mbMillis, context.getConfiguration());
+      /** post processing steps to get cost of the job */
+      Double jobCost = getJobCost( mbMillis, context.getConfiguration());
       context.progress();
       if (jobCost == null) {
         throw new ProcessingException(" Unable to get job cost calculation for this record!"
@@ -314,13 +314,11 @@ public class JobFileTableMapper extends
   /**
    * calculates the cost of this job based on mbMillis, machineType and
    * cost details from the properties file
-   * @param historyFileParser
    * @param mbMillis
    * @param currentConf
    * @return cost of the job
    */
-  private Double getJobCost(JobHistoryFileParser historyFileParser, Long mbMillis,
-      Configuration currentConf) {
+  private Double getJobCost(Long mbMillis, Configuration currentConf) {
     Double computeTco = Constants.DEFAULT_COMPUTE_TCO;
     Long machineMemory = Constants.DEFAULT_MACHINE_MEMORY;
     Properties prop = null;
