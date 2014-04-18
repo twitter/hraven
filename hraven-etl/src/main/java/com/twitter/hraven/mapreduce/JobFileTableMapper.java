@@ -317,7 +317,7 @@ public class JobFileTableMapper extends
    * @param historyFileParser
    * @param mbMillis
    * @param currentConf
-   * @return
+   * @return cost of the job
    */
   private Double getJobCost(JobHistoryFileParser historyFileParser, Long mbMillis,
       Configuration currentConf) {
