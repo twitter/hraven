@@ -118,9 +118,11 @@ public class TestJobHistoryFileParserBase {
 
   @Test
   public void testCostDefault() {
-    Double jobCost = JobHistoryFileParserBase.calculateJobCost(100L, Constants.DEFAULT_COMPUTE_TCO, Constants.DEFAULT_MACHINE_MEMORY);
+    Double jobCost = JobHistoryFileParserBase.calculateJobCost(100L,
+      Constants.DEFAULT_COMPUTE_TCO, Constants.DEFAULT_MACHINE_MEMORY);
     assertEquals(1.413850E-10, jobCost, 0.0001);
-    jobCost = JobHistoryFileParserBase.calculateJobCost(10000000000000L, Constants.DEFAULT_COMPUTE_TCO, Constants.DEFAULT_MACHINE_MEMORY);
+    jobCost = JobHistoryFileParserBase.calculateJobCost(10000000000000L,
+      Constants.DEFAULT_COMPUTE_TCO, Constants.DEFAULT_MACHINE_MEMORY);
     assertEquals(14.128503, jobCost, 0.0001);
     jobCost = JobHistoryFileParserBase.calculateJobCost(100L, 20.0, 512L);
     assertEquals(1.413850E-10, jobCost, 0.0001);
