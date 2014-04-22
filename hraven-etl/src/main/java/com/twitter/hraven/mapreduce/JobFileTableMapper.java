@@ -295,11 +295,13 @@ public class JobFileTableMapper extends
    * looks for cost file in distributed cache
    * @param cachePath of the cost properties file
    * @param machineType of the node the job ran on
+   * @throws IOException
    */
-  Properties loadCostProperties(Path cachePath, String machineType) {
+  Properties loadCostProperties(Path cachePath, String machineType) throws IOException {
     Properties prop = new Properties();
+    InputStream inp = null;
     try {
-      InputStream inp = new FileInputStream(cachePath.toString());
+      inp = new FileInputStream(cachePath.toString());
       prop.load(inp);
       return prop;
     } catch (FileNotFoundException fnf) {
@@ -308,6 +310,10 @@ public class JobFileTableMapper extends
     } catch (IOException e) {
       LOG.error("error loading properties, using default values");
       return null;
+    } finally {
+      if (inp != null) {
+        inp.close();
+      }
     }
   }
 
@@ -319,8 +325,8 @@ public class JobFileTableMapper extends
    * @return cost of the job
    */
   private Double getJobCost(Long mbMillis, Configuration currentConf) {
-    Double computeTco = Constants.DEFAULT_COMPUTE_TCO;
-    Long machineMemory = Constants.DEFAULT_MACHINE_MEMORY;
+    Double computeTco = 0.0;
+    Long machineMemory = 0L;
     Properties prop = null;
     String machineType = currentConf.get(Constants.HRAVEN_MACHINE_TYPE, "default");
     LOG.debug(" machine type " + machineType);
@@ -349,14 +355,14 @@ public class JobFileTableMapper extends
         computeTco = Double.parseDouble(computeTcoStr);
       } catch (NumberFormatException nfe) {
         LOG.error("error in conversion to long for compute tco " + computeTcoStr
-            + " using default " + Constants.DEFAULT_COMPUTE_TCO);
+            + " using default value of 0");
       }
       String machineMemStr = prop.getProperty(machineType + ".machinememory");
       try {
         machineMemory = Long.parseLong(machineMemStr);
       } catch (NumberFormatException nfe) {
         LOG.error("error in conversion to long for machine memory  " + machineMemStr
-            + " using default " + Constants.DEFAULT_MACHINE_MEMORY);
+            + " using default value of 0");
       }
     } else {
       LOG.error("Could not load properties file, using defaults");

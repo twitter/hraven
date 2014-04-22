@@ -191,7 +191,7 @@ public class Constants {
   public static final String MEGABYTEMILLIS = "megabytemillis" ;
   public static final byte[] MEGABYTEMILLIS_BYTES = Bytes.toBytes(MEGABYTEMILLIS);
 
-  /** used to indicate the cost of a job is in terms of dollars */
+  /** used to indicate the cost of a job is in terms of currency units */
   public static final String JOBCOST = "jobcost" ;
   public static final byte[] JOBCOST_BYTES = Bytes.toBytes(JOBCOST);
 
@@ -382,11 +382,5 @@ public class Constants {
 
   /** name of the type of machine the job ran on */
   public static final String HRAVEN_MACHINE_TYPE = "hraven.machinetype.name";
-
-  /** compute tco per day  */
-  public static final double DEFAULT_COMPUTE_TCO = 3.0;
-
-  /** default memory on a machine 24 GB which is 24,576MB */
-  public static final long DEFAULT_MACHINE_MEMORY = 24576L;
 
 }

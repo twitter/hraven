@@ -159,6 +159,11 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    * @param mb millis
    */
   public static Double calculateJobCost(Long mbMillis, Double computeTco, Long machineMemory) {
+    if ((machineMemory == 0L) || (computeTco == 0.0)) {
+      LOG.error("Unable to calculate job cost since machineMemory " + machineMemory
+          + " or computeTco " + computeTco + " is 0; returning jobCost as 0");
+      return 0.0;
+    }
     Double jobCost = (mbMillis * computeTco) / (Constants.MILLIS_ONE_DAY * machineMemory);
     return jobCost;
   }
