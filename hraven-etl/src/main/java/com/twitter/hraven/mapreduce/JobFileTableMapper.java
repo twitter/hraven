@@ -297,7 +297,7 @@ public class JobFileTableMapper extends
    * @param machineType of the node the job ran on
    * @throws IOException
    */
-  Properties loadCostProperties(Path cachePath, String machineType) throws IOException {
+  Properties loadCostProperties(Path cachePath, String machineType) {
     Properties prop = new Properties();
     InputStream inp = null;
     try {
@@ -312,7 +312,11 @@ public class JobFileTableMapper extends
       return null;
     } finally {
       if (inp != null) {
-        inp.close();
+        try {
+          inp.close();
+        } catch (IOException ignore) {
+          // do nothing
+        }
       }
     }
   }
