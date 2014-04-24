@@ -191,6 +191,10 @@ public class Constants {
   public static final String MEGABYTEMILLIS = "megabytemillis" ;
   public static final byte[] MEGABYTEMILLIS_BYTES = Bytes.toBytes(MEGABYTEMILLIS);
 
+  /** used to indicate the cost of a job is in terms of currency units */
+  public static final String JOBCOST = "jobcost" ;
+  public static final byte[] JOBCOST_BYTES = Bytes.toBytes(JOBCOST);
+
   /** use this value to indicate fields that were not found */
   public static final Long NOTFOUND_VALUE = -1L;
 
@@ -400,8 +404,21 @@ public class Constants {
    */
   public static final String FORCE_REPROCESS_CONF_KEY = "force.reprocess";
 
+  /** milliseconds in 1 day */
+  public static final long MILLIS_ONE_DAY = 86400000L;
+
   /**
    * number of milli seconds in 30 days
    */
-  public static final long THIRTY_DAYS_MILLIS = 86400000L * 30L;
+  public static final long THIRTY_DAYS_MILLIS = MILLIS_ONE_DAY * 30L;
+
+  /** hdfs location where the properties file is placed */
+  public static final String COST_PROPERTIES_HDFS_DIR = "/user/hadoop/hraven/conf/";
+
+  /** Cost properties file name */
+  public static final String COST_PROPERTIES_FILENAME = "hRavenCostDetails.properties";
+
+  /** name of the type of machine the job ran on */
+  public static final String HRAVEN_MACHINE_TYPE = "hraven.machinetype.name";
+
 }

@@ -154,8 +154,21 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
     return (xmx75 * 100 / 75);
   }
 
-  /**
-   * fetches the submit time from a raw job history byte representation
+ /** calculates the cost of a job in dollars
+   * jobCost = thisJobMbMillis * computeTco / mbMillisInOneday
+   * @param mb millis
+   */
+  public static Double calculateJobCost(Long mbMillis, Double computeTco, Long machineMemory) {
+    if ((machineMemory == 0L) || (computeTco == 0.0)) {
+      LOG.error("Unable to calculate job cost since machineMemory " + machineMemory
+          + " or computeTco " + computeTco + " is 0; returning jobCost as 0");
+      return 0.0;
+    }
+    Double jobCost = (mbMillis * computeTco) / (Constants.MILLIS_ONE_DAY * machineMemory);
+    return jobCost;
+  }
+
+ /** fetches the submit time from a raw job history byte representation
    * @param jobHistoryRaw from which to pull the SUBMIT_TIME
    * @return the job submit time in milliseconds since January 1, 1970 UTC;
    *         or 0 if no value can be found.

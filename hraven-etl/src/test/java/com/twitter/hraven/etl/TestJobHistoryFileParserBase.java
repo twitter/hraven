@@ -16,6 +16,8 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -118,6 +120,15 @@ public class TestJobHistoryFileParserBase {
     String jc = " -Xmx1024Q" ;
     @SuppressWarnings("unused")
     Long value = JobHistoryFileParserBase.getXmxValue(jc);
+  }
+
+  @Test
+  public void testCostDefault() {
+    Double jobCost = JobHistoryFileParserBase.calculateJobCost(100L,
+      0.0, 0L);
+    assertEquals(0.0, jobCost, 0.0001);
+    jobCost = JobHistoryFileParserBase.calculateJobCost(100L, 20.0, 512L);
+    assertEquals(1.413850E-10, jobCost, 0.0001);
   }
 
   @Test
