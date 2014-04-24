@@ -26,6 +26,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.commons.configuration.ConversionException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -61,6 +62,26 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   boolean uberized = false;
+
+  /**
+   * Stores the terminal status of the job
+   *
+   * Since this history file is placed hdfs at mapreduce.jobhistory.done-dir
+   * only upon job termination, we ensure that we store the status seen
+   * only in one of the terminal state events in the file like
+   * JobFinished(JOB_FINISHED) or JobUnsuccessfulCompletion(JOB_FAILED, JOB_KILLED)
+   *
+   * Ideally, each terminal state event like JOB_FINISHED, JOB_FAILED, JOB_KILLED
+   * should contain the jobStatus field and we would'nt need this extra processing
+   * But presently, in history files, only JOB_FAILED, JOB_KILLED events
+   * contain the jobStatus field where as JOB_FINISHED event does not,
+   * hence this extra processing
+   */
+  private String jobStatus = "";
+  /** hadoop2 JobState enum:
+   * NEW, INITED, RUNNING, SUCCEEDED, FAILED, KILL_WAIT, KILLED, ERROR
+   */
+  public static final String JOB_STATUS_SUCCEEDED = "SUCCEEDED";
 
   /** explicitly initializing map millis and
    * reduce millis in case it's not found
@@ -264,12 +285,35 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
           + "cannot process this record! " + jobKey + " error: ", iae);
     }
 
+    /*
+     * set the job status for this job once the entire file is parsed
+     * this has to be done separately
+     * since JOB_FINISHED event is missing the field jobStatus,
+     * where as JOB_KILLED and JOB_FAILED
+     * events are not so we need to look through the whole file to confirm
+     * the job status and then generate the put
+     */
+    Put jobStatusPut = getJobStatusPut();
+    this.jobPuts.add(jobStatusPut);
+
     // set the hadoop version for this record
     Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion2(), this.jobKeyBytes);
     this.jobPuts.add(versionPut);
 
     LOG.info("For " + this.jobKey + " #jobPuts " + jobPuts.size() + " #taskPuts: "
         + taskPuts.size());
+  }
+
+  /**
+   * generates a put for job status
+   * @return Put that contains Job Status
+   */
+  private Put getJobStatusPut() {
+    Put pStatus = new Put(jobKeyBytes);
+    byte[] valueBytes = Bytes.toBytes(this.jobStatus);
+    byte[] qualifier = Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase());
+    pStatus.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
+    return pStatus;
   }
 
   /**
@@ -367,8 +411,18 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     } else {
       String type = fieldTypes.get(recType).get(key);
       if (type.equalsIgnoreCase(TYPE_STRING)) {
-        String value = eventDetails.getString(key);
-        populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        // look for job status
+        if (JobHistoryKeys.JOB_STATUS.toString().equals(
+          JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
+          // store it only if it's one of the terminal state events
+          if ((recType.equals(Hadoop2RecordType.JobFinished))
+              || (recType.equals(Hadoop2RecordType.JobUnsuccessfulCompletion))) {
+            this.jobStatus = eventDetails.getString(key);
+          }
+        } else {
+          String value = eventDetails.getString(key);
+          populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        }
       } else if (type.equalsIgnoreCase(TYPE_LONG)) {
         long value = eventDetails.getLong(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, value);
@@ -429,6 +483,9 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
     switch (recType) {
     case JobFinished:
+      // this setting is needed since the job history file is missing
+      // the jobStatus field in the JOB_FINISHED event
+      this.jobStatus = JOB_STATUS_SUCCEEDED;
     case JobInfoChange:
     case JobInited:
     case JobPriorityChange:
