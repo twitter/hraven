@@ -217,8 +217,9 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
           try {
             submitTimeMillis = Long.parseLong(submitTimeMillisString);
           } catch (NumberFormatException nfe) {
-            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString + " " + nfe.getMessage());
-            submitTimeMillis = 0;
+            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString
+                + " " + nfe.getMessage());
+           submitTimeMillis = 0;
           }
         }
       }
@@ -226,5 +227,20 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
     }
 
     return submitTimeMillis;
+  }
+
+  /**
+   * calculates the cost of a job in current units
+   * jobCost = thisJobMbMillis * computeTco / mbMillisInOneday
+   * @param mb millis, compute tco, memory of the machine
+   */
+  public static Double calculateJobCost(Long mbMillis, Double computeTco, Long machineMemory) {
+    if ((machineMemory == 0L) || (computeTco == 0.0)) {
+      LOG.error("Unable to calculate job cost since machineMemory " + machineMemory
+          + " or computeTco " + computeTco + " is 0; returning jobCost as 0");
+      return 0.0;
+    }
+    Double jobCost = (mbMillis * computeTco) / (Constants.MILLIS_ONE_DAY * machineMemory);
+    return jobCost;
   }
 }
