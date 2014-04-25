@@ -24,6 +24,10 @@ import org.junit.Test;
 public class TestJobDescFactory {
   @Test
   public void testCluster() {
+
+    // load the test properties file
+    Cluster.loadHadoopClustersProps("testhRavenClusters.properties");
+
     Configuration c = new Configuration(false);
     c.set(JobDescFactory.JOBTRACKER_KEY, "cluster1.identifier1.example.com:8021");
     String result = JobDescFactory.getCluster(c);

@@ -421,4 +421,7 @@ public class Constants {
 
   /** name of the type of machine the job ran on */
   public static final String HRAVEN_MACHINE_TYPE = "hraven.machinetype.name";
+
+  /** name of the properties file used for cluster to cluster identifier mapping */
+  public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
 }

@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -34,18 +35,24 @@ public class Cluster {
   }
 
   static {
-    loadHadoopClustersProps();
+    loadHadoopClustersProps(null);
   }
 
-  private static void loadHadoopClustersProps() {
+  // package level visibility to enable
+  // testing with different properties file names
+  static void loadHadoopClustersProps(String filename) {
     // read the property file
     // populate the map
     Properties prop = new Properties();
+    if (StringUtils.isBlank(filename)) {
+      filename = Constants.HRAVEN_CLUSTER_PROPERTIES_FILENAME;
+    }
     try {
       //TODO : property file to be moved out from resources into config dir
-      InputStream inp = Cluster.class.getResourceAsStream("/hadoopclusters.properties");
+      InputStream inp = Cluster.class.getResourceAsStream("/" + filename);
       if (inp == null) {
-        LOG.warn("hadoopclusters.properties does not exists");
+        LOG.error(filename
+            + " for mapping clusters to cluster identifiers in hRaven does not exist");
         return;
       }
       prop.load(inp);
@@ -57,8 +64,8 @@ public class Cluster {
       // An ExceptionInInitializerError will be thrown to indicate that an
       // exception occurred during evaluation of a static initializer or the
       // initializer for a static variable.
-      throw new ExceptionInInitializerError(
-          " Could not load properties file hadoopclusters.properties ");
+      throw new ExceptionInInitializerError(" Could not load properties file " + filename
+          + " for mapping clusters to cluster identifiers in hRaven");
     }
   }
 }

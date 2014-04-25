@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
+import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
@@ -44,6 +45,7 @@ import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
 import com.twitter.hraven.datasource.HdfsStatsService;
 import com.twitter.hraven.datasource.JobHistoryService;
+import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.VersionInfo;
 
 /**
@@ -378,6 +380,21 @@ public class RestJSONResource {
      return distinctVersions;
   }
 
+   @GET
+   @Path("getCluster/")
+   @Produces(MediaType.APPLICATION_JSON)
+   public String getCluster(@QueryParam("hostname") String hostname)
+                                        throws ProcessingException, IOException {
+
+     if(StringUtils.isBlank(hostname)) {
+       throw new ProcessingException("hostname not present, "
+         + "please resend with that info");
+     }
+    String cluster = Cluster.getIdentifier(hostname);
+    LOG.info("Fetched cluster identifier=" + cluster + " for hostname=" + hostname);
+    return cluster;
+   }
+
   private List<Flow> getFlowList(String cluster,
                                  String user,
                                  String appId,
@@ -543,4 +560,5 @@ public class RestJSONResource {
     }
     return serviceThreadLocal.get();
   }
+
 }

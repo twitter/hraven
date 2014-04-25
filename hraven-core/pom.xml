@@ -117,7 +117,7 @@
         <directory>src/test/resources/</directory>
         <includes>
           <include>log4j.properties</include>
-          <include>hadoopclusters.properties</include>
+          <include>testhRavenClusters.properties</include>
           <include>done/*</include>
         </includes>
       </testResource>

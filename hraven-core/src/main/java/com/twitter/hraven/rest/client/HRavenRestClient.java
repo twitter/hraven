@@ -38,7 +38,8 @@ import com.twitter.hraven.util.JSONUtil;
 import com.twitter.hraven.util.StringUtil;
 
 /**
- * 
+ * Java REST client class for fetching from rest server
+ *
  */
 public class HRavenRestClient {
   private static final Log LOG = LogFactory.getLog(HRavenRestClient.class);
@@ -62,6 +63,25 @@ public class HRavenRestClient {
     LOG.info(String.format(
       "Initializing HRavenRestClient with apiHostname=%s, connectTimeout=%d ms, readTimeout=%d ms",
       apiHostname, connectTimeout, readTimeout));
+  }
+
+  public String getCluster(String hostname) throws IOException {
+      String urlString =
+        String.format("http://%s/api/v1/getCluster?hostname=%s", apiHostname,
+          StringUtil.cleanseToken(hostname));
+
+      if (LOG.isInfoEnabled()) {
+        LOG.info("Requesting cluster for " + hostname);
+      }
+      URL url = new URL(urlString);
+      URLConnection connection = url.openConnection();
+      connection.setConnectTimeout(this.connectTimeout);
+      connection.setReadTimeout(this.readTimeout);
+      InputStream input = connection.getInputStream();
+      java.util.Scanner s = new java.util.Scanner(input).useDelimiter("\\A");
+      String cluster = s.hasNext() ? s.next() : "";
+      input.close();
+      return cluster;
   }
 
   public List<Flow> fetchFlows(String cluster,
