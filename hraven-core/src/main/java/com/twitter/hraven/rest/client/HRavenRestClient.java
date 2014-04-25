@@ -66,22 +66,27 @@ public class HRavenRestClient {
   }
 
   public String getCluster(String hostname) throws IOException {
-      String urlString =
+    String urlString =
         String.format("http://%s/api/v1/getCluster?hostname=%s", apiHostname,
           StringUtil.cleanseToken(hostname));
 
-      if (LOG.isInfoEnabled()) {
-        LOG.info("Requesting cluster for " + hostname);
-      }
-      URL url = new URL(urlString);
-      URLConnection connection = url.openConnection();
-      connection.setConnectTimeout(this.connectTimeout);
-      connection.setReadTimeout(this.readTimeout);
-      InputStream input = connection.getInputStream();
-      java.util.Scanner s = new java.util.Scanner(input).useDelimiter("\\A");
-      String cluster = s.hasNext() ? s.next() : "";
+    if (LOG.isInfoEnabled()) {
+      LOG.info("Requesting cluster for " + hostname);
+    }
+    URL url = new URL(urlString);
+    URLConnection connection = url.openConnection();
+    connection.setConnectTimeout(this.connectTimeout);
+    connection.setReadTimeout(this.readTimeout);
+    InputStream input = connection.getInputStream();
+    java.util.Scanner s = new java.util.Scanner(input).useDelimiter("\\A");
+    String cluster = s.hasNext() ? s.next() : "";
+    try {
       input.close();
-      return cluster;
+    } catch (IOException ioe) {
+      LOG.error("IOException in closing input stream, returning no error "
+          + ioe.getMessage());
+    }
+    return cluster;
   }
 
   public List<Flow> fetchFlows(String cluster,

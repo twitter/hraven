@@ -560,5 +560,4 @@ public class RestJSONResource {
     }
     return serviceThreadLocal.get();
   }
-
 }
