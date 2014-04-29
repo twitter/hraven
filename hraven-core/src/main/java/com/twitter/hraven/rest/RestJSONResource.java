@@ -16,7 +16,9 @@ limitations under the License.
 package com.twitter.hraven.rest;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -35,6 +37,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
+import com.twitter.hraven.CapacityDetails;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
@@ -544,6 +547,118 @@ public class RestJSONResource {
 
     return hdfsStats;
   }
+
+  @GET
+  @Path("newJobs/{cluster}/{user}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<Flow> getNewJobs(@PathParam("cluster") String cluster,
+                                   @PathParam("user") String user,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
+                                   @QueryParam("limit") int limit,
+                                   @QueryParam("file") String fileName)
+                                       throws IOException {
+    Stopwatch timer = new Stopwatch().start();
+
+    if(StringUtils.isBlank(fileName)) {
+      throw new ProcessingException("fair-scheduler.xml file URL not present, "
+        + "please resend with that info");
+    }
+    if(limit == 0) {
+      limit = 10000;
+    }
+    if(startTime == 0L) {
+      startTime = System.currentTimeMillis() - (86400000L * 2L) ;
+      // get top of the hour
+      startTime -= (startTime % 3600);
+    }
+    if(endTime == 0L) {
+      endTime = System.currentTimeMillis() - (86400000L) ;
+      // get top of the hour
+      endTime -= (endTime % 3600);
+    }
+
+    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails> ();
+    LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
+       + " startTime=" + startTime + " endTime=" + endTime);
+    List<Flow> newJobs = serviceThreadLocalAppVersion.get()
+                                            .getNewJobs(
+                                                StringUtils.trimToEmpty(cluster),
+                                                StringUtils.trimToEmpty(user),
+                                                startTime, endTime, limit,
+                                                CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
+                                                getJobHistoryService());
+    timer.stop();
+
+    LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
+      + "newJobs/" + cluster + SLASH + user
+      + "?limit=" + limit
+      + "&startTime=" + startTime
+      + "&endTime=" + endTime
+      + "&file=" + fileName
+      + " fetched " + newJobs.size() + " flows in " + timer);
+
+   serializationContext.set(new SerializationContext(
+      SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_NEW_JOBS_ONLY));
+
+    return newJobs;
+ }
+
+  @GET
+  @Path("newJobs/{cluster}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<Flow> getNewJobsAllUsers(@PathParam("cluster") String cluster,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
+                                   @QueryParam("limit") int limit,
+                                   @QueryParam("file") String fileName)
+                                       throws ProcessingException, IOException {
+    Stopwatch timer = new Stopwatch().start();
+
+    if(StringUtils.isBlank(fileName)) {
+      throw new ProcessingException("fair-scheduler.xml file URL not present, "
+        + "please resend with that info");
+    }
+
+    if(limit == 0) {
+      limit = 10000;
+    }
+    if(startTime == 0L) {
+      startTime = System.currentTimeMillis() - (86400000L * 2L) ;
+      // get top of the hour
+      startTime -= (startTime % 3600);
+    }
+    if(endTime == 0L) {
+      endTime = System.currentTimeMillis() - (86400000L) ;
+      // get top of the hour
+      endTime -= (endTime % 3600);
+    }
+    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails> ();
+
+    LOG.info("Fetching new Jobs for cluster=" + cluster
+       + " startTime=" + startTime + " endTime=" + endTime);
+    List<Flow> newJobs = serviceThreadLocalAppVersion.get()
+                                            .getNewJobs(
+                                                StringUtils.trimToEmpty(cluster),
+                                                "",
+                                                startTime, endTime, limit,
+                                                CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
+                                                getJobHistoryService());
+    timer.stop();
+
+    LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
+      + "newJobs/" + cluster
+      + "?limit=" + limit
+      + "&startTime=" + startTime
+      + "&endTime=" + endTime
+      + "&file=" + fileName
+      + " fetched " + newJobs.size() + " flows in " + timer);
+
+    serializationContext.set(new SerializationContext(
+      SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_NEW_JOBS_ONLY));
+
+    return newJobs;
+ }
 
   private HdfsStatsService getHdfsStatsService() {
     if (LOG.isDebugEnabled()) {

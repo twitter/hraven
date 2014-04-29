@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<allocations>
+  <queue name="hraven-testResources">
+    <minResources>700000</minResources>
+    <maxResources>1400000</maxResources>
+    <weight>100</weight>
+    <maxRunningApps>200</maxRunningApps>
+  </queue>
+  <pool name="hraven-testMapsReduces">
+    <minMaps>200</minMaps>
+    <minReduces>200</minReduces>
+    <maxMaps>4000</maxMaps>
+    <maxReduces>2000</maxReduces>
+    <weight>100</weight>
+    <maxRunningJobs>500</maxRunningJobs>
+  </pool>
+  <pool name="hraven-incompleteTestMapsReduces">
+    <maxMaps>4000</maxMaps>
+    <maxReduces>2000</maxReduces>
+    <weight>100</weight>
+    <maxRunningJobs>500</maxRunningJobs>
+  </pool>
+</allocations>

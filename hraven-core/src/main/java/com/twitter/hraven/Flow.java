@@ -149,6 +149,18 @@ public class Flow implements Comparable<Flow> {
   /**  hadoop Version for this flow  */
   private HadoopVersion hadoopVersion ;
 
+  /**  hadoop pool/queue for this flow  */
+  private String queue ;
+
+  /**  hadoop2 pool/queue capcacity for this queue  */
+  private long queueMinResources ;
+
+  /**  hadoop1 minMaps capcacity for this queue  */
+  private long queueMinMaps ;
+
+  /**  hadoop1 minReduces capcacity for this queue  */
+  private long queueMinReduces ;
+
   /** Aggregated counters from all jobs in this flow */
   private CounterMap counters = new CounterMap();
 
@@ -276,6 +288,8 @@ public class Flow implements Comparable<Flow> {
       this.submitTime = job.getSubmitTime();
       // set the hadoop version once for this job
       this.hadoopVersion = job.getHadoopVersion();
+      // set the queue/pool once for this flow
+      this.queue = job.getQueue();
       if (this.hadoopVersion == null) {
         // set it to default so that we don't run into NPE during json serialization
         this.hadoopVersion = HadoopVersion.ONE;
@@ -518,6 +532,38 @@ public class Flow implements Comparable<Flow> {
 
   public void setVersion(String version) {
     this.version = version;
+  }
+
+  public String getQueue() {
+    return queue;
+  }
+
+  public void setQueue(String queue) {
+    this.queue = queue;
+  }
+
+  public long getQueueMinResources() {
+    return queueMinResources;
+  }
+
+  public void setQueueMinResources(long queueMinResources) {
+    this.queueMinResources = queueMinResources;
+  }
+
+  public long getQueueMinMaps() {
+    return queueMinMaps;
+  }
+
+  public void setQueueMinMaps(long queueMinMaps) {
+    this.queueMinMaps = queueMinMaps;
+  }
+
+  public long getQueueMinReduces() {
+    return queueMinReduces;
+  }
+
+  public void setQueueMinReduces(long queueMinReduces) {
+    this.queueMinReduces = queueMinReduces;
   }
 
   public long getMapFileBytesRead() {

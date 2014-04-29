@@ -35,6 +35,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Predicate;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.Counter;
 import com.twitter.hraven.CounterMap;
 import com.twitter.hraven.Flow;
@@ -218,8 +219,6 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeString(aFlow.getFlowName());
           jsonGenerator.writeFieldName("userName");
           jsonGenerator.writeString(aFlow.getUserName());
-          jsonGenerator.writeFieldName("progress");
-          jsonGenerator.writeNumber(aFlow.getProgress());
           jsonGenerator.writeFieldName("jobCount");
           jsonGenerator.writeNumber(aFlow.getJobCount());
           jsonGenerator.writeFieldName("totalMaps");
@@ -263,19 +262,53 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
            *  default hadoop version in Flow#addJob
            */
           jsonGenerator.writeString(aFlow.getHadoopVersion().toString());
+          jsonGenerator.writeFieldName(Constants.HRAVEN_QUEUE);
+          jsonGenerator.writeString(aFlow.getQueue());
           jsonGenerator.writeFieldName("counters");
           jsonGenerator.writeObject(aFlow.getCounters());
           jsonGenerator.writeFieldName("mapCounters");
           jsonGenerator.writeObject(aFlow.getMapCounters());
           jsonGenerator.writeFieldName("reduceCounters");
           jsonGenerator.writeObject(aFlow.getReduceCounters());
-
           // if flag, include job details
           if (selectedSerialization ==
               SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS) {
             jsonGenerator.writeFieldName("jobs");
             jsonGenerator.writeObject(aFlow.getJobs());
           }
+        } else if (selectedSerialization == SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_NEW_JOBS_ONLY) {
+          jsonGenerator.writeFieldName("cluster");
+          jsonGenerator.writeString(aFlow.getCluster());
+          jsonGenerator.writeFieldName("userName");
+          jsonGenerator.writeString(aFlow.getUserName());
+          jsonGenerator.writeFieldName("flowName");
+          jsonGenerator.writeString(aFlow.getFlowName());
+          jsonGenerator.writeFieldName(Constants.HRAVEN_QUEUE);
+          jsonGenerator.writeString(aFlow.getQueue());
+          jsonGenerator.writeFieldName("runId");
+          jsonGenerator.writeNumber(aFlow.getRunId());
+          jsonGenerator.writeFieldName("version");
+          jsonGenerator.writeString(aFlow.getVersion());
+          jsonGenerator.writeFieldName("jobCount");
+          jsonGenerator.writeNumber(aFlow.getJobCount());
+          jsonGenerator.writeFieldName("totalMaps");
+          jsonGenerator.writeNumber(aFlow.getTotalMaps());
+          jsonGenerator.writeFieldName("totalReduces");
+          jsonGenerator.writeNumber(aFlow.getTotalReduces());
+          jsonGenerator.writeFieldName("wallClockTime");
+          jsonGenerator.writeNumber(aFlow.getWallClockTime());
+          jsonGenerator.writeFieldName("mapSlotMillis");
+          jsonGenerator.writeNumber(aFlow.getMapSlotMillis());
+          jsonGenerator.writeFieldName("reduceSlotMillis");
+          jsonGenerator.writeNumber(aFlow.getReduceSlotMillis());
+          jsonGenerator.writeFieldName("megabyteMillis");
+          jsonGenerator.writeNumber(aFlow.getMegabyteMillis());
+          jsonGenerator.writeFieldName("queueMinResourcesHadoop2");
+          jsonGenerator.writeNumber(aFlow.getQueueMinResources());
+          jsonGenerator.writeFieldName("queueMinMapsHadoop1");
+          jsonGenerator.writeNumber(aFlow.getQueueMinMaps());
+          jsonGenerator.writeFieldName("queueMinReducesHadoop1");
+          jsonGenerator.writeNumber(aFlow.getQueueMinReduces());
         }
         jsonGenerator.writeEndObject();
       }

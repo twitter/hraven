@@ -59,6 +59,7 @@ public class JobDetails implements Comparable<JobDetails> {
   private String status;
   private String version;
   private HadoopVersion hadoopVersion;
+  private String queue;
   private long submitTime;
   private long launchTime;
   private long finishTime;
@@ -360,6 +361,14 @@ public class JobDetails implements Comparable<JobDetails> {
     return this.tasks;
   }
 
+  public String getQueue() {
+    return queue;
+  }
+
+  public void setQueue(String queue) {
+    this.queue = queue;
+  }
+
   public Configuration getConfiguration() {
     return this.config;
   }
@@ -548,6 +557,7 @@ public class JobDetails implements Comparable<JobDetails> {
     this.failedReduces = getValueAsLong(JobHistoryKeys.FAILED_REDUCES, infoValues);
 
     this.config = JobHistoryService.parseConfiguration(infoValues);
+    this.queue = this.config.get(Constants.HRAVEN_QUEUE);
     this.counters = JobHistoryService.parseCounters(Constants.COUNTER_COLUMN_PREFIX_BYTES,
         infoValues);
     this.mapCounters = JobHistoryService.parseCounters(Constants.MAP_COUNTER_COLUMN_PREFIX_BYTES,

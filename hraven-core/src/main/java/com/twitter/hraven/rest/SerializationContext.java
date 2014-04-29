@@ -46,6 +46,12 @@ public class SerializationContext {
     FLOW_SUMMARY_STATS_ONLY,
 
     /**
+     * Indicating that only summary stats are to be returned
+     * for newJobs (no counter details needed)
+     */
+    FLOW_SUMMARY_STATS_NEW_JOBS_ONLY,
+
+    /**
      * Indicating that job details along with summary stats are to be returned
      */
     FLOW_SUMMARY_STATS_WITH_JOB_STATS;

@@ -34,12 +34,10 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.filter.BinaryPrefixComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
-import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -369,14 +367,9 @@ public class JobHistoryService {
               .toBytes(version)));
     }
 
-    // always ignore job configuration data
-    filters.addFilter(
-        new QualifierFilter(CompareFilter.CompareOp.NOT_EQUAL,
-            new BinaryPrefixComparator(
-                Bytes.add(Constants.JOB_CONF_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES))));
-
     scan.setFilter(filters);
 
+    LOG.info("scan : " + scan.toJSON());
     return createFromResults(scan, false, limit);
   }
 

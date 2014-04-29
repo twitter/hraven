@@ -20,8 +20,10 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -32,7 +34,10 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.twitter.hraven.CapacityDetails;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.Flow;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.VersionInfo;
 
@@ -184,6 +189,62 @@ public class TestAppVersionService {
       } finally {
         service.close();
       }
+    }
+  }
+
+  @Test
+  public void testNewJobs() throws Exception {
+
+    Configuration c = UTIL.getConfiguration();
+
+    String cluster1 = "newJobsClusterName";
+    String appId = "getNewJobs";
+    String appId2 = "getNewJobs2";
+    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails>();
+
+    AppVersionService service = new AppVersionService(c);
+    try {
+      // check adding versions in order
+      service.addVersion(cluster1, user, appId, "v1", 10L);
+      service.addVersion(cluster1, user, appId, "v2", 20L);
+      // Since flow and capacity details classes' have their own unit tests
+      // we don't test the get flow series as part of testing this new jobs call in
+      // AppVersionService
+      // hence job history service argument is passed in as null and capacityInfo map is empty
+      // nor do we test the capacity related data return (through fair scheduler loading etc)
+      List<Flow> fl = service.getNewJobs(cluster1, user, 0L, 15L, 5, capacityInfo, null);
+      assertNotNull(fl);
+      assertEquals(1, fl.size());
+      assertEquals("v1", fl.get(0).getVersion());
+      service.addVersion(cluster1, user, appId, "v3", 30L);
+      service.addVersion(cluster1, user, appId, "v2.5", 25L);
+      fl = service.getNewJobs(cluster1, user, 20L, 35L, 5, capacityInfo, null);
+      assertNotNull(fl);
+      // check that nothing is returned since this app first showed up at timestamp 10
+      assertEquals(0, fl.size());
+      service.addVersion(cluster1, user, appId2, "v102", 23L);
+      fl = service.getNewJobs(cluster1, user, 20L, 35L, 5, capacityInfo, null);
+      assertNotNull(fl);
+      // check that appId2 is returned
+      assertEquals(1, fl.size());
+      assertEquals(appId2, fl.get(0).getAppId());
+      // now check for entire time range
+      fl = service.getNewJobs(cluster1, user, 0L, 35L, 5, capacityInfo, null);
+      assertNotNull(fl);
+      // check that both apps are returned
+      assertEquals(2, fl.size());
+      for (int i = 0; i < fl.size(); i++) {
+        String anAppId = fl.get(i).getAppId();
+        if (appId.equals(anAppId)) {
+          assertEquals("v1", fl.get(i).getVersion());
+        } else if (appId2.equals(anAppId)) {
+          assertEquals("v102", fl.get(i).getVersion());
+        } else {
+          throw new AssertionError("Could not find the right apps with versions as expected");
+        }
+      }
+    } finally {
+      service.close();
     }
   }
 
