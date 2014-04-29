@@ -578,16 +578,16 @@ public class RestJSONResource {
       endTime -= (endTime % 3600);
     }
 
-    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails> ();
+    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails>();
     LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
        + " startTime=" + startTime + " endTime=" + endTime);
     List<Flow> newJobs = serviceThreadLocalAppVersion.get()
-                                            .getNewJobs(
-                                                StringUtils.trimToEmpty(cluster),
-                                                StringUtils.trimToEmpty(user),
-                                                startTime, endTime, limit,
-                                                CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
-                                                getJobHistoryService());
+                            .getNewJobs(
+                               StringUtils.trimToEmpty(cluster),
+                               StringUtils.trimToEmpty(user),
+                               startTime, endTime, limit,
+                               CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
+                               getJobHistoryService());
     timer.stop();
 
     LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
@@ -633,17 +633,17 @@ public class RestJSONResource {
       // get top of the hour
       endTime -= (endTime % 3600);
     }
-    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails> ();
+    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails>();
 
     LOG.info("Fetching new Jobs for cluster=" + cluster
        + " startTime=" + startTime + " endTime=" + endTime);
     List<Flow> newJobs = serviceThreadLocalAppVersion.get()
-                                            .getNewJobs(
-                                                StringUtils.trimToEmpty(cluster),
-                                                "",
-                                                startTime, endTime, limit,
-                                                CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
-                                                getJobHistoryService());
+                           .getNewJobs(
+                              StringUtils.trimToEmpty(cluster),
+                              "",
+                              startTime, endTime, limit,
+                              CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
+                              getJobHistoryService());
     timer.stop();
 
     LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
