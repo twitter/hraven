@@ -223,6 +223,8 @@ public class RestJSONResource {
                                    @PathParam("user") String user,
                                    @PathParam("appId") String appId,
                                    @QueryParam("limit") int limit,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
@@ -236,7 +238,7 @@ public class RestJSONResource {
     }
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    List<Flow> flows =  getFlowList(cluster, user, appId, null, limit);
+    List<Flow> flows = getFlowList(cluster, user, appId, null, startTime, endTime, limit);
     timer.stop();
 
     StringBuilder builderIncludeConfigs = new StringBuilder();
@@ -412,22 +414,6 @@ public class RestJSONResource {
     List<Flow> flows =
         getJobHistoryService().getFlowSeries(cluster, user, appId, version, false, startTime,
           endTime, limit);
-    LOG.info(String.format("Found %s flows", flows.size()));
-    return flows;
-  }
-
-  private List<Flow> getFlowList(String cluster,
-                                 String user,
-                                 String appId,
-                                 String version,
-                                 int limit) throws IOException {
-    if (limit < 1) { limit = 1; }
-    LOG.info(String.format(
-      "Fetching Flow series for cluster=%s, user=%s, appId=%s, version=%s, limit=%s",
-      cluster, user, appId, version, limit));
-
-    List<Flow> flows =
-        getJobHistoryService().getFlowSeries(cluster, user, appId, version, false, limit);
     LOG.info(String.format("Found %s flows", flows.size()));
     return flows;
   }
