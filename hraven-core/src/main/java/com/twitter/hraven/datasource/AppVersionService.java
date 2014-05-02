@@ -237,7 +237,7 @@ public class AppVersionService {
    * @throws ProcessingException
    */
   public List<Flow> getNewJobs(String cluster, String user, Long startTime,
-      Long endTime, int limit, Map<String, CapacityDetails> queueCapacity, JobHistoryService jhs)
+      Long endTime, int limit, CapacityDetails cd, JobHistoryService jhs)
           throws ProcessingException {
     byte[] startRow = null;
     if (StringUtils.isNotBlank(user)) {
@@ -256,20 +256,20 @@ public class AppVersionService {
     filters.addFilter(new WhileMatchFilter(new PrefixFilter(startRow)));
 
     scan.setFilter(filters);
-    LOG.info(" queue capacity size " + queueCapacity.size());
 
     List<Flow> newJobs = new ArrayList<Flow>();
       try {
-        newJobs = createFromResults(scan, startTime, endTime, limit, jhs, queueCapacity);
+        newJobs = createFromResults(scan, startTime, endTime, limit, jhs, cd);
       } catch (IOException e) {
-        LOG.error("Caught exception while trying to scan, returning empty list of flows: " + e.toString());
+        LOG.error("Caught exception while trying to scan, returning empty list of flows: "
+            + e.toString());
       }
 
     return newJobs;
   }
 
   private List<Flow> createFromResults(Scan scan, Long startTime, Long endTime, int maxCount,
-      JobHistoryService jhs, Map<String, CapacityDetails> queueCapacity)
+      JobHistoryService jhs, CapacityDetails cd)
           throws IOException {
     ResultScanner scanner = null;
     List<Flow> newJobs = new ArrayList<Flow>();
@@ -288,7 +288,7 @@ public class AppVersionService {
             if (newJobs.size() >= maxCount) {
               break;
             }
-          Flow job = getFlowDescFromResult(result, startTime, endTime, jhs, queueCapacity);
+          Flow job = getFlowDescFromResult(result, startTime, endTime, jhs, cd);
           if(job != null) {
             newJobs.add(job);
           }
@@ -308,7 +308,7 @@ public class AppVersionService {
   }
 
   private Flow getFlowDescFromResult(Result result, Long startTime, Long endTime,
-      JobHistoryService jhs, Map<String, CapacityDetails> queueCapacity) throws IOException {
+      JobHistoryService jhs, CapacityDetails cd) throws IOException {
 
     byte[] rowKey = result.getRow();
     byte[][] keyComponents = ByteUtil.split(rowKey, Constants.SEP_BYTES);
@@ -339,8 +339,8 @@ public class AppVersionService {
         // but there was a bug where the runId was not being set correctly,
         // hence in this step, make a best effort attempt to retrieve SOME data
         // so we try to get the latest flow with this version here
-        LOG.info("Could not find flow with run Id " + runId + " for " + cluster + " " + user + " "
-            + appId + " fetching flowSeries with version " + minVersion);
+        LOG.info("Could not find flow with run Id " + runId + " for " + cluster + " "
+            + user + " " + appId + " fetching flowSeries with version " + minVersion);
         List<Flow> fl = jhs.getFlowSeries(cluster, user, appId, minVersion, false, 1);
         if (fl.size() > 0) {
           flow = fl.get(0);
@@ -352,7 +352,8 @@ public class AppVersionService {
         // if no flow was found in the steps above,
         // we have the flow key parameters, hence we create an empty flow with
         // these entries from the data in appVersion table
-        LOG.info("Could not find flow series with version " + minVersion + " for " + cluster + " " + user + " "
+        LOG.info("Could not find flow series with version " + minVersion
+          + " for " + cluster + " " + user + " "
             + appId );
         FlowKey fk = new FlowKey(cluster, user, appId, runId);
         flow = new Flow(fk);
@@ -363,17 +364,16 @@ public class AppVersionService {
       if (queue == null) {
         queue = user;
       }
-      CapacityDetails cd = queueCapacity.get(queue);
       if(cd != null) {
-        flow.setQueueMinResources(cd.getMinResources());
-        flow.setQueueMinMaps(cd.getMinMaps());
-        flow.setQueueMinReduces(cd.getMinReduces());
+        flow.setQueueMinResources(cd.getMinResources(queue));
+        flow.setQueueMinMaps(cd.getMinMaps(queue));
+        flow.setQueueMinReduces(cd.getMinReduces(queue));
       } else {
         LOG.info("No capacity details found for " + queue);
       }
-      LOG.info(" queue: " + queue + " " + flow.getAppId() + " " + flow.getCluster() + " "
-          + flow.getUserName() + " " + flow.getQueueMinResources() + " " + flow.getQueueMinMaps()
-          + " " + flow.getQueueMinReduces());
+      LOG.info(" queue: " + queue + " " + flow.getAppId() + " " + flow.getCluster()
+          + " " + flow.getUserName() + " " + flow.getQueueMinResources() + " "
+          + flow.getQueueMinMaps() + " " + flow.getQueueMinReduces());
       return flow;
     }
     return null;

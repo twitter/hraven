@@ -18,16 +18,16 @@ package com.twitter.hraven;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.twitter.hraven.datasource.ProcessingException;
 
 public class TestCapacityDetails {
 
@@ -43,38 +43,54 @@ public class TestCapacityDetails {
 
   @Test
   public void testLoadCapacityDetailsFromFairScheduler() {
-
-    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails> ();
-    Map<String, CapacityDetails> info = CapacityDetails.loadCapacityDetailsFromFairScheduler(
-      "file://" + this.fileName, capacityInfo);
-    assertNotNull(info);
-    assertEquals(2, info.size());
-    assertTrue(info.containsKey("hraven-testResources"));
-    assertTrue(info.containsKey("hraven-testMapsReduces"));
-    assertEquals(700000, info.get("hraven-testResources").getMinResources());
-    assertEquals(0L, info.get("hraven-testResources").getMinMaps());
-    assertEquals(0L, info.get("hraven-testResources").getMinReduces());
-    assertEquals(0L, info.get("hraven-testMapsReduces").getMinResources());
-    assertEquals(200L, info.get("hraven-testMapsReduces").getMinMaps());
-    assertEquals(200L, info.get("hraven-testMapsReduces").getMinReduces());
+    CapacityDetails cd =
+        new CapacityDetails(SchedulerTypes.FAIR_SCHEDULER.toString(), "file://" + this.fileName);
+    assertNotNull(cd);
+    assertEquals(2, cd.size());
+    // test for min resources for pool hraven-testResources
+    // and min maps, reduces to be  0
+    assertEquals(700000, cd.getMinResources("hraven-testResources"));
+    assertEquals(0L, cd.getMinMaps("hraven-testResources"));
+    assertEquals(0L, cd.getMinReduces("hraven-testResources"));
+    assertEquals(0L, cd.getMinResources("hraven-testMapsReduces"));
+    assertEquals(200L, cd.getMinMaps("hraven-testMapsReduces"));
+    assertEquals(200L, cd.getMinReduces("hraven-testMapsReduces"));
+    // test for non existent queue
+    assertEquals(0L, cd.getMinMaps("something"));
   }
 
   @Test
   public void testNonExistentFairScheduler() {
-    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails> ();
-    Map<String, CapacityDetails> info = CapacityDetails.loadCapacityDetailsFromFairScheduler(
-      "file:///nonexistenthravenfairscheduler.xml", capacityInfo);
-    assertNotNull(info);
-    assertEquals(0, info.size());
+    CapacityDetails cd = new CapacityDetails(
+            SchedulerTypes.FAIR_SCHEDULER.toString(),
+            "file:///nonexistenthravenfairscheduler.xml");
+    assertNotNull(cd);
+    assertEquals(0, cd.size());
+  }
+
+  @Test(expected=ProcessingException.class)
+  public void testNonExistentSchedulerType() {
+    CapacityDetails cd = new CapacityDetails(
+            "abcd",
+            "file://" + this.fileName);
+    assertNull(cd);
+  }
+
+  @Test(expected=ProcessingException.class)
+  public void testNullSchedulerType() {
+    CapacityDetails cd = new CapacityDetails(
+            null,
+            "file://" + this.fileName);
+    assertNull(cd);
   }
 
   @Test
   public void testIncorrectURLFairScheduler() {
-    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails> ();
-    Map<String, CapacityDetails> info = CapacityDetails.loadCapacityDetailsFromFairScheduler(
-      "incorrect_url_hravenfairscheduler.xml", capacityInfo);
-    assertNotNull(info);
-    assertEquals(0, info.size());
+    CapacityDetails cd = new CapacityDetails(
+            SchedulerTypes.FAIR_SCHEDULER.toString(),
+            "incorrect_url_hravenfairscheduler.xml");
+    assertNotNull(cd);
+    assertEquals(0, cd.size());
   }
 
   @After

@@ -16,9 +16,7 @@ limitations under the License.
 package com.twitter.hraven.rest;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -44,6 +42,7 @@ import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.SchedulerTypes;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
 import com.twitter.hraven.datasource.HdfsStatsService;
@@ -556,29 +555,37 @@ public class RestJSONResource {
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
                                    @QueryParam("limit") int limit,
+                                   @QueryParam("schedulerType") String schedulerType,
                                    @QueryParam("file") String fileName)
                                        throws IOException {
     Stopwatch timer = new Stopwatch().start();
+
+    if(StringUtils.isBlank(schedulerType)) {
+      // default to fair scheduler
+      schedulerType = SchedulerTypes.FAIR_SCHEDULER.toString();
+    }
 
     if(StringUtils.isBlank(fileName)) {
       throw new ProcessingException("fair-scheduler.xml file URL not present, "
         + "please resend with that info");
     }
     if(limit == 0) {
-      limit = 10000;
+      limit = Integer.MAX_VALUE;
     }
     if(startTime == 0L) {
-      startTime = System.currentTimeMillis() - (86400000L * 2L) ;
+      // 24 hours back
+      startTime = System.currentTimeMillis() - Constants.MILLIS_ONE_DAY ;
       // get top of the hour
       startTime -= (startTime % 3600);
     }
     if(endTime == 0L) {
-      endTime = System.currentTimeMillis() - (86400000L) ;
+      // now
+      endTime = System.currentTimeMillis() ;
       // get top of the hour
       endTime -= (endTime % 3600);
     }
 
-    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails>();
+    CapacityDetails cd = new CapacityDetails(schedulerType, fileName);
     LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
        + " startTime=" + startTime + " endTime=" + endTime);
     List<Flow> newJobs = serviceThreadLocalAppVersion.get()
@@ -586,7 +593,7 @@ public class RestJSONResource {
                                StringUtils.trimToEmpty(cluster),
                                StringUtils.trimToEmpty(user),
                                startTime, endTime, limit,
-                               CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
+                               cd,
                                getJobHistoryService());
     timer.stop();
 
@@ -611,9 +618,15 @@ public class RestJSONResource {
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
                                    @QueryParam("limit") int limit,
+                                   @QueryParam("schedulerType") String schedulerType,
                                    @QueryParam("file") String fileName)
                                        throws ProcessingException, IOException {
     Stopwatch timer = new Stopwatch().start();
+
+    if(StringUtils.isBlank(schedulerType)) {
+      // default to fair scheduler
+      schedulerType = SchedulerTypes.FAIR_SCHEDULER.toString();
+    }
 
     if(StringUtils.isBlank(fileName)) {
       throw new ProcessingException("fair-scheduler.xml file URL not present, "
@@ -621,20 +634,21 @@ public class RestJSONResource {
     }
 
     if(limit == 0) {
-      limit = 10000;
+      limit = Integer.MAX_VALUE;
     }
     if(startTime == 0L) {
-      startTime = System.currentTimeMillis() - (86400000L * 2L) ;
+      // 24 hours before now
+      startTime = System.currentTimeMillis() - Constants.MILLIS_ONE_DAY ;
       // get top of the hour
       startTime -= (startTime % 3600);
     }
     if(endTime == 0L) {
-      endTime = System.currentTimeMillis() - (86400000L) ;
+      // now
+      endTime = System.currentTimeMillis() ;
       // get top of the hour
       endTime -= (endTime % 3600);
     }
-    Map<String, CapacityDetails> capacityInfo = new HashMap<String, CapacityDetails>();
-
+    CapacityDetails cd = new CapacityDetails(schedulerType, fileName);
     LOG.info("Fetching new Jobs for cluster=" + cluster
        + " startTime=" + startTime + " endTime=" + endTime);
     List<Flow> newJobs = serviceThreadLocalAppVersion.get()
@@ -642,7 +656,7 @@ public class RestJSONResource {
                               StringUtils.trimToEmpty(cluster),
                               "",
                               startTime, endTime, limit,
-                              CapacityDetails.loadCapacityDetailsFromFairScheduler(fileName, capacityInfo),
+                              cd,
                               getJobHistoryService());
     timer.stop();
 
