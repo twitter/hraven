@@ -16,112 +16,29 @@ limitations under the License.
 
 package com.twitter.hraven;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import com.twitter.hraven.datasource.ProcessingException;
 
 /**
- * Represents the capacity information
+ * Interface to store and access capacity information
+ *
  * Presently stores only pool/queue capacity related numbers
- * Also provides functionality for loading different schedulers
- * currently loads fair scheduler to
+ * Also provides functionality for loading
+ * different schedulers currently loads fair scheduler to
  * get hadoop1 and hadoop2 Pool/Queue capacity numbers
  * Can be extended to include other capacity related information
  */
-@JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
-public class CapacityDetails {
 
-  private static Log LOG = LogFactory.getLog(CapacityDetails.class);
+public interface CapacityDetails {
 
-  private SchedulerTypes schedulerType = SchedulerTypes.FAIR_SCHEDULER;
+  /** get the value of the capacity attribute in that pool/queue */
+  abstract long getAttribute(String queue, String attribute);
 
-  private Map<String, FairSchedulerCapacityDetails> fairSchedulerCapacityInfo =
-      new HashMap<String, FairSchedulerCapacityDetails>();
+  /** load the capacity information from a file */
+  abstract void loadDetails(String fileName) throws ProcessingException;
 
-  public CapacityDetails() {
-  }
+  /** number of records in capacity info */
+  abstract int size();
 
-  public CapacityDetails(String schedulerType, String fileName) {
-
-    if (StringUtils.isBlank(schedulerType)) {
-      LOG.error("Cannot instantiate CapacityDetails, "
-          + "scheduler type is blank");
-      throw new ProcessingException("Cannot instantiate CapacityDetails, "
-          + "scheduler type is blank");
-    }
-    try {
-      this.schedulerType = SchedulerTypes.valueOf(schedulerType);
-    } catch (IllegalArgumentException iae) {
-      LOG.error("Cannot instantiate CapacityDetails, " + "scheduler type " + schedulerType
-          + " is unknown ");
-      throw new ProcessingException("Cannot instantiate CapacityDetails, " + "scheduler type "
-          + schedulerType + " is unknown ");
-    }
-
-    switch (this.schedulerType) {
-    case FIFO_SCHEDULER:
-      LOG.error(this.schedulerType + " not supported yet");
-      break;
-    case CAPACITY_SCHEDULER:
-      LOG.error(this.schedulerType + " not supported yet");
-      break;
-    default:
-      // try to load as fair scheduler
-    case FAIR_SCHEDULER:
-      this.fairSchedulerCapacityInfo = FairSchedulerCapacityDetails.loadFromFairScheduler(fileName);
-      break;
-    }
-
-  }
-
-  public long getMinResources(String queue) {
-    FairSchedulerCapacityDetails fs = this.fairSchedulerCapacityInfo.get(queue);
-    if (fs != null) {
-      return fs.getMinResources();
-    } else {
-      return 0L;
-    }
-  }
-
-  public long getMinMaps(String queue) {
-    FairSchedulerCapacityDetails fs = this.fairSchedulerCapacityInfo.get(queue);
-    if (fs != null) {
-      return fs.getMinMaps();
-    } else {
-      return 0L;
-    }
-  }
-
-  public long getMinReduces(String queue) {
-    FairSchedulerCapacityDetails fs = this.fairSchedulerCapacityInfo.get(queue);
-    if (fs != null) {
-      return fs.getMinReduces();
-    } else {
-      return 0L;
-    }
-  }
-
-  public int size() {
-    if (this.schedulerType != null) {
-      switch (this.schedulerType) {
-      case FIFO_SCHEDULER:
-        LOG.error(this.schedulerType + " not supported yet");
-        break;
-      case CAPACITY_SCHEDULER:
-        LOG.error(this.schedulerType + " not supported yet");
-        break;
-      default:
-        // try to load as fair scheduler
-      case FAIR_SCHEDULER:
-        return this.fairSchedulerCapacityInfo.size();
-      }
-    }
-    return 0;
-  }
+  /** get the type of scheduler being looked at */
+  abstract SchedulerTypes getSchedulerType();
 }

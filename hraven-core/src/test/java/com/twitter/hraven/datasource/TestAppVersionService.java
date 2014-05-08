@@ -36,6 +36,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.twitter.hraven.CapacityDetails;
+import com.twitter.hraven.CapacityDetailsFactory;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.SchedulerTypes;
@@ -206,8 +207,8 @@ public class TestAppVersionService {
     String fileName = fileNamePrefix + System.currentTimeMillis() + ".xml";
     FileUtils.copyFile(srcFile, new File(fileName));
 
-    CapacityDetails cd =
-        new CapacityDetails(SchedulerTypes.FAIR_SCHEDULER.toString(), "file://" + fileName);
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(
+      SchedulerTypes.FAIR_SCHEDULER.toString(), "file://" + fileName);
 
     AppVersionService service = new AppVersionService(c);
     try {

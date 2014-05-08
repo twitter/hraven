@@ -43,25 +43,32 @@ public class TestCapacityDetails {
 
   @Test
   public void testLoadCapacityDetailsFromFairScheduler() {
-    CapacityDetails cd =
-        new CapacityDetails(SchedulerTypes.FAIR_SCHEDULER.toString(), "file://" + this.fileName);
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(
+        SchedulerTypes.FAIR_SCHEDULER.toString(), "file://" + this.fileName);
     assertNotNull(cd);
-    assertEquals(2, cd.size());
+    assertEquals(1, cd.size());
     // test for min resources for pool hraven-testResources
     // and min maps, reduces to be  0
-    assertEquals(700000, cd.getMinResources("hraven-testResources"));
-    assertEquals(0L, cd.getMinMaps("hraven-testResources"));
-    assertEquals(0L, cd.getMinReduces("hraven-testResources"));
-    assertEquals(0L, cd.getMinResources("hraven-testMapsReduces"));
-    assertEquals(200L, cd.getMinMaps("hraven-testMapsReduces"));
-    assertEquals(200L, cd.getMinReduces("hraven-testMapsReduces"));
+    assertEquals(700000, cd.getAttribute("hraven-testResources",
+      FairSchedulerCapacityDetails.FairSchedulerAtttributes.minResources.toString()));
+    assertEquals(0L, cd.getAttribute("hraven-testResources",
+      FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
+    assertEquals(0L, cd.getAttribute("hraven-testResources",
+      FairSchedulerCapacityDetails.FairSchedulerAtttributes.minReduces.toString()));
+    assertEquals(0L, cd.getAttribute("hraven-testMapsReduces",
+      FairSchedulerCapacityDetails.FairSchedulerAtttributes.minResources.toString()));
+    assertEquals(200L, cd.getAttribute("hraven-testMapsReduces",
+      FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
+    assertEquals(200L, cd.getAttribute("hraven-testMapsReduces",
+      FairSchedulerCapacityDetails.FairSchedulerAtttributes.minReduces.toString()));
     // test for non existent queue
-    assertEquals(0L, cd.getMinMaps("something"));
+    assertEquals(0L, cd.getAttribute("something",
+      FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
   }
 
   @Test
   public void testNonExistentFairScheduler() {
-    CapacityDetails cd = new CapacityDetails(
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(
             SchedulerTypes.FAIR_SCHEDULER.toString(),
             "file:///nonexistenthravenfairscheduler.xml");
     assertNotNull(cd);
@@ -70,7 +77,7 @@ public class TestCapacityDetails {
 
   @Test(expected=ProcessingException.class)
   public void testNonExistentSchedulerType() {
-    CapacityDetails cd = new CapacityDetails(
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(
             "abcd",
             "file://" + this.fileName);
     assertNull(cd);
@@ -78,7 +85,7 @@ public class TestCapacityDetails {
 
   @Test(expected=ProcessingException.class)
   public void testNullSchedulerType() {
-    CapacityDetails cd = new CapacityDetails(
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(
             null,
             "file://" + this.fileName);
     assertNull(cd);
@@ -86,7 +93,7 @@ public class TestCapacityDetails {
 
   @Test
   public void testIncorrectURLFairScheduler() {
-    CapacityDetails cd = new CapacityDetails(
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(
             SchedulerTypes.FAIR_SCHEDULER.toString(),
             "incorrect_url_hravenfairscheduler.xml");
     assertNotNull(cd);

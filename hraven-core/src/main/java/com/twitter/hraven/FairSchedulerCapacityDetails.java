@@ -38,64 +38,41 @@ import org.w3c.dom.NodeList;
 
 import com.twitter.hraven.datasource.ProcessingException;
 
-public class FairSchedulerCapacityDetails {
+/**
+ * stores the capacity related information from a fair scheduler file
+ *
+ */
+public class FairSchedulerCapacityDetails implements CapacityDetails {
 
   private static Log LOG = LogFactory.getLog(FairSchedulerCapacityDetails.class);
 
-  private long minResources;
-  private long minMaps;
-  private long minReduces;
-
-  private enum FAIR_SCHEDULER_ATTRIBUTES {
-    minResources, minMaps, minReduces
-  };
-
-  long getMinResources() {
-    return minResources;
+  public enum FairSchedulerAtttributes {
+    minResources, minMaps, minReduces ;
   }
 
-  void setMinResources(long minResources) {
-    this.minResources = minResources;
-  }
-
-  long getMinMaps() {
-    return minMaps;
-  }
-
-  void setMinMaps(long minMaps) {
-    this.minMaps = minMaps;
-  }
-
-  long getMinReduces() {
-    return minReduces;
-  }
-
-  void setMinReduces(long minReduces) {
-    this.minReduces = minReduces;
-  }
+  private Map<String, Long> minResources;
+  private Map<String, Long> minMaps;
+  private Map<String, Long> minReduces;
 
   /**
    * loads the hadoop fair scheduler config file to process the queue capacity numbers
    * @return map of queue name to capacity
    * @throws ProcessingException
    */
-  public static Map<String, FairSchedulerCapacityDetails> loadFromFairScheduler(
-      String fileName) throws ProcessingException {
+  public void loadDetails(String fileName) throws ProcessingException {
 
-    Map<String, FairSchedulerCapacityDetails> fairSchedulerCapacityInfo =
-        new HashMap<String, FairSchedulerCapacityDetails>();
+    this.minResources = new HashMap<String, Long>();
+    this.minMaps = new HashMap<String, Long>();
+    this.minReduces = new HashMap<String, Long>();
 
     try {
       LOG.info("Loading fair scheduler:" + fileName);
       URL url = new URL(fileName);
       URLConnection connection = url.openConnection();
       Document doc = parseXML(connection.getInputStream());
-      fairSchedulerCapacityInfo = processXmlDoc(FAIR_SCHEDULER_ATTRIBUTES.minResources,
-          doc, fairSchedulerCapacityInfo);
-      fairSchedulerCapacityInfo = processXmlDoc(FAIR_SCHEDULER_ATTRIBUTES.minMaps,
-          doc, fairSchedulerCapacityInfo);
-      fairSchedulerCapacityInfo = processXmlDoc(FAIR_SCHEDULER_ATTRIBUTES.minReduces,
-          doc, fairSchedulerCapacityInfo);
+      processXmlDoc(FairSchedulerAtttributes.minResources, doc);
+      processXmlDoc(FairSchedulerAtttributes.minMaps, doc);
+      processXmlDoc(FairSchedulerAtttributes.minReduces, doc);
     } catch (NumberFormatException nfe) {
       LOG.error("Caught NumberFormatException: " + nfe.getMessage());
     } catch (InvalidPropertiesFormatException e) {
@@ -106,28 +83,25 @@ public class FairSchedulerCapacityDetails {
       LOG.error("Caught IOE " + e.toString());
     }
     if (LOG.isDebugEnabled()) {
-      for (Map.Entry<String, FairSchedulerCapacityDetails> kv : fairSchedulerCapacityInfo
+      for (Map.Entry<String, Long> kv : minResources
           .entrySet()) {
-        LOG.debug(" key value" + kv.getKey() + ": minResources=" + kv.getValue().getMinResources()
-            + ": minMaps=" + kv.getValue().getMinMaps() + ": minReduces="
-            + kv.getValue().getMinReduces());
+        LOG.debug(" key value" + kv.getKey() + ": minResources=" + kv.getValue()
+            + ": minMaps=" + minMaps.get(kv.getKey()) + ": minReduces="
+            + minReduces.get(kv.getKey()));
       }
     }
-
-    return fairSchedulerCapacityInfo;
   }
 
   /**
-   * processes the xml document for different attributes, namely minResources, minMaps and
-   * minReduces
+   * processes the xml document for different attributes
+   * namely minResources, minMaps and minReduces
    * @param attribute
    * @param capacityInfo
    * @param doc
    * @return
    */
-  static Map<String, FairSchedulerCapacityDetails> processXmlDoc(
-      FAIR_SCHEDULER_ATTRIBUTES attribute, Document doc,
-      Map<String, FairSchedulerCapacityDetails> fairSchedulerCapacityInfo) {
+  public void processXmlDoc(
+    FairSchedulerAtttributes attribute, Document doc) {
     String key = "";
     Node aNode = null;
     long value = 0L;
@@ -141,24 +115,21 @@ public class FairSchedulerCapacityDetails {
         continue;
       }
       value = getValue(aNode);
-      FairSchedulerCapacityDetails fs = getFairScheduler(key, fairSchedulerCapacityInfo);
       switch (attribute) {
       case minResources:
-        fs.setMinResources(value);
+        this.minResources.put(key, value);
         break;
       case minMaps:
-        fs.setMinMaps(value);
+        this.minMaps.put(key, value);
         break;
       case minReduces:
-        fs.setMinReduces(value);
+        this.minReduces.put(key, value);
         break;
       default:
         LOG.error("unknown attribute in fair scheduler : " + attribute);
         break;
       }
-      fairSchedulerCapacityInfo.put(key, fs);
     }
-    return fairSchedulerCapacityInfo;
   }
 
   /**
@@ -197,24 +168,6 @@ public class FairSchedulerCapacityDetails {
   }
 
   /**
-   * checks if capacity details are already available in the map, if yes, returns that else returns
-   * new capacity details object
-   * @param queue/pool name as key
-   * @param capacityInfo map
-   * @return capacity details for that queue/pool
-   */
-  private static FairSchedulerCapacityDetails getFairScheduler(String key,
-      Map<String, FairSchedulerCapacityDetails> fairSchedulerCapacityInfo) {
-    FairSchedulerCapacityDetails fs = null;
-    if (fairSchedulerCapacityInfo.containsKey(key)) {
-      fs = fairSchedulerCapacityInfo.get(key);
-    } else {
-      fs = new FairSchedulerCapacityDetails();
-    }
-    return fs;
-  }
-
-  /**
    * parses the input stream as an XML document
    * @param inputstream
    * @return xml document
@@ -233,6 +186,41 @@ public class FairSchedulerCapacityDetails {
       throw new ProcessingException(ex.getMessage());
     }
     return doc;
+  }
+
+  @Override
+  public int size() {
+    return Math.max(Math.max(minResources.size(), minMaps.size()),
+      minReduces.size());
+  }
+
+  @Override
+  public long getAttribute(String queue, String attribute) {
+
+    try {
+      switch (FairSchedulerAtttributes.valueOf(attribute)) {
+      case minResources:
+        return this.minResources.get(queue);
+      case minMaps:
+        return this.minMaps.get(queue);
+      case minReduces:
+        return this.minReduces.get(queue);
+      default:
+        return 0L;
+      }
+    } catch (NullPointerException nfe) {
+      LOG.error("Attribute is null, returning 0");
+      return 0L;
+    } catch (IllegalArgumentException iae) {
+      LOG.error("No such attribute " + attribute + " " + iae);
+      return 0L;
+    }
+
+  }
+
+  @Override
+  public SchedulerTypes getSchedulerType() {
+    return SchedulerTypes.FAIR_SCHEDULER;
   }
 
 }

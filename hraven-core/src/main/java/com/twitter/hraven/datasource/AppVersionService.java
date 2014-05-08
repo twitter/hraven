@@ -42,8 +42,10 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.twitter.hraven.CapacityDetails;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.FairSchedulerCapacityDetails;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.FlowKey;
+import com.twitter.hraven.SchedulerTypes;
 import com.twitter.hraven.util.ByteUtil;
 
 /**
@@ -364,10 +366,13 @@ public class AppVersionService {
       if (queue == null) {
         queue = user;
       }
-      if(cd != null) {
-        flow.setQueueMinResources(cd.getMinResources(queue));
-        flow.setQueueMinMaps(cd.getMinMaps(queue));
-        flow.setQueueMinReduces(cd.getMinReduces(queue));
+      if ((cd != null) && (SchedulerTypes.FAIR_SCHEDULER.equals(cd.getSchedulerType()))) {
+        flow.setQueueMinResources(cd.getAttribute(queue,
+          FairSchedulerCapacityDetails.FairSchedulerAtttributes.minResources.toString()));
+        flow.setQueueMinMaps(cd.getAttribute(queue,
+          FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
+        flow.setQueueMinReduces(cd.getAttribute(queue,
+          FairSchedulerCapacityDetails.FairSchedulerAtttributes.minReduces.toString()));
       } else {
         LOG.info("No capacity details found for " + queue);
       }

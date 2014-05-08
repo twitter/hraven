@@ -36,6 +36,7 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
 import com.twitter.hraven.CapacityDetails;
+import com.twitter.hraven.CapacityDetailsFactory;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
@@ -585,7 +586,7 @@ public class RestJSONResource {
       endTime -= (endTime % 3600);
     }
 
-    CapacityDetails cd = new CapacityDetails(schedulerType, fileName);
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(schedulerType, fileName);
     LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
        + " startTime=" + startTime + " endTime=" + endTime);
     List<Flow> newJobs = serviceThreadLocalAppVersion.get()
@@ -648,7 +649,7 @@ public class RestJSONResource {
       // get top of the hour
       endTime -= (endTime % 3600);
     }
-    CapacityDetails cd = new CapacityDetails(schedulerType, fileName);
+    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(schedulerType, fileName);
     LOG.info("Fetching new Jobs for cluster=" + cluster
        + " startTime=" + startTime + " endTime=" + endTime);
     List<Flow> newJobs = serviceThreadLocalAppVersion.get()
