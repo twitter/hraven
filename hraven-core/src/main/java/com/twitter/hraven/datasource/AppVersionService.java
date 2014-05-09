@@ -367,11 +367,11 @@ public class AppVersionService {
         queue = user;
       }
       if ((cd != null) && (SchedulerTypes.FAIR_SCHEDULER.equals(cd.getSchedulerType()))) {
-        flow.setQueueMinResources(cd.getAttribute(queue,
+        flow.setQueueMinResources((Long) cd.getAttribute(queue,
           FairSchedulerCapacityDetails.FairSchedulerAtttributes.minResources.toString()));
-        flow.setQueueMinMaps(cd.getAttribute(queue,
+        flow.setQueueMinMaps((Long) cd.getAttribute(queue,
           FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
-        flow.setQueueMinReduces(cd.getAttribute(queue,
+        flow.setQueueMinReduces((Long) cd.getAttribute(queue,
           FairSchedulerCapacityDetails.FairSchedulerAtttributes.minReduces.toString()));
       } else {
         LOG.info("No capacity details found for " + queue);

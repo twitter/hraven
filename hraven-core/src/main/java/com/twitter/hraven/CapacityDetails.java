@@ -31,14 +31,14 @@ import com.twitter.hraven.datasource.ProcessingException;
 public interface CapacityDetails {
 
   /** get the value of the capacity attribute in that pool/queue */
-  abstract long getAttribute(String queue, String attribute);
+  Object getAttribute(String queue, String attribute);
 
   /** load the capacity information from a file */
-  abstract void loadDetails(String fileName) throws ProcessingException;
+  void loadDetails(String fileName) throws ProcessingException;
 
   /** number of records in capacity info */
-  abstract int size();
+  int size();
 
   /** get the type of scheduler being looked at */
-  abstract SchedulerTypes getSchedulerType();
+  SchedulerTypes getSchedulerType();
 }

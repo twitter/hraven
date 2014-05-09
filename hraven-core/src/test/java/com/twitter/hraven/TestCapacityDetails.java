@@ -49,20 +49,20 @@ public class TestCapacityDetails {
     assertEquals(1, cd.size());
     // test for min resources for pool hraven-testResources
     // and min maps, reduces to be  0
-    assertEquals(700000, cd.getAttribute("hraven-testResources",
+    assertEquals(700000L, cd.getAttribute("hraven-testResources",
       FairSchedulerCapacityDetails.FairSchedulerAtttributes.minResources.toString()));
-    assertEquals(0L, cd.getAttribute("hraven-testResources",
+    assertEquals(null, cd.getAttribute("hraven-testResources",
       FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
-    assertEquals(0L, cd.getAttribute("hraven-testResources",
+    assertEquals(null, cd.getAttribute("hraven-testResources",
       FairSchedulerCapacityDetails.FairSchedulerAtttributes.minReduces.toString()));
-    assertEquals(0L, cd.getAttribute("hraven-testMapsReduces",
+    assertEquals(null, cd.getAttribute("hraven-testMapsReduces",
       FairSchedulerCapacityDetails.FairSchedulerAtttributes.minResources.toString()));
     assertEquals(200L, cd.getAttribute("hraven-testMapsReduces",
       FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
     assertEquals(200L, cd.getAttribute("hraven-testMapsReduces",
       FairSchedulerCapacityDetails.FairSchedulerAtttributes.minReduces.toString()));
     // test for non existent queue
-    assertEquals(0L, cd.getAttribute("something",
+    assertEquals(null, cd.getAttribute("something",
       FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
   }
 

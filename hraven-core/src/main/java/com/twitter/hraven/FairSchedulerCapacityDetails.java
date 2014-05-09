@@ -44,7 +44,7 @@ import com.twitter.hraven.datasource.ProcessingException;
  */
 public class FairSchedulerCapacityDetails implements CapacityDetails {
 
-  private static Log LOG = LogFactory.getLog(FairSchedulerCapacityDetails.class);
+  private static final Log LOG = LogFactory.getLog(FairSchedulerCapacityDetails.class);
 
   public enum FairSchedulerAtttributes {
     minResources, minMaps, minReduces ;
@@ -195,7 +195,7 @@ public class FairSchedulerCapacityDetails implements CapacityDetails {
   }
 
   @Override
-  public long getAttribute(String queue, String attribute) {
+  public Object getAttribute(String queue, String attribute) {
 
     try {
       switch (FairSchedulerAtttributes.valueOf(attribute)) {

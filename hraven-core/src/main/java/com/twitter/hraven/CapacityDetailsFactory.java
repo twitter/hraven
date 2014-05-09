@@ -30,7 +30,7 @@ import com.twitter.hraven.datasource.ProcessingException;
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 public class CapacityDetailsFactory {
 
-  private static Log LOG = LogFactory.getLog(CapacityDetailsFactory.class);
+  private static final Log LOG = LogFactory.getLog(CapacityDetailsFactory.class);
 
   public static CapacityDetails getCapacityDetails(String schedulerType, String fileName) {
 
