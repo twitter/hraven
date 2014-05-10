@@ -244,7 +244,7 @@ public class AppVersionService {
     }
     LOG.info("Reading app version rows start at " + Bytes.toStringBinary(startRow));
     Scan scan = new Scan();
-    // start scanning history at cluster!user!app!run!
+    // start scanning app version table at cluster!user!
     scan.setStartRow(startRow);
     // require that all results match this flow prefix
     FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
@@ -287,13 +287,12 @@ public class AppVersionService {
           rowCount++;
           colCount += result.size();
           resultSize += result.getWritableSize();
-          // empty runId is special cased -- we need to treat each job as it's own flow
-            if (newAppsKeys.size() >= maxCount) {
-              break;
-            }
           FlowKey appKey = getFlowKeysFromResult(result, startTime, endTime);
           if(appKey != null) {
             newAppsKeys.add(appKey);
+          }
+          if (newAppsKeys.size() >= maxCount) {
+            break;
           }
         }
       }
@@ -305,7 +304,7 @@ public class AppVersionService {
       if (scanner != null) {
         scanner.close();
       }
-      }
+    }
 
     return newAppsKeys;
   }
