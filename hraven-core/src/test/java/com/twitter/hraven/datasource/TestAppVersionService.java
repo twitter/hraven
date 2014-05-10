@@ -20,11 +20,9 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.client.Get;
@@ -35,11 +33,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.twitter.hraven.CapacityDetails;
-import com.twitter.hraven.CapacityDetailsFactory;
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.Flow;
-import com.twitter.hraven.SchedulerTypes;
+import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.VersionInfo;
 
@@ -202,13 +197,6 @@ public class TestAppVersionService {
     String cluster1 = "newJobsClusterName";
     String appId = "getNewJobs";
     String appId2 = "getNewJobs2";
-    String fileNamePrefix = "/tmp/hraven-testfairscheduler-";
-    File srcFile = new File("src/test/resources/test-fairscheduler.xml");
-    String fileName = fileNamePrefix + System.currentTimeMillis() + ".xml";
-    FileUtils.copyFile(srcFile, new File(fileName));
-
-    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(
-      SchedulerTypes.FAIR_SCHEDULER.toString(), "file://" + fileName);
 
     AppVersionService service = new AppVersionService(c);
     try {
@@ -220,41 +208,35 @@ public class TestAppVersionService {
       // AppVersionService
       // hence job history service argument is passed in as null and capacityInfo map is empty
       // nor do we test the capacity related data return (through fair scheduler loading etc)
-      List<Flow> fl = service.getNewJobs(cluster1, user, 0L, 15L, 5, cd, null);
+      List<FlowKey> fl = service.getNewAppsKeys(cluster1, user, 0L, 15L, 100);
       assertNotNull(fl);
       assertEquals(1, fl.size());
-      assertEquals("v1", fl.get(0).getVersion());
       service.addVersion(cluster1, user, appId, "v3", 30L);
       service.addVersion(cluster1, user, appId, "v2.5", 25L);
-      fl = service.getNewJobs(cluster1, user, 20L, 35L, 5, cd, null);
+      fl = service.getNewAppsKeys(cluster1, user, 20L, 35L, 100);
       assertNotNull(fl);
       // check that nothing is returned since this app first showed up at timestamp 10
       assertEquals(0, fl.size());
       service.addVersion(cluster1, user, appId2, "v102", 23L);
-      fl = service.getNewJobs(cluster1, user, 20L, 35L, 5, cd, null);
+      fl = service.getNewAppsKeys(cluster1, user, 20L, 35L, 5);
       assertNotNull(fl);
       // check that appId2 is returned
       assertEquals(1, fl.size());
       assertEquals(appId2, fl.get(0).getAppId());
       // now check for entire time range
-      fl = service.getNewJobs(cluster1, user, 0L, 35L, 5, cd, null);
+      fl = service.getNewAppsKeys(cluster1, user, 0L, 35L, 5);
       assertNotNull(fl);
       // check that both apps are returned
       assertEquals(2, fl.size());
       for (int i = 0; i < fl.size(); i++) {
         String anAppId = fl.get(i).getAppId();
-        if (appId.equals(anAppId)) {
-          assertEquals("v1", fl.get(i).getVersion());
-        } else if (appId2.equals(anAppId)) {
-          assertEquals("v102", fl.get(i).getVersion());
-        } else {
-          throw new AssertionError("Could not find the right apps with versions as expected");
+        if(!(appId.equals(anAppId)) && !(appId2.equals(anAppId))) {
+          throw new AssertionError("Could not find the right apps as expected");
         }
       }
     } finally {
       service.close();
-      FileUtils.deleteQuietly(new File(fileName));
-    }
+     }
   }
 
   @AfterClass

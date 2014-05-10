@@ -16,6 +16,7 @@ limitations under the License.
 package com.twitter.hraven.rest;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.ws.rs.DefaultValue;
@@ -35,15 +36,13 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
-import com.twitter.hraven.CapacityDetails;
-import com.twitter.hraven.CapacityDetailsFactory;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
+import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.JobDetails;
-import com.twitter.hraven.SchedulerTypes;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
 import com.twitter.hraven.datasource.HdfsStatsService;
@@ -555,21 +554,10 @@ public class RestJSONResource {
                                    @PathParam("user") String user,
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
-                                   @QueryParam("limit") int limit,
-                                   @QueryParam("schedulerType") String schedulerType,
-                                   @QueryParam("file") String fileName)
+                                   @QueryParam("limit") int limit)
                                        throws IOException {
     Stopwatch timer = new Stopwatch().start();
 
-    if(StringUtils.isBlank(schedulerType)) {
-      // default to fair scheduler
-      schedulerType = SchedulerTypes.FAIR_SCHEDULER.toString();
-    }
-
-    if(StringUtils.isBlank(fileName)) {
-      throw new ProcessingException("fair-scheduler.xml file URL not present, "
-        + "please resend with that info");
-    }
     if(limit == 0) {
       limit = Integer.MAX_VALUE;
     }
@@ -586,16 +574,33 @@ public class RestJSONResource {
       endTime -= (endTime % 3600);
     }
 
-    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(schedulerType, fileName);
     LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
        + " startTime=" + startTime + " endTime=" + endTime);
-    List<Flow> newJobs = serviceThreadLocalAppVersion.get()
-                            .getNewJobs(
+    // get the row keys from AppVersions table
+    List<FlowKey> newAppKeys = serviceThreadLocalAppVersion.get()
+                            .getNewAppsKeys(
                                StringUtils.trimToEmpty(cluster),
                                StringUtils.trimToEmpty(user),
-                               startTime, endTime, limit,
-                               cd,
-                               getJobHistoryService());
+                               startTime, endTime, limit);
+
+    JobHistoryService jhs = getJobHistoryService();
+    List<Flow> newApps = new ArrayList<Flow>();
+    for(FlowKey fk : newAppKeys) {
+      Flow flow = jhs.getLatestFlow(fk.getCluster(), fk.getUserName(),
+          fk.getAppId(), Boolean.FALSE);
+      if (flow == null) {
+        // this code probably never gets executed, but
+        // for whatever reason (potential bug elsewhere),
+        // if no flow was found in the steps above,
+        // we have the flow key parameters, hence we create an empty flow with
+        // these entries from the data in appVersion table
+        LOG.error("Could not find flow series for " + cluster + " " + user + " "
+            + fk.getAppId() );
+        flow = new Flow(fk);
+      }
+      newApps.add(flow);
+    }
+
     timer.stop();
 
     LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
@@ -603,13 +608,12 @@ public class RestJSONResource {
       + "?limit=" + limit
       + "&startTime=" + startTime
       + "&endTime=" + endTime
-      + "&file=" + fileName
-      + " fetched " + newJobs.size() + " flows in " + timer);
+      + " fetched " + newApps.size() + " flows in " + timer);
 
    serializationContext.set(new SerializationContext(
       SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_NEW_JOBS_ONLY));
 
-    return newJobs;
+    return newApps;
  }
 
   @GET
@@ -618,21 +622,9 @@ public class RestJSONResource {
   public List<Flow> getNewJobsAllUsers(@PathParam("cluster") String cluster,
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
-                                   @QueryParam("limit") int limit,
-                                   @QueryParam("schedulerType") String schedulerType,
-                                   @QueryParam("file") String fileName)
+                                   @QueryParam("limit") int limit)
                                        throws ProcessingException, IOException {
     Stopwatch timer = new Stopwatch().start();
-
-    if(StringUtils.isBlank(schedulerType)) {
-      // default to fair scheduler
-      schedulerType = SchedulerTypes.FAIR_SCHEDULER.toString();
-    }
-
-    if(StringUtils.isBlank(fileName)) {
-      throw new ProcessingException("fair-scheduler.xml file URL not present, "
-        + "please resend with that info");
-    }
 
     if(limit == 0) {
       limit = Integer.MAX_VALUE;
@@ -649,16 +641,29 @@ public class RestJSONResource {
       // get top of the hour
       endTime -= (endTime % 3600);
     }
-    CapacityDetails cd = CapacityDetailsFactory.getCapacityDetails(schedulerType, fileName);
     LOG.info("Fetching new Jobs for cluster=" + cluster
        + " startTime=" + startTime + " endTime=" + endTime);
-    List<Flow> newJobs = serviceThreadLocalAppVersion.get()
-                           .getNewJobs(
-                              StringUtils.trimToEmpty(cluster),
-                              "",
-                              startTime, endTime, limit,
-                              cd,
-                              getJobHistoryService());
+    // get the row keys from AppVersions table
+    List<FlowKey> newAppKeys = serviceThreadLocalAppVersion.get().getNewAppsKeys(
+          StringUtils.trimToEmpty(cluster), "", startTime, endTime, limit);
+
+    JobHistoryService jhs = getJobHistoryService();
+    List<Flow> newApps = new ArrayList<Flow>();
+    for (FlowKey fk : newAppKeys) {
+      Flow flow = jhs.getLatestFlow(fk.getCluster(), fk.getUserName(),
+          fk.getAppId(), Boolean.FALSE);
+      if (flow == null) {
+        // this code probably never gets executed, but
+        // for whatever reason (potential bug elsewhere),
+        // if no flow was found in the steps above,
+        // we have the flow key parameters, hence we create an empty flow with
+        // these entries from the data in appVersion table
+        LOG.error("Could not find flow series for " + cluster + " " + fk.getAppId());
+        flow = new Flow(fk);
+      }
+      newApps.add(flow);
+    }
+
     timer.stop();
 
     LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
@@ -666,13 +671,12 @@ public class RestJSONResource {
       + "?limit=" + limit
       + "&startTime=" + startTime
       + "&endTime=" + endTime
-      + "&file=" + fileName
-      + " fetched " + newJobs.size() + " flows in " + timer);
+      + " fetched " + newApps.size() + " flows in " + timer);
 
     serializationContext.set(new SerializationContext(
       SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_NEW_JOBS_ONLY));
 
-    return newJobs;
+    return newApps;
  }
 
   private HdfsStatsService getHdfsStatsService() {

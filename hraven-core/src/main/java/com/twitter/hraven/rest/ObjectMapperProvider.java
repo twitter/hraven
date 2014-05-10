@@ -303,12 +303,6 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getReduceSlotMillis());
           jsonGenerator.writeFieldName("megabyteMillis");
           jsonGenerator.writeNumber(aFlow.getMegabyteMillis());
-          jsonGenerator.writeFieldName("queueMinResourcesHadoop2");
-          jsonGenerator.writeNumber(aFlow.getQueueMinResources());
-          jsonGenerator.writeFieldName("queueMinMapsHadoop1");
-          jsonGenerator.writeNumber(aFlow.getQueueMinMaps());
-          jsonGenerator.writeFieldName("queueMinReducesHadoop1");
-          jsonGenerator.writeNumber(aFlow.getQueueMinReduces());
         }
         jsonGenerator.writeEndObject();
       }

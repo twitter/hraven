@@ -40,12 +40,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
-import com.twitter.hraven.CapacityDetails;
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.FairSchedulerCapacityDetails;
-import com.twitter.hraven.Flow;
 import com.twitter.hraven.FlowKey;
-import com.twitter.hraven.SchedulerTypes;
 import com.twitter.hraven.util.ByteUtil;
 
 /**
@@ -225,8 +221,7 @@ public class AppVersionService {
 
   /**
    * scans the app version table to look for jobs that showed up in the given time range
-   * looks up those jobs in the job history table to fetch their flow details
-   * populates the capacity numbers for these jobs
+   * creates the flow key that maps to these apps
    *
    * @param cluster
    * @param user
@@ -238,8 +233,8 @@ public class AppVersionService {
    * @return list of flows
    * @throws ProcessingException
    */
-  public List<Flow> getNewJobs(String cluster, String user, Long startTime,
-      Long endTime, int limit, CapacityDetails cd, JobHistoryService jhs)
+  public List<FlowKey> getNewAppsKeys(String cluster, String user, Long startTime,
+      Long endTime, int limit)
           throws ProcessingException {
     byte[] startRow = null;
     if (StringUtils.isNotBlank(user)) {
@@ -259,22 +254,30 @@ public class AppVersionService {
 
     scan.setFilter(filters);
 
-    List<Flow> newJobs = new ArrayList<Flow>();
+    List<FlowKey> newAppsKeys = new ArrayList<FlowKey>();
       try {
-        newJobs = createFromResults(scan, startTime, endTime, limit, jhs, cd);
+        newAppsKeys = createFromResults(scan, startTime, endTime, limit);
       } catch (IOException e) {
         LOG.error("Caught exception while trying to scan, returning empty list of flows: "
             + e.toString());
       }
 
-    return newJobs;
+    return newAppsKeys;
   }
 
-  private List<Flow> createFromResults(Scan scan, Long startTime, Long endTime, int maxCount,
-      JobHistoryService jhs, CapacityDetails cd)
+  /**
+   * creates a list of appkeys from the hbase scan
+   * @param scan
+   * @param startTime
+   * @param endTime
+   * @param maxCount
+   * @return
+   * @throws IOException
+   */
+  private List<FlowKey> createFromResults(Scan scan, Long startTime, Long endTime, int maxCount)
           throws IOException {
     ResultScanner scanner = null;
-    List<Flow> newJobs = new ArrayList<Flow>();
+    List<FlowKey> newAppsKeys = new ArrayList<FlowKey>();
     try {
       Stopwatch timer = new Stopwatch().start();
       int rowCount = 0;
@@ -287,12 +290,12 @@ public class AppVersionService {
           colCount += result.size();
           resultSize += result.getWritableSize();
           // empty runId is special cased -- we need to treat each job as it's own flow
-            if (newJobs.size() >= maxCount) {
+            if (newAppsKeys.size() >= maxCount) {
               break;
             }
-          Flow job = getFlowDescFromResult(result, startTime, endTime, jhs, cd);
-          if(job != null) {
-            newJobs.add(job);
+          FlowKey appKey = getFlowKeysFromResult(result, startTime, endTime);
+          if(appKey != null) {
+            newAppsKeys.add(appKey);
           }
         }
       }
@@ -306,11 +309,20 @@ public class AppVersionService {
       }
       }
 
-    return newJobs;
+    return newAppsKeys;
   }
 
-  private Flow getFlowDescFromResult(Result result, Long startTime, Long endTime,
-      JobHistoryService jhs, CapacityDetails cd) throws IOException {
+  /**
+   * constructs a flow key from the result set based on cluster, user, appId
+   * picks those results that satisfy the time range criteria
+   * @param result
+   * @param startTime
+   * @param endTime
+   * @return flow key
+   * @throws IOException
+   */
+  private FlowKey getFlowKeysFromResult(Result result, Long startTime, Long endTime)
+      throws IOException {
 
     byte[] rowKey = result.getRow();
     byte[][] keyComponents = ByteUtil.split(rowKey, Constants.SEP_BYTES);
@@ -320,68 +332,17 @@ public class AppVersionService {
 
     NavigableMap<byte[],byte[]> valueMap = result.getFamilyMap(Constants.INFO_FAM_BYTES);
     Long runId = Long.MAX_VALUE;
-    String minVersion = null;
     for (Map.Entry<byte[],byte[]> entry : valueMap.entrySet()) {
       Long tsl = Bytes.toLong(entry.getValue()) ;
       if (tsl < runId) {
         runId = tsl;
-        minVersion = Bytes.toString(entry.getKey());
       }
     }
     if((runId >= startTime) && (runId <= endTime)) {
-      if ( jhs == null ) {
         FlowKey fk = new FlowKey(cluster, user, appId, runId);
-        Flow f = new Flow(fk);
-        f.setVersion(minVersion);
-        return f;
+        return fk;
       }
-      Flow flow = jhs.getFlow(cluster, user, appId, runId, Boolean.FALSE);
-      if (flow == null) {
-        // this flow should normally not be null
-        // but there was a bug where the runId was not being set correctly,
-        // hence in this step, make a best effort attempt to retrieve SOME data
-        // so we try to get the latest flow with this version here
-        LOG.info("Could not find flow with run Id " + runId + " for " + cluster + " "
-            + user + " " + appId + " fetching flowSeries with version " + minVersion);
-        List<Flow> fl = jhs.getFlowSeries(cluster, user, appId, minVersion, false, 1);
-        if (fl.size() > 0) {
-          flow = fl.get(0);
-        }
-      }
-      if (flow == null) {
-        // this code probably never gets executed, but
-        // for whatever reason (potential bug elsewhere),
-        // if no flow was found in the steps above,
-        // we have the flow key parameters, hence we create an empty flow with
-        // these entries from the data in appVersion table
-        LOG.info("Could not find flow series with version " + minVersion
-          + " for " + cluster + " " + user + " "
-            + appId );
-        FlowKey fk = new FlowKey(cluster, user, appId, runId);
-        flow = new Flow(fk);
-      }
-      flow.setVersion(minVersion);
-      // get the pool capacity
-      String queue = flow.getQueue();
-      if (queue == null) {
-        queue = user;
-      }
-      if ((cd != null) && (SchedulerTypes.FAIR_SCHEDULER.equals(cd.getSchedulerType()))) {
-        flow.setQueueMinResources((Long) cd.getAttribute(queue,
-          FairSchedulerCapacityDetails.FairSchedulerAtttributes.minResources.toString()));
-        flow.setQueueMinMaps((Long) cd.getAttribute(queue,
-          FairSchedulerCapacityDetails.FairSchedulerAtttributes.minMaps.toString()));
-        flow.setQueueMinReduces((Long) cd.getAttribute(queue,
-          FairSchedulerCapacityDetails.FairSchedulerAtttributes.minReduces.toString()));
-      } else {
-        LOG.info("No capacity details found for " + queue);
-      }
-      LOG.info(" queue: " + queue + " " + flow.getAppId() + " " + flow.getCluster()
-          + " " + flow.getUserName() + " " + flow.getQueueMinResources() + " "
-          + flow.getQueueMinMaps() + " " + flow.getQueueMinReduces());
-      return flow;
-    }
     return null;
- }
+  }
 
 }
