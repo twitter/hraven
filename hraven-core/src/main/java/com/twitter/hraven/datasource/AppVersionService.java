@@ -228,9 +228,7 @@ public class AppVersionService {
    * @param startTime
    * @param endTime
    * @param limit
-   * @param queueCapacity
-   * @param jhs
-   * @return list of flows
+   * @return list of flow keys
    * @throws ProcessingException
    */
   public List<FlowKey> getNewAppsKeys(String cluster, String user, Long startTime,
@@ -271,7 +269,7 @@ public class AppVersionService {
    * @param startTime
    * @param endTime
    * @param maxCount
-   * @return
+   * @return list of flow keys
    * @throws IOException
    */
   private List<FlowKey> createFromResults(Scan scan, Long startTime, Long endTime, int maxCount)
