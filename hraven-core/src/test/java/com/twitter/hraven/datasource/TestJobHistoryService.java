@@ -37,6 +37,7 @@ import org.junit.Test;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
+import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.GenerateFlowTestData;
 import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobDetails;
@@ -401,6 +402,56 @@ public class TestJobHistoryService {
     assertEquals(expected.getJobId(), actual.getJobId());
     assertEquals(expected.getStatus(), actual.getStatus());
     assertEquals(expected.getVersion(), actual.getVersion());
+  }
+
+
+  @Test
+  public void testNewJobs() throws Exception {
+
+    Configuration c = UTIL.getConfiguration();
+
+    String cluster1 = "newJobsClusterName";
+    String appId = "getNewJobs";
+    String appId2 = "getNewJobs2";
+    String user = "testuser";
+
+    JobHistoryService jhs = new JobHistoryService(UTIL.getConfiguration());
+    AppVersionService service = new AppVersionService(c);
+    try {
+      // check adding versions in order
+      service.addVersion(cluster1, user, appId, "v1", 10L);
+      service.addVersion(cluster1, user, appId, "v2", 20L);
+      // Since flow has its own unit tests
+      // we don't test the get flow series as part of testing this new jobs call
+      List<FlowKey> fl = jhs.getNewAppsKeys(service, cluster1, user, 0L, 15L, 100);
+      assertNotNull(fl);
+      assertEquals(1, fl.size());
+      service.addVersion(cluster1, user, appId, "v3", 30L);
+      service.addVersion(cluster1, user, appId, "v2.5", 25L);
+      fl = jhs.getNewAppsKeys(service, cluster1, user, 20L, 35L, 100);
+      assertNotNull(fl);
+      // check that nothing is returned since this app first showed up at timestamp 10
+      assertEquals(0, fl.size());
+      service.addVersion(cluster1, user, appId2, "v102", 23L);
+      fl = jhs.getNewAppsKeys(service, cluster1, user, 20L, 35L, 5);
+      assertNotNull(fl);
+      // check that appId2 is returned
+      assertEquals(1, fl.size());
+      assertEquals(appId2, fl.get(0).getAppId());
+      // now check for entire time range
+      fl = jhs.getNewAppsKeys(service, cluster1, user, 0L, 35L, 5);
+      assertNotNull(fl);
+      // check that both apps are returned
+      assertEquals(2, fl.size());
+      for (int i = 0; i < fl.size(); i++) {
+        String anAppId = fl.get(i).getAppId();
+        if(!(appId.equals(anAppId)) && !(appId2.equals(anAppId))) {
+          throw new AssertionError("Could not find the right apps as expected");
+        }
+      }
+    } finally {
+      service.close();
+     }
   }
 
   @AfterClass

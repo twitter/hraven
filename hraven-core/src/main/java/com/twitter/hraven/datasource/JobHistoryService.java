@@ -21,9 +21,12 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Map.Entry;
 
 import com.google.common.base.Stopwatch;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -809,4 +812,130 @@ public class JobHistoryService {
       throw caught;
     }
   }
+
+  /**
+   * scans the app version table to look for jobs that showed up in the given time range
+   * creates the flow key that maps to these apps
+   *
+   * @param cluster
+   * @param user
+   * @param startTime
+   * @param endTime
+   * @param limit
+   * @return list of flow keys
+   * @throws ProcessingException
+   */
+  public List<FlowKey> getNewAppsKeys(AppVersionService appVersionService, String cluster,
+      String user, long startTime, long endTime, int limit) {
+    byte[] startRow = null;
+    if (StringUtils.isNotBlank(user)) {
+      startRow = ByteUtil.join(Constants.SEP_BYTES,
+      Bytes.toBytes(cluster), Bytes.toBytes(user));
+    } else {
+      startRow = ByteUtil.join(Constants.SEP_BYTES,
+        Bytes.toBytes(cluster));
+    }
+    LOG.info("Reading app version rows start at " + Bytes.toStringBinary(startRow));
+    Scan scan = new Scan();
+    // start scanning app version table at cluster!user!
+    scan.setStartRow(startRow);
+    // require that all results match this flow prefix
+    FilterList filters = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+    filters.addFilter(new WhileMatchFilter(new PrefixFilter(startRow)));
+
+    scan.setFilter(filters);
+
+    List<FlowKey> newAppsKeys = new ArrayList<FlowKey>();
+      try {
+        newAppsKeys = createFlowKeysFromResults(appVersionService, scan,
+            startTime, endTime, limit);
+      } catch (IOException e) {
+        LOG.error("Caught exception while trying to scan, returning empty list of flows: "
+            + e.toString());
+      }
+
+    return newAppsKeys;
+
+  }
+
+  /**
+   * creates a list of appkeys from the hbase scan
+   * @param scan
+   * @param startTime
+   * @param endTime
+   * @param maxCount
+   * @return list of flow keys
+   * @throws IOException
+   */
+  public List<FlowKey> createFlowKeysFromResults(AppVersionService appVersionService,
+    Scan scan, Long startTime, Long endTime, int maxCount)
+          throws IOException {
+    ResultScanner scanner = null;
+    List<FlowKey> newAppsKeys = new ArrayList<FlowKey>();
+    try {
+      Stopwatch timer = new Stopwatch().start();
+      int rowCount = 0;
+      long colCount = 0;
+      long resultSize = 0;
+      scanner = appVersionService.getScanner(scan);
+      for (Result result : scanner) {
+        if (result != null && !result.isEmpty()) {
+          rowCount++;
+          colCount += result.size();
+          resultSize += result.getWritableSize();
+          FlowKey appKey = getFlowKeysFromResult(result, startTime, endTime);
+          if(appKey != null) {
+            newAppsKeys.add(appKey);
+          }
+          if (newAppsKeys.size() >= maxCount) {
+            break;
+          }
+        }
+      }
+      timer.stop();
+      LOG.info(" Fetched from hbase " + rowCount + " rows, " + colCount + " columns, "
+          + resultSize + " bytes ( " + resultSize / (1024 * 1024)
+          + ") MB, in total time of " + timer);
+      } finally {
+      if (scanner != null) {
+        scanner.close();
+      }
+    }
+
+    return newAppsKeys;
+  }
+
+  /**
+   * constructs a flow key from the result set based on cluster, user, appId
+   * picks those results that satisfy the time range criteria
+   * @param result
+   * @param startTime
+   * @param endTime
+   * @return flow key
+   * @throws IOException
+   */
+  private FlowKey getFlowKeysFromResult(Result result, Long startTime, Long endTime)
+      throws IOException {
+
+    byte[] rowKey = result.getRow();
+    byte[][] keyComponents = ByteUtil.split(rowKey, Constants.SEP_BYTES);
+    String cluster = Bytes.toString(keyComponents[0]);
+    String user = Bytes.toString(keyComponents[1]);
+    String appId = Bytes.toString(keyComponents[2]);
+
+    NavigableMap<byte[],byte[]> valueMap = result.getFamilyMap(Constants.INFO_FAM_BYTES);
+    Long runId = Long.MAX_VALUE;
+    for (Map.Entry<byte[],byte[]> entry : valueMap.entrySet()) {
+      Long tsl = Bytes.toLong(entry.getValue()) ;
+      if (tsl < runId) {
+        runId = tsl;
+      }
+    }
+    if((runId >= startTime) && (runId <= endTime)) {
+        FlowKey fk = new FlowKey(cluster, user, appId, runId);
+        return fk;
+      }
+    return null;
+  }
+
 }

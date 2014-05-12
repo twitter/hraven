@@ -576,14 +576,11 @@ public class RestJSONResource {
 
     LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
        + " startTime=" + startTime + " endTime=" + endTime);
-    // get the row keys from AppVersions table
-    List<FlowKey> newAppKeys = serviceThreadLocalAppVersion.get()
-                            .getNewAppsKeys(
-                               StringUtils.trimToEmpty(cluster),
-                               StringUtils.trimToEmpty(user),
-                               startTime, endTime, limit);
-
     JobHistoryService jhs = getJobHistoryService();
+    // get the row keys from AppVersions table via JobHistoryService
+    List<FlowKey> newAppKeys = jhs.getNewAppsKeys(serviceThreadLocalAppVersion.get(),
+          StringUtils.trimToEmpty(cluster), StringUtils.trimToEmpty(user), startTime, endTime, limit);
+
     List<Flow> newApps = new ArrayList<Flow>();
     for(FlowKey fk : newAppKeys) {
       Flow flow = jhs.getLatestFlow(fk.getCluster(), fk.getUserName(),
@@ -643,11 +640,12 @@ public class RestJSONResource {
     }
     LOG.info("Fetching new Jobs for cluster=" + cluster
        + " startTime=" + startTime + " endTime=" + endTime);
-    // get the row keys from AppVersions table
-    List<FlowKey> newAppKeys = serviceThreadLocalAppVersion.get().getNewAppsKeys(
-          StringUtils.trimToEmpty(cluster), "", startTime, endTime, limit);
 
     JobHistoryService jhs = getJobHistoryService();
+    // get the row keys from AppVersions table via JobHistoryService
+    List<FlowKey> newAppKeys = jhs.getNewAppsKeys(serviceThreadLocalAppVersion.get(),
+          StringUtils.trimToEmpty(cluster), "", startTime, endTime, limit);
+
     List<Flow> newApps = new ArrayList<Flow>();
     for (FlowKey fk : newAppKeys) {
       Flow flow = jhs.getLatestFlow(fk.getCluster(), fk.getUserName(),
