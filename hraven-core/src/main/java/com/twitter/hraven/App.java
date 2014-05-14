@@ -24,12 +24,10 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import com.twitter.hraven.datasource.ProcessingException;
 
-/** Represents a hadoop application that runs on a hadoop cluster
- * a cluster, user, application name identify this app via {@linkplain AppKey}
- * Can be used to represent collective statistics of an app over a period of time
- *
- * An actual instance of an app run is represented by {@linkplain Flow}
- *
+/**
+ * Represents a hadoop application that runs on a hadoop cluster a cluster, user, application name
+ * identify this app via {@linkplain AppKey} Can be used to represent collective statistics of an
+ * app over a period of time An actual instance of an app run is represented by {@linkplain Flow}
  */
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 public class App {
@@ -40,13 +38,13 @@ public class App {
   /** how many times this app ran in the given time */
   private long numberRuns;
 
-  /** run id of the first time this app ran in the 
-   * given time range
+  /**
+   * run id of the first time this app ran in the given time range
    */
   private long firstRunId;
 
-  /** run id of the last time this app ran in the 
-   * given time range
+  /**
+   * run id of the last time this app ran in the given time range
    */
   private long lastRunId;
 
@@ -74,7 +72,7 @@ public class App {
   /** the queue(s) this app ran in */
   private Set<String> queue;
 
-  public App(AppKey key){
+  public App(AppKey key) {
     this.appKey = key;
     this.queue = new HashSet<String>();
   }
@@ -112,7 +110,7 @@ public class App {
   }
 
   public void addQueue(String aQueue) {
-    if(this.queue != null ) {
+    if (this.queue != null) {
       this.queue.add(aQueue);
     } else {
       throw new ProcessingException("Could not add pool to list of queue for this app "
@@ -190,7 +188,7 @@ public class App {
    */
   public void populateDetails(List<Flow> flows) {
 
-    for(Flow f: flows) {
+    for (Flow f : flows) {
       this.numberRuns++;
       this.jobCount += f.getJobCount();
       this.mapSlotMillis += f.getMapSlotMillis();
@@ -199,19 +197,20 @@ public class App {
       this.totalReduces += f.getTotalReduces();
       this.mbMillis += f.getMegabyteMillis();
       this.queue.add(f.getQueue());
-      /** TODO 
-       * add jobcost once job cost has been added to job details and flow
+      /**
+       * TODO add jobcost once job cost has been added to job details and flow
        */
     }
 
-    /** assumes flows are sorted as per their run ids
-     * which should be the case since hbase stores
-     * row keys in lexicographically sorted order
+    /**
+     * assumes flows are sorted as per their run ids
+     * which should be the case since hbase stores row
+     * keys in lexicographically sorted order
      * the most recent flows are stored first
      */
-    if(flows.size()>0) {
+    if (flows.size() > 0) {
       this.lastRunId = flows.get(0).getRunId();
-      this.firstRunId = flows.get(flows.size()-1).getRunId();
+      this.firstRunId = flows.get(flows.size() - 1).getRunId();
     }
 
   }
