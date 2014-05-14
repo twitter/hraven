@@ -16,7 +16,6 @@ limitations under the License.
 package com.twitter.hraven.rest;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.ws.rs.DefaultValue;
@@ -36,13 +35,14 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
+import com.twitter.hraven.App;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
-import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.datasource.AppService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
 import com.twitter.hraven.datasource.HdfsStatsService;
@@ -89,6 +89,20 @@ public class RestJSONResource {
         }
       }
     };
+
+  private static final ThreadLocal<AppService> serviceThreadLocalAppService =
+        new ThreadLocal<AppService>() {
+
+        @Override
+        protected AppService initialValue() {
+          try {
+            LOG.info("Initializing AppService");
+            return new AppService(HBASE_CONF);
+          } catch (IOException e) {
+            throw new RuntimeException("Could not initialize AppService", e);
+          }
+        }
+      };
 
     private static final ThreadLocal<HdfsStatsService> serviceThreadLocalHdfsStats =
         new ThreadLocal<HdfsStatsService>() {
@@ -548,10 +562,10 @@ public class RestJSONResource {
   }
 
   @GET
-  @Path("newJobs/{cluster}/{user}/")
+  @Path("newJobs/{cluster}/")
   @Produces(MediaType.APPLICATION_JSON)
-  public List<Flow> getNewJobs(@PathParam("cluster") String cluster,
-                                   @PathParam("user") String user,
+  public List<App> getNewJobs(@PathParam("cluster") String cluster,
+                                   @QueryParam("user") String user,
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
                                    @QueryParam("limit") int limit)
@@ -576,27 +590,11 @@ public class RestJSONResource {
 
     LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
        + " startTime=" + startTime + " endTime=" + endTime);
-    JobHistoryService jhs = getJobHistoryService();
+    AppService as = getAppService();
     // get the row keys from AppVersions table via JobHistoryService
-    List<FlowKey> newAppKeys = jhs.getNewAppsKeys(serviceThreadLocalAppVersion.get(),
-          StringUtils.trimToEmpty(cluster), StringUtils.trimToEmpty(user), startTime, endTime, limit);
-
-    List<Flow> newApps = new ArrayList<Flow>();
-    for(FlowKey fk : newAppKeys) {
-      Flow flow = jhs.getLatestFlow(fk.getCluster(), fk.getUserName(),
-          fk.getAppId(), Boolean.FALSE);
-      if (flow == null) {
-        // this code probably never gets executed, but
-        // for whatever reason (potential bug elsewhere),
-        // if no flow was found in the steps above,
-        // we have the flow key parameters, hence we create an empty flow with
-        // these entries from the data in appVersion table
-        LOG.error("Could not find flow series for " + cluster + " " + user + " "
-            + fk.getAppId() );
-        flow = new Flow(fk);
-      }
-      newApps.add(flow);
-    }
+    List<App> newApps = as.getNewApps(getJobHistoryService(),
+          StringUtils.trimToEmpty(cluster), StringUtils.trimToEmpty(user),
+          startTime, endTime, limit);
 
     timer.stop();
 
@@ -608,74 +606,18 @@ public class RestJSONResource {
       + " fetched " + newApps.size() + " flows in " + timer);
 
    serializationContext.set(new SerializationContext(
-      SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_NEW_JOBS_ONLY));
+      SerializationContext.DetailLevel.APP_SUMMARY_STATS_NEW_JOBS_ONLY));
 
     return newApps;
  }
 
-  @GET
-  @Path("newJobs/{cluster}/")
-  @Produces(MediaType.APPLICATION_JSON)
-  public List<Flow> getNewJobsAllUsers(@PathParam("cluster") String cluster,
-                                   @QueryParam("startTime") long startTime,
-                                   @QueryParam("endTime") long endTime,
-                                   @QueryParam("limit") int limit)
-                                       throws ProcessingException, IOException {
-    Stopwatch timer = new Stopwatch().start();
-
-    if(limit == 0) {
-      limit = Integer.MAX_VALUE;
+  private AppService getAppService() {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(String.format("Returning AppService %s bound to thread %s",
+        serviceThreadLocalAppService.get(), Thread.currentThread().getName()));
     }
-    if(startTime == 0L) {
-      // 24 hours before now
-      startTime = System.currentTimeMillis() - Constants.MILLIS_ONE_DAY ;
-      // get top of the hour
-      startTime -= (startTime % 3600);
-    }
-    if(endTime == 0L) {
-      // now
-      endTime = System.currentTimeMillis() ;
-      // get top of the hour
-      endTime -= (endTime % 3600);
-    }
-    LOG.info("Fetching new Jobs for cluster=" + cluster
-       + " startTime=" + startTime + " endTime=" + endTime);
-
-    JobHistoryService jhs = getJobHistoryService();
-    // get the row keys from AppVersions table via JobHistoryService
-    List<FlowKey> newAppKeys = jhs.getNewAppsKeys(serviceThreadLocalAppVersion.get(),
-          StringUtils.trimToEmpty(cluster), "", startTime, endTime, limit);
-
-    List<Flow> newApps = new ArrayList<Flow>();
-    for (FlowKey fk : newAppKeys) {
-      Flow flow = jhs.getLatestFlow(fk.getCluster(), fk.getUserName(),
-          fk.getAppId(), Boolean.FALSE);
-      if (flow == null) {
-        // this code probably never gets executed, but
-        // for whatever reason (potential bug elsewhere),
-        // if no flow was found in the steps above,
-        // we have the flow key parameters, hence we create an empty flow with
-        // these entries from the data in appVersion table
-        LOG.error("Could not find flow series for " + cluster + " " + fk.getAppId());
-        flow = new Flow(fk);
-      }
-      newApps.add(flow);
-    }
-
-    timer.stop();
-
-    LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
-      + "newJobs/" + cluster
-      + "?limit=" + limit
-      + "&startTime=" + startTime
-      + "&endTime=" + endTime
-      + " fetched " + newApps.size() + " flows in " + timer);
-
-    serializationContext.set(new SerializationContext(
-      SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_NEW_JOBS_ONLY));
-
-    return newApps;
- }
+    return serviceThreadLocalAppService.get();
+  }
 
   private HdfsStatsService getHdfsStatsService() {
     if (LOG.isDebugEnabled()) {

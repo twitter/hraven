@@ -24,8 +24,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Represents the row key for a given job. Row keys are stored as: username !
  * appid ! version ! runid ! jobid
  */
-@SuppressWarnings("rawtypes")
-public class JobKey extends FlowKey implements Comparable{
+public class JobKey extends FlowKey implements Comparable<Object>{
 
   /**
    * Fully qualified cluster + parsed job identifier
