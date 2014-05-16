@@ -36,7 +36,7 @@ import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Stopwatch;
-import com.twitter.hraven.App;
+import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.AppKey;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
@@ -47,13 +47,13 @@ import com.twitter.hraven.util.ByteUtil;
  * Reads and writes information about applications
  *
  */
-public class AppService {
+public class AppSummaryService {
 
-  private static final Log LOG = LogFactory.getLog(AppService.class);
+  private static final Log LOG = LogFactory.getLog(AppSummaryService.class);
   private final Configuration conf;
   private final HTable versionsTable;
 
-  public AppService(Configuration hbaseConf) throws IOException {
+  public AppSummaryService(Configuration hbaseConf) throws IOException {
     this.conf = hbaseConf;
     this.versionsTable = new HTable(conf, Constants.HISTORY_APP_VERSION_TABLE);
   }
@@ -71,7 +71,7 @@ public class AppService {
    * @throws IOException 
    * @throws ProcessingException
    */
-  public List<App> getNewApps(JobHistoryService jhs, String cluster,
+  public List<AppSummary> getNewApps(JobHistoryService jhs, String cluster,
       String user, long startTime, long endTime, int limit) throws IOException {
     byte[] startRow = null;
     if (StringUtils.isNotBlank(user)) {
@@ -99,12 +99,14 @@ public class AppService {
             + e.toString());
       }
 
-      List<App> newApps = new ArrayList<App>();
+      List<AppSummary> newApps = new ArrayList<AppSummary>();
       for(AppKey ak: newAppsKeys) {
-        App anApp = new App(ak);
+        AppSummary anApp = new AppSummary(ak);
         List<Flow> flows = jhs.getFlowSeries(ak.getCluster(), ak.getUserName(),
           ak.getAppId(), null, Boolean.FALSE, startTime, endTime, Integer.MAX_VALUE);
-        anApp.populateDetails(flows);
+        for(Flow f: flows) {
+          anApp.addFlow(f);
+        }
         newApps.add(anApp);
       }
     return newApps;
@@ -135,7 +137,7 @@ public class AppService {
           rowCount++;
           colCount += result.size();
           resultSize += result.getWritableSize();
-          AppKey appKey = getNewAppKeysFromResult(result, startTime, endTime);
+          AppKey appKey = getNewAppKeyFromResult(result, startTime, endTime);
           if(appKey != null) {
             newAppsKeys.add(appKey);
           }
@@ -158,7 +160,7 @@ public class AppService {
   }
 
   /**
-   * constructs a flow key from the result set based on cluster, user, appId
+   * constructs App key from the result set based on cluster, user, appId
    * picks those results that satisfy the time range criteria
    * @param result
    * @param startTime
@@ -166,7 +168,7 @@ public class AppService {
    * @return flow key
    * @throws IOException
    */
-  private AppKey getNewAppKeysFromResult(Result result, Long startTime, Long endTime)
+  private AppKey getNewAppKeyFromResult(Result result, Long startTime, Long endTime)
       throws IOException {
 
     byte[] rowKey = result.getRow();

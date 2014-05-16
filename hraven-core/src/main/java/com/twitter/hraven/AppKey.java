@@ -24,15 +24,17 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class AppKey implements Comparable<Object> {
 
   /**
-   * The cluster on which the job ran.
+   * The cluster on which the application ran
    */
   protected final String cluster;
   /**
-   * Who ran the final map-reduce flow on Hadoop.
+   * Who ran the application on Hadoop
    */
   protected final String userName;
+
   /**
-   * Identifying an application, which can go through different versions.
+   * The thing that identifies an application,
+   * such as Pig script identifier, or Scalding identifier.
    */
   protected final String appId;
 
@@ -52,7 +54,7 @@ public class AppKey implements Comparable<Object> {
   }
 
   /**
-   * @return Who ran the final map-reduce flow on Hadoop.
+   * @return Who ran the application
    */
   public String getUserName() {
     return userName;
@@ -69,10 +71,12 @@ public class AppKey implements Comparable<Object> {
   /**
    * Compares two AppKey objects on the basis of their cluster, userName, appId and encodedRunId
    * @param other
-   * @return 0 if this cluster, userName, appId are equal to the other's cluster, userName, appId
-   *         and encodedRunId, 1 if this cluster or userName or appIdare less than the other's
-   *         cluster, userName, appId, -1 if this cluster and userName and appId are greater the
-   *         other's cluster, userName, appId
+   * @return 0 if this cluster, userName, appId are equal to the other's
+   *                   cluster, userName, appId,
+   *         1 if this cluster or userName or appId are less than the other's
+   *                   cluster, userName, appId,
+   *        -1 if this cluster and userName and appId are greater the other's
+   *                   cluster, userName, appId
    */
   @Override
   public int compareTo(Object other) {

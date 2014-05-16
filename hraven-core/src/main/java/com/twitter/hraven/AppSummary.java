@@ -17,7 +17,6 @@ limitations under the License.
 package com.twitter.hraven;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -25,39 +24,40 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import com.twitter.hraven.datasource.ProcessingException;
 
 /**
- * Represents a hadoop application that runs on a hadoop cluster a cluster, user, application name
- * identify this app via {@linkplain AppKey} Can be used to represent collective statistics of an
- * app over a period of time An actual instance of an app run is represented by {@linkplain Flow}
+ * Represents summary information about a hadoop application
+ *
+ * cluster, user, application name identify this app via {@linkplain AppKey}
+ *
+ * Used to represent collective statistics of an app
+ * either over a period of time or any other summary reporting
+ *
+ * An actual instance of an app run is represented by {@linkplain Flow}
  */
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
-public class App {
+public class AppSummary {
 
   /** the key that uniquely identifies this hadoop application */
   private AppKey appKey;
 
-  /** how many times this app ran in the given time */
+  /** number of runs in this summary */
   private long numberRuns;
 
-  /**
-   * run id of the first time this app ran in the given time range
-   */
+  /** run id of the first time this app ran in this summary */
   private long firstRunId;
 
-  /**
-   * run id of the last time this app ran in the given time range
-   */
+  /** run id of the last time this app ran in this summary */
   private long lastRunId;
 
-  /** how many hadoop jobs ran */
+  /** how many hadoop jobs in this summary */
   private long jobCount;
 
-  /** Number of map tasks in this flow */
+  /** Number of map tasks in this summary */
   private long totalMaps;
 
-  /** Number of reduce tasks in this flow */
+  /** Number of reduce tasks in this summary */
   private long totalReduces;
 
-  /** cost of this app */
+  /** total cost of this app in this summary */
   private double cost;
 
   /** map slot millis it has taken up */
@@ -69,12 +69,12 @@ public class App {
   /** mega byte millis it has taken up */
   private long mbMillis;
 
-  /** the queue(s) this app ran in */
-  private Set<String> queue;
+  /** the queue(s) this app ran in, in the context of this summary*/
+  private Set<String> queues;
 
-  public App(AppKey key) {
+  public AppSummary(AppKey key) {
     this.appKey = key;
-    this.queue = new HashSet<String>();
+    this.queues = new HashSet<String>();
   }
 
   public AppKey getKey() {
@@ -102,16 +102,16 @@ public class App {
   }
 
   public Set<String> getQueue() {
-    return queue;
+    return queues;
   }
 
   public void setQueue(Set<String> queue) {
-    this.queue = queue;
+    this.queues = queue;
   }
 
   public void addQueue(String aQueue) {
-    if (this.queue != null) {
-      this.queue.add(aQueue);
+    if (this.queues != null) {
+      this.queues.add(aQueue);
     } else {
       throw new ProcessingException("Could not add pool to list of queue for this app "
           + this.appKey);
@@ -183,34 +183,35 @@ public class App {
   }
 
   /**
-   * populates details of this app given these runs
-   * @param flows
+   * adds a flow (a run of the app) of the app summary
+   * @param flow
    */
-  public void populateDetails(List<Flow> flows) {
+  public void addFlow(Flow flow) {
 
-    for (Flow f : flows) {
-      this.numberRuns++;
-      this.jobCount += f.getJobCount();
-      this.mapSlotMillis += f.getMapSlotMillis();
-      this.reduceSlotMillis += f.getReduceSlotMillis();
-      this.totalMaps += f.getTotalMaps();
-      this.totalReduces += f.getTotalReduces();
-      this.mbMillis += f.getMegabyteMillis();
-      this.queue.add(f.getQueue());
-      /**
-       * TODO add jobcost once job cost has been added to job details and flow
-       */
+    // add the flow stats to this app summary
+    this.numberRuns++;
+    this.jobCount += flow.getJobCount();
+    this.mapSlotMillis += flow.getMapSlotMillis();
+    this.reduceSlotMillis += flow.getReduceSlotMillis();
+    this.totalMaps += flow.getTotalMaps();
+    this.totalReduces += flow.getTotalReduces();
+    this.mbMillis += flow.getMegabyteMillis();
+
+    // add the queue of this flow to the set of queues in this app summary
+    this.queues.add(flow.getQueue());
+
+    /**  TODO add jobcost once job cost has been added to job details and flow */
+
+    // store the latest timestamp seen for this app summary
+    // since these are epoch timestamps, a bigger number means more recent
+    if ((this.lastRunId == 0L) || (this.lastRunId < flow.getRunId())) {
+      this.lastRunId = flow.getRunId();
     }
 
-    /**
-     * assumes flows are sorted as per their run ids
-     * which should be the case since hbase stores row
-     * keys in lexicographically sorted order
-     * the most recent flows are stored first
-     */
-    if (flows.size() > 0) {
-      this.lastRunId = flows.get(0).getRunId();
-      this.firstRunId = flows.get(flows.size() - 1).getRunId();
+    // store the oldest seen timestamp seen for this app summary
+    // since these are epoch timestamps, a smaller number means older run
+    if ((this.firstRunId == 0L) || (this.firstRunId > flow.getRunId())) {
+      this.firstRunId = flow.getRunId();
     }
 
   }

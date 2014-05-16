@@ -35,7 +35,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Predicate;
-import com.twitter.hraven.App;
+import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Counter;
 import com.twitter.hraven.CounterMap;
@@ -69,7 +69,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     SimpleModule module = new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
     addJobMappings(module);
     module.addSerializer(Flow.class, new FlowSerializer());
-    module.addSerializer(App.class, new AppSerializer());
+    module.addSerializer(AppSummary.class, new AppSummarySerializer());
     result.registerModule(module);
     return result;
   }
@@ -289,9 +289,9 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
    * classLoader. based on the parameters passed by caller, we determine which
    * fields to include in serialized response
    */
-  public static class AppSerializer extends JsonSerializer<App> {
+  public static class AppSummarySerializer extends JsonSerializer<AppSummary> {
     @Override
-    public void serialize(App anApp, JsonGenerator jsonGenerator,
+    public void serialize(AppSummary anApp, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
       SerializationContext.DetailLevel selectedSerialization =
           RestJSONResource.serializationContext.get().getLevel();

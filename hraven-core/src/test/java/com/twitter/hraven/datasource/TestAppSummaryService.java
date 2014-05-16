@@ -30,15 +30,15 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.twitter.hraven.App;
+import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.GenerateFlowTestData;
 import com.twitter.hraven.datasource.HRavenTestUtil;
 
-public class TestAppService {
+public class TestAppSummaryService {
 
   @SuppressWarnings("unused")
-  private static Log LOG = LogFactory.getLog(TestAppService.class);
+  private static Log LOG = LogFactory.getLog(TestAppSummaryService.class);
   private static HBaseTestingUtility UTIL;
   private static JobHistoryByIdService idService;
   private static GenerateFlowTestData flowDataGen ;
@@ -66,7 +66,7 @@ public class TestAppService {
 
     JobHistoryService jhs = new JobHistoryService(UTIL.getConfiguration());
     AppVersionService service = new AppVersionService(c);
-    AppService as = new AppService(c);
+    AppSummaryService as = new AppSummaryService(c);
     try {
       // check adding versions in order
       service.addVersion(cluster1, user, appId, "v1", 10L);
@@ -75,7 +75,7 @@ public class TestAppService {
       flowDataGen.loadFlow(cluster1, user, appId, 20L, "v2", 3, 10, idService, historyTable);
       // Since flow has its own unit tests
       // we don't test the get flow series as part of testing this new jobs call
-      List<App> fl = as.getNewApps(jhs, cluster1, user, 0L, 15L, 100);
+      List<AppSummary> fl = as.getNewApps(jhs, cluster1, user, 0L, 15L, 100);
       assertNotNull(fl);
       assertEquals(1, fl.size());
       service.addVersion(cluster1, user, appId, "v3", 30L);

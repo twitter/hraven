@@ -35,14 +35,14 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
-import com.twitter.hraven.App;
+import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.JobDetails;
-import com.twitter.hraven.datasource.AppService;
+import com.twitter.hraven.datasource.AppSummaryService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
 import com.twitter.hraven.datasource.HdfsStatsService;
@@ -90,14 +90,14 @@ public class RestJSONResource {
       }
     };
 
-  private static final ThreadLocal<AppService> serviceThreadLocalAppService =
-        new ThreadLocal<AppService>() {
+  private static final ThreadLocal<AppSummaryService> serviceThreadLocalAppService =
+        new ThreadLocal<AppSummaryService>() {
 
         @Override
-        protected AppService initialValue() {
+        protected AppSummaryService initialValue() {
           try {
             LOG.info("Initializing AppService");
-            return new AppService(HBASE_CONF);
+            return new AppSummaryService(HBASE_CONF);
           } catch (IOException e) {
             throw new RuntimeException("Could not initialize AppService", e);
           }
@@ -564,7 +564,7 @@ public class RestJSONResource {
   @GET
   @Path("newJobs/{cluster}/")
   @Produces(MediaType.APPLICATION_JSON)
-  public List<App> getNewJobs(@PathParam("cluster") String cluster,
+  public List<AppSummary> getNewJobs(@PathParam("cluster") String cluster,
                                    @QueryParam("user") String user,
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
@@ -590,9 +590,9 @@ public class RestJSONResource {
 
     LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
        + " startTime=" + startTime + " endTime=" + endTime);
-    AppService as = getAppService();
+    AppSummaryService as = getAppSummaryService();
     // get the row keys from AppVersions table via JobHistoryService
-    List<App> newApps = as.getNewApps(getJobHistoryService(),
+    List<AppSummary> newApps = as.getNewApps(getJobHistoryService(),
           StringUtils.trimToEmpty(cluster), StringUtils.trimToEmpty(user),
           startTime, endTime, limit);
 
@@ -611,7 +611,7 @@ public class RestJSONResource {
     return newApps;
  }
 
-  private AppService getAppService() {
+  private AppSummaryService getAppSummaryService() {
     if (LOG.isDebugEnabled()) {
       LOG.debug(String.format("Returning AppService %s bound to thread %s",
         serviceThreadLocalAppService.get(), Thread.currentThread().getName()));
