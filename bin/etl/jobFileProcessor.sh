@@ -18,11 +18,12 @@
 # Run on the daemon node per specific cluster
 # This script runs on the HBase cluster
 # Usage ./jobFileProcessor.sh [hadoopconfdir]
-#   [schedulerpoolname] [historyprocessingdir] [cluster] [threads] [batchsize]
+#   [schedulerpoolname] [historyprocessingdir] [cluster] [threads] [batchsize] [machinetype] [costfile]
+# a sample cost file can be found in the conf dir as sampleCostDetails.properties
 
-if [ $# -ne 6 ]
+if [ $# -ne 8 ]
 then
-  echo "Usage: `basename $0` [hbaseconfdir] [schedulerpoolname] [historyprocessingdir] [cluster] [threads] [batchsize]"
+  echo "Usage: `basename $0` [hbaseconfdir] [schedulerpoolname] [historyprocessingdir] [cluster] [threads] [batchsize] [machinetype] [costfile]"
   exit 1
 fi
 
@@ -43,4 +44,5 @@ fi
 create_pidfile $HRAVEN_PID_DIR
 trap 'cleanup_pidfile_and_exit $HRAVEN_PID_DIR' INT TERM EXIT
 
-hadoop --config $1 jar $hravenEtlJar com.twitter.hraven.etl.JobFileProcessor -libjars=$LIBJARS -Dmapred.fairscheduler.pool=$2 -d -p $3 -c $4 -t $5 -b $6
+hadoop --config $1 jar $hravenEtlJar com.twitter.hraven.etl.JobFileProcessor -libjars=$LIBJARS -Dmapred.fairscheduler.pool=$2 -d -p $3 -c $4 -t $5 -b $6 -m $7 -z $8
+
