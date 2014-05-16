@@ -35,12 +35,14 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
+import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.datasource.AppSummaryService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
 import com.twitter.hraven.datasource.HdfsStatsService;
@@ -87,6 +89,20 @@ public class RestJSONResource {
         }
       }
     };
+
+  private static final ThreadLocal<AppSummaryService> serviceThreadLocalAppService =
+        new ThreadLocal<AppSummaryService>() {
+
+        @Override
+        protected AppSummaryService initialValue() {
+          try {
+            LOG.info("Initializing AppService");
+            return new AppSummaryService(HBASE_CONF);
+          } catch (IOException e) {
+            throw new RuntimeException("Could not initialize AppService", e);
+          }
+        }
+      };
 
     private static final ThreadLocal<HdfsStatsService> serviceThreadLocalHdfsStats =
         new ThreadLocal<HdfsStatsService>() {
@@ -529,6 +545,64 @@ public class RestJSONResource {
     }
 
     return hdfsStats;
+  }
+
+  @GET
+  @Path("newJobs/{cluster}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<AppSummary> getNewJobs(@PathParam("cluster") String cluster,
+                                   @QueryParam("user") String user,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
+                                   @QueryParam("limit") int limit)
+                                       throws IOException {
+    Stopwatch timer = new Stopwatch().start();
+
+    if(limit == 0) {
+      limit = Integer.MAX_VALUE;
+    }
+    if(startTime == 0L) {
+      // 24 hours back
+      startTime = System.currentTimeMillis() - Constants.MILLIS_ONE_DAY ;
+      // get top of the hour
+      startTime -= (startTime % 3600);
+    }
+    if(endTime == 0L) {
+      // now
+      endTime = System.currentTimeMillis() ;
+      // get top of the hour
+      endTime -= (endTime % 3600);
+    }
+
+    LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
+       + " startTime=" + startTime + " endTime=" + endTime);
+    AppSummaryService as = getAppSummaryService();
+    // get the row keys from AppVersions table via JobHistoryService
+    List<AppSummary> newApps = as.getNewApps(getJobHistoryService(),
+          StringUtils.trimToEmpty(cluster), StringUtils.trimToEmpty(user),
+          startTime, endTime, limit);
+
+    timer.stop();
+
+    LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
+      + "newJobs/" + cluster + SLASH + user
+      + "?limit=" + limit
+      + "&startTime=" + startTime
+      + "&endTime=" + endTime
+      + " fetched " + newApps.size() + " flows in " + timer);
+
+   serializationContext.set(new SerializationContext(
+      SerializationContext.DetailLevel.APP_SUMMARY_STATS_NEW_JOBS_ONLY));
+
+    return newApps;
+ }
+
+  private AppSummaryService getAppSummaryService() {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(String.format("Returning AppService %s bound to thread %s",
+        serviceThreadLocalAppService.get(), Thread.currentThread().getName()));
+    }
+    return serviceThreadLocalAppService.get();
   }
 
   private HdfsStatsService getHdfsStatsService() {

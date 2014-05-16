@@ -187,7 +187,7 @@ public class JobFileTableMapper extends
       jobHistoryByIdService.writeIndexes(jobKey);
       context.progress();
       appVersionService.addVersion(jobDesc.getCluster(), jobDesc.getUserName(),
-          jobDesc.getAppId(), jobDesc.getVersion(), submitTimeMillis);
+          jobDesc.getAppId(), jobDesc.getVersion(), jobDesc.getRunId());
       context.progress();
 
       KeyValue keyValue = value.getColumnLatest(Constants.RAW_FAM_BYTES,

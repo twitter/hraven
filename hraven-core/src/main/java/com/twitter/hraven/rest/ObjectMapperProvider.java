@@ -35,6 +35,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Predicate;
+import com.twitter.hraven.AppSummary;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.Counter;
 import com.twitter.hraven.CounterMap;
 import com.twitter.hraven.Flow;
@@ -67,6 +69,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     SimpleModule module = new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
     addJobMappings(module);
     module.addSerializer(Flow.class, new FlowSerializer());
+    module.addSerializer(AppSummary.class, new AppSummarySerializer());
     result.registerModule(module);
     return result;
   }
@@ -207,9 +210,9 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
             addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
         om.writeValue(jsonGenerator, aFlow);
       } else {
-        jsonGenerator.writeStartObject();
         if (selectedSerialization == SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_ONLY
             || selectedSerialization == SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS) {
+          jsonGenerator.writeStartObject();
           // serialize the FlowKey object
           jsonGenerator.writeFieldName("flowKey");
           jsonGenerator.writeObject(aFlow.getFlowKey());
@@ -218,8 +221,6 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeString(aFlow.getFlowName());
           jsonGenerator.writeFieldName("userName");
           jsonGenerator.writeString(aFlow.getUserName());
-          jsonGenerator.writeFieldName("progress");
-          jsonGenerator.writeNumber(aFlow.getProgress());
           jsonGenerator.writeFieldName("jobCount");
           jsonGenerator.writeNumber(aFlow.getJobCount());
           jsonGenerator.writeFieldName("totalMaps");
@@ -263,23 +264,67 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
            *  default hadoop version in Flow#addJob
            */
           jsonGenerator.writeString(aFlow.getHadoopVersion().toString());
+          jsonGenerator.writeFieldName(Constants.HRAVEN_QUEUE);
+          jsonGenerator.writeString(aFlow.getQueue());
           jsonGenerator.writeFieldName("counters");
           jsonGenerator.writeObject(aFlow.getCounters());
           jsonGenerator.writeFieldName("mapCounters");
           jsonGenerator.writeObject(aFlow.getMapCounters());
           jsonGenerator.writeFieldName("reduceCounters");
           jsonGenerator.writeObject(aFlow.getReduceCounters());
-
           // if flag, include job details
           if (selectedSerialization ==
               SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS) {
             jsonGenerator.writeFieldName("jobs");
             jsonGenerator.writeObject(aFlow.getJobs());
           }
+          jsonGenerator.writeEndObject();
         }
-        jsonGenerator.writeEndObject();
       }
-      // reset the serializationContext variable back to an initialValue
+    }
+  }
+
+  /**
+   * Custom serializer for App object. We don't want to serialize the
+   * classLoader. based on the parameters passed by caller, we determine which
+   * fields to include in serialized response
+   */
+  public static class AppSummarySerializer extends JsonSerializer<AppSummary> {
+    @Override
+    public void serialize(AppSummary anApp, JsonGenerator jsonGenerator,
+        SerializerProvider serializerProvider) throws IOException {
+      SerializationContext.DetailLevel selectedSerialization =
+          RestJSONResource.serializationContext.get().getLevel();
+      if (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING) {
+        // should generate the json for everything in the flow object
+        ObjectMapper om = new ObjectMapper();
+        om.registerModule(
+            addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
+        om.writeValue(jsonGenerator, anApp);
+      } else {
+        if (selectedSerialization == SerializationContext.DetailLevel.APP_SUMMARY_STATS_NEW_JOBS_ONLY) {
+          // should generate the json for everything in the flow object
+          ObjectMapper om = new ObjectMapper();
+          om.registerModule(
+              addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
+          jsonGenerator.writeStartObject();
+          jsonGenerator.writeFieldName("cluster");
+          jsonGenerator.writeString(anApp.getKey().getCluster());
+          jsonGenerator.writeFieldName("userName");
+          jsonGenerator.writeString(anApp.getKey().getUserName());
+          jsonGenerator.writeFieldName("appId");
+          jsonGenerator.writeString(anApp.getKey().getAppId());
+          jsonGenerator.writeFieldName("queue");
+          jsonGenerator.writeObject(anApp.getQueue());
+          jsonGenerator.writeFieldName("numberRuns");
+          jsonGenerator.writeNumber(anApp.getNumberRuns());
+          jsonGenerator.writeFieldName("firstRunId");
+          jsonGenerator.writeNumber(anApp.getFirstRunId());
+          jsonGenerator.writeFieldName("lastRunId");
+          jsonGenerator.writeNumber(anApp.getLastRunId());
+          jsonGenerator.writeEndObject();
+        }
+      }
     }
   }
 }

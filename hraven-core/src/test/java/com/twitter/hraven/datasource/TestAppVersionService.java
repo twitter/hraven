@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.VersionInfo;

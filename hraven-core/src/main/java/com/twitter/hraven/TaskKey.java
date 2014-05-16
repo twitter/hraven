@@ -26,9 +26,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
  *   (m|r)_tasknumber(_attemptnumber)?
  * </pre>
  */
-//Leaving comparable as a raw due to sub-typing/overriding issues.
-@SuppressWarnings("rawtypes")
-public class TaskKey extends JobKey implements Comparable {
+public class TaskKey extends JobKey implements Comparable<Object> {
   private String taskId;
 
   public TaskKey(JobKey jobKey, String taskId) {
