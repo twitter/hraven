@@ -89,9 +89,9 @@ public class JobDescFactory {
    * @return
    */
   public static String getCluster(Configuration jobConf) {
-    String jobtracker = jobConf.get(JOBTRACKER_KEY);
+    String jobtracker = jobConf.get(RESOURCE_MANAGER_KEY);
     if (jobtracker == null) {
-      jobtracker = jobConf.get(RESOURCE_MANAGER_KEY);
+      jobtracker = jobConf.get(JOBTRACKER_KEY);
     }
     String cluster = null;
     if (jobtracker != null) {
