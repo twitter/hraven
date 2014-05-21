@@ -25,7 +25,7 @@ then
   exit 1
 fi
 
-source hraven-etl-env.sh
+source $(dirname $0)/hraven-etl-env.sh
 
 export HADOOP_HEAPSIZE=4000
 myscriptname=$(basename "$0" .sh)

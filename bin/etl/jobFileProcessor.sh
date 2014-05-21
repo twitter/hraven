@@ -27,7 +27,7 @@ then
   exit 1
 fi
 
-source hraven-etl-env.sh
+source $(dirname $0)/hraven-etl-env.sh
 
 myscriptname=$(basename "$0" .sh)
 stopfile=$HRAVEN_PID_DIR/$myscriptname.stop

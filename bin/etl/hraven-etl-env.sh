@@ -22,12 +22,16 @@ source $home/pidfiles.sh
 
 #check if hraven-core.jar and hraven-etl.jar exist
 #if not, create symbolic links to the needed jars
-#we assume either they both exist, or none does
 libhraven=`cd $(dirname $0)/../../lib;pwd;`
-if [ ! -f $libhraven/hraven-core.jar ] || [ ! -f $libhraven/hraven-etl.jar ]
-  then
-    ln -s $libhraven/hraven-core-*.jar $libhraven/hraven-core.jar
-    ln -s $libhraven/hraven-etl-*.jar $libhraven/hraven-etl.jar
+if [ ! -f $libhraven/hraven-core.jar ]; then
+    coreLastVersion=`ls $libhraven/hraven-core-*.jar | sort -V | tail -1`
+    ln -s $coreLastVersion $libhraven/hraven-core.jar
+    echo "hraven-core.jar linked to $coreLastVersion"
+fi
+if [ ! -f $libhraven/hraven-etl.jar ]; then
+    etlLastVersion=`ls $libhraven/hraven-etl-*.jar | sort -V | tail -1`
+    ln -s $etlLastVersion $libhraven/hraven-etl.jar
+    echo "hraven-etl.jar linked to $etlLastVersion"
 fi
 
 # set the hraven-core jar as part of libjars and hadoop classpath

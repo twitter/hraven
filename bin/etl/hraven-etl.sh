@@ -50,7 +50,7 @@ if [[ -z `cat $costfile` ]]; then
   echo "$machinetype.machinememory=12000" >> $costfile
 fi
 
-source hraven-etl-env.sh
+source $(dirname $0)/hraven-etl-env.sh
 
 batchsizejobs=$(($batchsize / 2))
 myscriptname=$(basename "$0" .sh)
