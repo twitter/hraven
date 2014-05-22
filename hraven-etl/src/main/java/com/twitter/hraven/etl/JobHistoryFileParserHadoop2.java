@@ -699,7 +699,16 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   }
 
   private long getMemoryMb(String key) {
-    long memoryMb = this.jobConf.getLong(key, Constants.DEFAULT_MAP_MEMORY_MB);
+    long memoryMb = 0L;
+    if (key.equals("mapreduce.map.memory.mb")){
+	memoryMb =  this.jobConf.getLong(key, Constants.DEFAULT_MAP_MEMORY_MB);
+    }else if (key.equals("mapreduce.reduce.memory.mb")){
+	memoryMb = this.jobConf.getLong(key, Constants.DEFAULT_REDUCE_MEMORY_MB);
+    }
+    if (memoryMb == 0L) {
+      throw new ProcessingException(
+          "While correcting slot millis, " + key + " was found to be 0 ");
+    }
     return memoryMb;
   }
 
