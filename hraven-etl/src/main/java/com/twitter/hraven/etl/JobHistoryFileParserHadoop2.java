@@ -700,9 +700,9 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
   private long getMemoryMb(String key) {
     long memoryMb = 0L;
-    if (key.equals("mapreduce.map.memory.mb")){
+    if (key.equals(Constants.MAP_MEMORY_MB_CONF_KEY)){
 	memoryMb =  this.jobConf.getLong(key, Constants.DEFAULT_MAP_MEMORY_MB);
-    }else if (key.equals("mapreduce.reduce.memory.mb")){
+    }else if (key.equals(Constants.REDUCE_MEMORY_MB_CONF_KEY)){
 	memoryMb = this.jobConf.getLong(key, Constants.DEFAULT_REDUCE_MEMORY_MB);
     }
     if (memoryMb == 0L) {
