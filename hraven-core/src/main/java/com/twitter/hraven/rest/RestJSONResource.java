@@ -26,15 +26,16 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Stopwatch;
+import com.sun.jersey.core.util.Base64;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Stopwatch;
-import com.sun.jersey.core.util.Base64;
 import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
@@ -42,6 +43,7 @@ import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.TaskDetails;
 import com.twitter.hraven.datasource.AppSummaryService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
@@ -146,6 +148,18 @@ public class RestJSONResource {
           + " No jobDetails found, but spent " + timer);
     }
    return jobDetails;
+  }
+
+  @GET
+  @Path("tasks/{cluster}/{jobId}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
+                                           @PathParam("jobId") String jobId) throws IOException {
+    LOG.info("Fetching JobDetails for jobId=" + jobId);
+    serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING));
+    JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId, true);
+    return jobDetails.getTasks();
   }
 
   @GET
