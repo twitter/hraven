@@ -155,7 +155,7 @@ public class RestJSONResource {
   @Produces(MediaType.APPLICATION_JSON)
   public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
                                            @PathParam("jobId") String jobId) throws IOException {
-    LOG.info("Fetching JobDetails for jobId=" + jobId);
+    LOG.info("Fetching tasks info for jobId=" + jobId);
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId, true);
@@ -313,7 +313,7 @@ public class RestJSONResource {
       + appId + "?version=" + version + "&limit=" + limit
       + "&startRow=" + startRowParam + "&startTime=" + startTime + "&endTime=" + endTime
       + "&includeJobs=" + includeJobs);
- 
+
     Stopwatch timer = new Stopwatch().start();
     byte[] startRow = null;
     if (startRowParam != null) {
