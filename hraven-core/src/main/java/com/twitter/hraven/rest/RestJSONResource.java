@@ -161,7 +161,15 @@ public class RestJSONResource {
         SerializationContext.DetailLevel.EVERYTHING));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId, true);
     timer.stop();
-    return jobDetails.getTasks();
+    List<TaskDetails> tasks = jobDetails.getTasks();
+    if(tasks != null && !tasks.isEmpty()) {
+      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId + ", fetched "
+          + tasks.size() + " tasks, spent time " + timer);
+    } else {
+      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId
+          + ", found no tasks, spent time " + timer);
+    }
+    return tasks;
   }
 
   @GET
