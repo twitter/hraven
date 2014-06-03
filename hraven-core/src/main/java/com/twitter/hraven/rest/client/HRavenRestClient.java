@@ -177,23 +177,46 @@ public class HRavenRestClient {
 
   @SuppressWarnings("unchecked")
   private List<Flow> retrieveFlowsFromURL(String endpointURL) throws IOException {
-    InputStream input = null;
-    try {
-      URL url = new URL(endpointURL);
-      URLConnection connection = url.openConnection();
-      connection.setConnectTimeout(this.connectTimeout);
-      connection.setReadTimeout(this.readTimeout);
-      input = connection.getInputStream();
-      return (List<Flow>) JSONUtil.readJson(input, new TypeReference<List<Flow>>() {});
-    } finally {
-      if (input != null) {
-        try {
-          input.close();
-        } catch (IOException e) {
-          LOG.warn(e);
+    return new UrlDataLoader<Flow>(endpointURL, new TypeReference<List<Flow>>() {}).load();
+  }
+
+  private class UrlDataLoader<T> {
+
+    private String endpointURL;
+    private TypeReference typeRef;
+
+    /**
+     * Constructor.
+     * @param endpointUrl
+     * @param t TypeReference for json deserialization, should be TypeReference<List<T>>.
+     * @throws IOException
+     */
+    public UrlDataLoader(String endpointUrl, TypeReference t) throws IOException {
+      this.endpointURL = endpointUrl;
+      this.typeRef = t;
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<T> load() throws IOException {
+      InputStream input = null;
+      try {
+        URL url = new URL(endpointURL);
+        URLConnection connection = url.openConnection();
+        connection.setConnectTimeout(connectTimeout);
+        connection.setReadTimeout(readTimeout);
+        input = connection.getInputStream();
+        return (List<T>) JSONUtil.readJson(input, typeRef);
+      } finally {
+        if (input != null) {
+          try {
+            input.close();
+          } catch (IOException e) {
+            LOG.warn(e);
+          }
         }
       }
     }
+
   }
 
   private static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -267,6 +290,9 @@ public class HRavenRestClient {
     } else {
       HRavenRestClient client = new HRavenRestClient(apiHostname);
       flows = client.fetchFlows(cluster, username, batchDesc, signature, limit);
+      for (Object o : flows) {
+        System.out.println(o.getClass().getName());
+      }
     }
 
     if(dumpJson) {
