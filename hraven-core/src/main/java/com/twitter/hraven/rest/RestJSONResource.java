@@ -156,9 +156,11 @@ public class RestJSONResource {
   public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
                                            @PathParam("jobId") String jobId) throws IOException {
     LOG.info("Fetching tasks info for jobId=" + jobId);
+    Stopwatch timer = new Stopwatch().start();
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId, true);
+    timer.stop();
     return jobDetails.getTasks();
   }
 
