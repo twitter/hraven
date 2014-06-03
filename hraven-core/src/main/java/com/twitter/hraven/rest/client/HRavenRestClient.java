@@ -172,15 +172,6 @@ public class HRavenRestClient {
     return new UrlDataLoader<Flow>(endpointURL, new TypeReference<List<Flow>>() {}).load();
   }
 
-  public void hydrateTaskDetails(Flow flow) throws IOException {
-    String cluster = flow.getCluster();
-    for (JobDetails jd : flow.getJobs()) {
-      String jobId = jd.getJobId();
-      List<TaskDetails> td = fetchTaskDetails(cluster, jobId);
-      jd.addTasks(td);
-    }
-  }
-
   /**
    * Fetch details tasks of a given job.
    * @param cluster
@@ -312,13 +303,19 @@ public class HRavenRestClient {
     List<Flow> flows;
     if (useHBaseAPI) {
       JobHistoryService jobHistoryService = new JobHistoryService(HBaseConfiguration.create());
-      flows = jobHistoryService.getFlowSeries(cluster, username, batchDesc, signature, false, limit);
+      flows = jobHistoryService.getFlowSeries(cluster, username, batchDesc,
+          signature, hydrateTasks, limit);
     } else {
       HRavenRestClient client = new HRavenRestClient(apiHostname);
       flows = client.fetchFlows(cluster, username, batchDesc, signature, limit);
       if (hydrateTasks) {
-        for (Flow f : flows)
-        client.hydrateTaskDetails(f);
+        for (Flow flow : flows) {
+          for (JobDetails jd : flow.getJobs()) {
+            String jobId = jd.getJobId();
+            List<TaskDetails> td = client.fetchTaskDetails(cluster, jobId);
+            jd.addTasks(td);
+          }
+        }
       }
     }
 
