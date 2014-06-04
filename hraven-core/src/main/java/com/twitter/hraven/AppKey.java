@@ -68,6 +68,9 @@ public class AppKey implements Comparable<Object> {
     return appId;
   }
 
+  public String toString() {
+    return getCluster() + Constants.SEP + getUserName() + Constants.SEP + getAppId();
+  }
   /**
    * Compares two AppKey objects on the basis of their cluster, userName, appId and encodedRunId
    * @param other
