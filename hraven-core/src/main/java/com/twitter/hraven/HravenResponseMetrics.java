@@ -1,0 +1,47 @@
+package com.twitter.hraven;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.google.common.util.concurrent.AtomicDouble;
+import com.twitter.common.stats.Stats;
+
+public class HravenResponseMetrics {
+  public final static String JOB_API_LATENCY = "JOB_API_LATENCY";
+  public static AtomicLong JOB_API_LATENCY_VALUE;
+  public final static String FLOW_API_LATENCY = "FLOW_API_LATENCY";
+  public static AtomicLong FLOW_API_LATENCY_VALUE;
+  public final static String FLOW_HBASE_RESULT_SIZE = "FLOW_HBASE_RESULT_SIZE";
+  public static AtomicDouble FLOW_HBASE_RESULT_SIZE_VALUE;
+  
+  static {
+    JOB_API_LATENCY_VALUE = Stats.exportLong(JOB_API_LATENCY);
+    FLOW_HBASE_RESULT_SIZE_VALUE = Stats.exportDouble(FLOW_HBASE_RESULT_SIZE);
+    FLOW_API_LATENCY_VALUE = Stats.exportLong(FLOW_API_LATENCY);
+  }
+
+  /*JOBFLOW_API_LATENCY,
+  FLOW_API_LATENCY,
+  FLOW_VERSION_API_LATENCY,
+  FLOWSTATS_API_LATENCY,
+  TASKS_API_LATENCY,
+  APPVERSIONS_API_LATENCY,
+  HDFS_STATS_API_LATENCY,
+  HDFS_TIMESERIES_API_LATENCY,
+  NEWJOBS_API_LATENCY,
+  FLOW_VERSION_API_NUM_FLOWS,
+  FLOWSTATS_API_NUM_FLOWS, //(Stats.exportLong(HravenResponseMetrics.FLOWSTATS_API_NUM_FLOWS.toString())),
+  FLOW_API_NUM_FLOWS,
+  TASKS_API_NUM_TASKS,
+  APPVERSIONS_API_NUM_VERSIONS,
+  HDFS_STATS_API_NUM_STATS,
+  HDFS_TIMESERIES_API_NUM_STATS,
+  NEWJOBS_API_NUM_APPS,
+  JOBS_HBASE_RESULT_SIZE,
+  JOBFLOW_API_RESPONSE_SIZE,
+  FLOW_HBASE_RESULT_SIZE,
+  APPVERSIONS_RESPONSE_SIZE,
+  HDFS_API_RESPONSE_SIZE,
+  HDFS_TIMESERIES_API_RESPONSE_SIZE,
+  NEWJOBS_API_RESPONSE_SIZE;
+*/
+}

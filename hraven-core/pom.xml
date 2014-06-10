@@ -163,6 +163,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>com.twitter.common</groupId>
+      <artifactId>stats</artifactId>
+      <version>0.0.98</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>

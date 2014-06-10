@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.util.concurrent.AtomicDouble;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,13 +36,18 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.RegexStringComparator;
+import org.apache.hadoop.hbase.filter.BinaryPrefixComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
+import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import com.twitter.common.stats.Stats;
 import com.twitter.hraven.*;
 import com.twitter.hraven.util.ByteUtil;
 import com.twitter.hraven.util.HadoopConfUtil;
@@ -366,10 +372,14 @@ public class JobHistoryService {
           Constants.VERSION_COLUMN_BYTES, CompareFilter.CompareOp.EQUAL, Bytes
               .toBytes(version)));
     }
+    filters.addFilter(new QualifierFilter(
+      CompareFilter.CompareOp.NOT_EQUAL,
+        new RegexStringComparator(
+          "^c\\!((?!" + Constants.HRAVEN_QUEUE + ").)*$")));
 
     scan.setFilter(filters);
 
-    LOG.info("scan : " + scan.toJSON());
+    LOG.info("%%%%%%%%%%%%%%%%%%%%%%%%% scan : \n " + scan.toJSON() + " \n");
     return createFromResults(scan, false, limit);
   }
 
@@ -436,6 +446,7 @@ public class JobHistoryService {
       int rowCount = 0;
       long colCount = 0;
       long resultSize = 0;
+      int jobCount = 0;
       scanner = historyTable.getScanner(scan);
       Flow currentFlow = null;
       for (Result result : scanner) {
@@ -444,13 +455,12 @@ public class JobHistoryService {
           colCount += result.size();
           resultSize += result.getWritableSize();
           JobKey currentKey = jobKeyConv.fromBytes(result.getRow());
+          LOG.debug("-------------------\n JobKey=" + currentKey.toString() + " rowCount=" + rowCount
+                    + " colCount=" + colCount + " resultSize=" + resultSize
+                    + " jobCount=" + jobCount + " flows=" + flows.size());
           // empty runId is special cased -- we need to treat each job as it's own flow
           if (currentFlow == null || !currentFlow.contains(currentKey) ||
               currentKey.getRunId() == 0) {
-            // return if we've already hit the limit
-            if (flows.size() >= maxCount) {
-              break;
-            }
             currentFlow = new Flow(new FlowKey(currentKey));
             flows.add(currentFlow);
           }
@@ -458,14 +468,21 @@ public class JobHistoryService {
           JobDetails job = new JobDetails(currentKey);
           job.populate(result);
           currentFlow.addJob(job);
+          jobCount++;
+          // return if we've already hit the limit
+          if (flows.size() >= maxCount) {
+            break;
+          }
           timerJob.stop();
         }
       }
       timer.stop();
       LOG.info("Fetched from hbase " + rowCount + " rows, " + colCount + " columns, "
-          + resultSize + " bytes ( " + resultSize / (1024 * 1024)
+          + resultSize + " bytes ( " + (double) resultSize / (1024.0 * 1024.0)
+          + " atomic double: " + new AtomicDouble(resultSize / (1024.0 * 1024.0))
           + ") MB, in total time of " + timer + " with  " + timerJob
           + " spent inJobDetails & Flow population");
+      HravenResponseMetrics.FLOW_HBASE_RESULT_SIZE_VALUE.set((double) (resultSize / (1024.0 * 1024.0)));
       } finally {
       if (scanner != null) {
         scanner.close();
