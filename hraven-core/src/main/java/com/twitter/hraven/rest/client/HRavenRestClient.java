@@ -35,7 +35,6 @@ import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.TaskDetails;
 import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.rest.ObjectMapperProvider;
-import com.twitter.hraven.util.JSONUtil;
 import com.twitter.hraven.util.StringUtil;
 
 /**
@@ -169,7 +168,11 @@ public class HRavenRestClient {
     if (LOG.isInfoEnabled()) {
       LOG.info("Requesting job history from " + endpointURL);
     }
-    return new UrlDataLoader<Flow>(endpointURL, new TypeReference<List<Flow>>() {}).load();
+    return new UrlDataLoader<Flow>(
+        endpointURL,
+        new TypeReference<List<Flow>>() {},
+        connectTimeout,
+        readTimeout).load();
   }
 
   /**
@@ -189,46 +192,10 @@ public class HRavenRestClient {
       LOG.info("Requesting task history from " + endpointURL);
     }
     return new UrlDataLoader<TaskDetails>(
-        endpointURL, new TypeReference<List<TaskDetails>>() {}).load();
-  }
-
-  private class UrlDataLoader<T> {
-
-    private String endpointURL;
-    private TypeReference typeRef;
-
-    /**
-     * Constructor.
-     * @param endpointUrl
-     * @param t TypeReference for json deserialization, should be TypeReference<List<T>>.
-     * @throws IOException
-     */
-    public UrlDataLoader(String endpointUrl, TypeReference t) throws IOException {
-      this.endpointURL = endpointUrl;
-      this.typeRef = t;
-    }
-
-    @SuppressWarnings("unchecked")
-    public List<T> load() throws IOException {
-      InputStream input = null;
-      try {
-        URL url = new URL(endpointURL);
-        URLConnection connection = url.openConnection();
-        connection.setConnectTimeout(connectTimeout);
-        connection.setReadTimeout(readTimeout);
-        input = connection.getInputStream();
-        return (List<T>) JSONUtil.readJson(input, typeRef);
-      } finally {
-        if (input != null) {
-          try {
-            input.close();
-          } catch (IOException e) {
-            LOG.warn(e);
-          }
-        }
-      }
-    }
-
+        endpointURL,
+        new TypeReference<List<TaskDetails>>() {},
+        connectTimeout,
+        readTimeout).load();
   }
 
   private static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
