@@ -15,22 +15,17 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.twitter.hraven.Constants;
-import com.twitter.hraven.Framework;
-import com.twitter.hraven.JobDesc;
-import com.twitter.hraven.JobId;
-import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobIdConverter;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.util.ByteUtil;
+
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
 
 /**
  * Test the JobKey class.
@@ -194,5 +189,14 @@ public class TestJobKey {
     // job IDs should sort in numeric order
     assertTrue(Bytes.compareTo(key1Bytes, key2Bytes) < 0);
     assertTrue(Bytes.compareTo(key2Bytes, key3Bytes) < 0);
+  }
+
+  @Test
+  public void testToString() {
+    JobKey key = new JobKey("c1@local", "auser", "app", 1345L, "job_20120101000000_0001");
+    String expected = "c1@local" + Constants.SEP + "auser"
+        + Constants.SEP + "app" + Constants.SEP + 1345L
+        + Constants.SEP +  "job_20120101000000_0001";
+    assertEquals(expected, key.toString());
   }
 }

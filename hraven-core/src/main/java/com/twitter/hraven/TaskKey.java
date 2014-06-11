@@ -40,8 +40,7 @@ public class TaskKey extends JobKey implements Comparable<Object> {
   }
 
   public String toString() {
-    return new StringBuilder(super.toString())
-        .append(Constants.SEP).append(taskId).toString();
+    return super.toString() + Constants.SEP + getTaskId();
   }
 
   /**
