@@ -15,17 +15,14 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
-import static org.junit.Assert.assertEquals;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.twitter.hraven.Constants;
-import com.twitter.hraven.JobKey;
-import com.twitter.hraven.TaskKey;
 import com.twitter.hraven.datasource.TaskKeyConverter;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test usage and serialization of TaskKey
@@ -68,6 +65,14 @@ public class TestTaskKey {
     byte[] badKeyBytes = conv.toBytes(badKey1);
     TaskKey badKey2 = conv.fromBytes(badKeyBytes);
     assertKey(badKey1, badKey2);
+  }
+
+  @Test
+  public void testToString() {
+    JobKey jKey = new JobKey("test@local", "testuser", "app", 1234L, "job_20120101000000_1111");
+    TaskKey key = new TaskKey(jKey, "m_001");
+    String expected = jKey.toString() + Constants.SEP + "m_001";
+    assertEquals(expected, key.toString());
   }
 
   private void assertKey(TaskKey expected, TaskKey actual) {
