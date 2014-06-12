@@ -26,15 +26,16 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Stopwatch;
+import com.sun.jersey.core.util.Base64;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Stopwatch;
-import com.sun.jersey.core.util.Base64;
 import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
@@ -42,6 +43,7 @@ import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.TaskDetails;
 import com.twitter.hraven.datasource.AppSummaryService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
@@ -146,6 +148,28 @@ public class RestJSONResource {
           + " No jobDetails found, but spent " + timer);
     }
    return jobDetails;
+  }
+
+  @GET
+  @Path("tasks/{cluster}/{jobId}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
+                                           @PathParam("jobId") String jobId) throws IOException {
+    LOG.info("Fetching tasks info for jobId=" + jobId);
+    Stopwatch timer = new Stopwatch().start();
+    serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING));
+    JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId, true);
+    timer.stop();
+    List<TaskDetails> tasks = jobDetails.getTasks();
+    if(tasks != null && !tasks.isEmpty()) {
+      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId + ", fetched "
+          + tasks.size() + " tasks, spent time " + timer);
+    } else {
+      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId
+          + ", found no tasks, spent time " + timer);
+    }
+    return tasks;
   }
 
   @GET
@@ -299,7 +323,7 @@ public class RestJSONResource {
       + appId + "?version=" + version + "&limit=" + limit
       + "&startRow=" + startRowParam + "&startTime=" + startTime + "&endTime=" + endTime
       + "&includeJobs=" + includeJobs);
- 
+
     Stopwatch timer = new Stopwatch().start();
     byte[] startRow = null;
     if (startRowParam != null) {

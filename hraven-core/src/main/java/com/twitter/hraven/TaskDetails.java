@@ -22,8 +22,12 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import com.twitter.hraven.datasource.JobHistoryService;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
+
+import com.twitter.hraven.datasource.JobHistoryService;
 
 /**
  * Captures the details of tasks for a hadoop job
@@ -56,7 +60,8 @@ public class TaskDetails implements Comparable<TaskDetails> {
   private long shuffleFinished;
   private long sortFinished;
 
-  public TaskDetails(TaskKey taskKey) {
+  @JsonCreator
+  public TaskDetails(@JsonProperty("taskKey") TaskKey taskKey) {
     this.taskKey = taskKey;
   }
 

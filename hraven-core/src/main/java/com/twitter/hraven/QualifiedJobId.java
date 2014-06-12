@@ -15,6 +15,9 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
+
 /**
  * The job ID should be relatively unique, unless two clusters start at the same
  * time. However, given a jobId it is not immediately clear which cluster a job
@@ -35,7 +38,9 @@ public class QualifiedJobId extends JobId {
    * @param cluster
    * @param jobId
    */
-  public QualifiedJobId(String cluster, String jobId) {
+  @JsonCreator
+  public QualifiedJobId(@JsonProperty("cluster") String cluster,
+                        @JsonProperty("jobId") String jobId) {
     super(jobId);
     this.cluster = (cluster != null ? cluster.trim() : "");
   }

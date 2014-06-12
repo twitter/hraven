@@ -358,6 +358,10 @@ public class JobDetails implements Comparable<JobDetails> {
     this.tasks.add(task);
   }
 
+  public void addTasks(List<TaskDetails> tasks) {
+    this.tasks.addAll(tasks);
+  }
+
   public List<TaskDetails> getTasks() {
     return this.tasks;
   }
