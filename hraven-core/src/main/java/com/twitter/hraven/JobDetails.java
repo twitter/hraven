@@ -78,6 +78,7 @@ public class JobDetails implements Comparable<JobDetails> {
   private long reduceSlotMillis;
   private long reduceShuffleBytes;
   private long megabyteMillis;
+  private double jobCost;
 
   // job config
   private Configuration config;
@@ -353,6 +354,14 @@ public class JobDetails implements Comparable<JobDetails> {
     this.megabyteMillis = megabyteMillis;
   }
 
+  public double getJobCost() {
+    return jobCost;
+  }
+
+  public void setJobCost(double jobCost) {
+    this.jobCost = jobCost;
+  }
+
   public void addTask(TaskDetails task) {
     this.tasks.add(task);
   }
@@ -541,6 +550,7 @@ public class JobDetails implements Comparable<JobDetails> {
     this.status = getValueAsString(JobHistoryKeys.JOB_STATUS, infoValues);
     this.hadoopVersion = getHadoopVersionFromResult(JobHistoryKeys.hadoopversion, infoValues);
     this.version = getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues);
+    this.jobCost = getValueAsDouble(Constants.JOBCOST_BYTES, infoValues);
 
     // times
     this.submitTime = getValueAsLong(JobHistoryKeys.SUBMIT_TIME, infoValues);
