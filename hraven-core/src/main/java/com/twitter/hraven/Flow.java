@@ -276,7 +276,7 @@ public class Flow implements Comparable<Flow> {
     this.mapSlotMillis += job.getMapSlotMillis();
     this.reduceSlotMillis += job.getReduceSlotMillis();
     this.megabyteMillis += job.getMegabyteMillis();
-    this.cost += job.getJobCost();
+    this.cost += job.getCost();
 
     // set the submit time of the flow to the submit time of the first job
     if (( this.submitTime == 0L ) || (job.getSubmitTime() < this.submitTime)) {
