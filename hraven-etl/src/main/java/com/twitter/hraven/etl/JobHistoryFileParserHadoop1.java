@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.mapred.JobHistoryCopy;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
@@ -113,8 +114,8 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
       return Constants.NOTFOUND_VALUE;
     }
 
-    Long mapSlotMillis = jobHistoryListener.getMapSlotMillis();
-    Long reduceSlotMillis = jobHistoryListener.getReduceSlotMillis();
+    Long mapSlotMillis = jobHistoryListener.getJobDetails().getMapSlotMillis();
+    Long reduceSlotMillis = jobHistoryListener.getJobDetails().getReduceSlotMillis();
 
     if (jobConf == null) {
       throw new ProcessingException("JobConf is null, cannot calculate megabytemillis");
@@ -135,5 +136,10 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
         + reduceSlotMillis + " \n ");
     Long mbMillis = xmxTotal * mapSlotMillis + xmxTotal * reduceSlotMillis;
     return mbMillis;
+  }
+
+  @Override
+  public JobDetails getJobDetails() {
+    return jobHistoryListener.getJobDetails();
   }
 }

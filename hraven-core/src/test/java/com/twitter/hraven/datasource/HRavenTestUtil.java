@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.client.HTable;
 
+import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.HdfsConstants;
 
@@ -37,6 +38,8 @@ public class HRavenTestUtil {
     createFlowQueueTable(util);
     createFlowEventTable(util);
     createHdfsStatsTables(util);
+    createDailyAggTable(util);
+    createWeeklyAggTable(util);
   }
 
   public static HTable createHistoryTable(HBaseTestingUtility util)
@@ -89,5 +92,17 @@ public class HRavenTestUtil {
       throws IOException {
     return util.createTable(HdfsConstants.HDFS_USAGE_TABLE_BYTES,
       new byte[][]{HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.ACCESS_INFO_FAM_BYTES});
+  }
+
+  public static HTable createDailyAggTable(HBaseTestingUtility util)
+      throws IOException {
+    return util.createTable(AggregationConstants.AGG_DAILY_TABLE_BYTES,
+        new byte[][]{Constants.INFO_FAM_BYTES, Constants.RAW_FAM_BYTES});
+  }
+
+  public static HTable createWeeklyAggTable(HBaseTestingUtility util)
+      throws IOException {
+    return util.createTable(AggregationConstants.AGG_WEEKLY_TABLE_BYTES,
+        new byte[][]{Constants.INFO_FAM_BYTES, Constants.RAW_FAM_BYTES});
   }
 }

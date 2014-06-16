@@ -31,6 +31,7 @@ import org.apache.hadoop.mapred.JobHistoryCopy.Listener;
 import org.apache.hadoop.mapred.JobHistoryCopy.RecordTypes;
 
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.TaskKey;
@@ -49,11 +50,7 @@ public class JobHistoryListener implements Listener {
   private String jobNumber = "";
   private final byte[] jobKeyBytes;
 
-  /** explicitly initializing map millis and
-   * reduce millis in case it's not found
-   */
-  private long mapSlotMillis = 0L;
-  private long reduceSlotMillis = 0L;
+  private JobDetails jobDetails = null;
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
@@ -73,6 +70,7 @@ public class JobHistoryListener implements Listener {
     }
     this.jobKey = jobKey;
     this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
+    this.jobDetails = new JobDetails(jobKey);
     setJobId(jobKey.getJobId().getJobIdString());
   }
 
@@ -206,10 +204,10 @@ public class JobHistoryListener implements Listener {
             p.add(family, qualifier, Bytes.toBytes(counterValue));
             // get the map and reduce slot millis for megabytemillis calculations
             if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
-              this.mapSlotMillis = counterValue;
+              this.jobDetails.setMapSlotMillis(counterValue);
             }
             if (Constants.SLOTS_MILLIS_REDUCES.equals(counterName)) {
-              this.reduceSlotMillis = counterValue;
+              this.jobDetails.setReduceSlotMillis(counterValue);
             }
           }
         }
@@ -230,8 +228,14 @@ public class JobHistoryListener implements Listener {
         }
       } else if (Long.class.equals(clazz)) {
         try {
-          valueBytes = (value != null && value.trim().length() > 0) ?
-              Bytes.toBytes(Long.parseLong(value)) : Constants.ZERO_LONG_BYTES;
+          Long valueLong = (value != null && value.trim().length() > 0) ?
+              Long.parseLong(value) : 0L;
+          valueBytes = Bytes.toBytes(valueLong);
+          if (key == JobHistoryKeys.TOTAL_MAPS) {
+            jobDetails.setTotalMaps(valueLong);
+          } else if (key == JobHistoryKeys.TOTAL_REDUCES) {
+            jobDetails.setTotalReduces(valueLong);
+          }
         } catch (NumberFormatException nfe) {
           // us a default value
           valueBytes = Constants.ZERO_LONG_BYTES;
@@ -297,12 +301,7 @@ public class JobHistoryListener implements Listener {
     return this.taskPuts;
   }
 
-  public Long getMapSlotMillis() {
-    return this.mapSlotMillis;
+  public JobDetails getJobDetails() {
+    return this.jobDetails;
   }
-
-  public Long getReduceSlotMillis() {
-    return this.reduceSlotMillis;
-  }
-  
 }

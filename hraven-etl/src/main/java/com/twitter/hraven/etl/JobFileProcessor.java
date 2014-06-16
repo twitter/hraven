@@ -35,6 +35,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -53,6 +54,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.datasource.JobHistoryRawService;
 import com.twitter.hraven.etl.ProcessRecordService;
@@ -120,6 +122,15 @@ public class JobFileProcessor extends Configured implements Tool {
         "reprocess",
         false,
         "Reprocess only those records that have been marked to be reprocessed. Otherwise process all rows indicated in the processing records, but successfully processed job files are skipped.");
+    o.setRequired(false);
+    options.addOption(o);
+
+    // Whether to aggregate or not.
+    o = new Option(
+        "a",
+        "aggregate",
+        false,
+        "Whether to aggreagate job details or not.");
     o.setRequired(false);
     options.addOption(o);
 
@@ -265,6 +276,20 @@ public class JobFileProcessor extends Configured implements Tool {
     // set it as part of conf so that the
     // hRaven job can access it in the mapper
     hbaseConf.set(Constants.HRAVEN_MACHINE_TYPE, machineType);
+
+    Boolean aggFlagValue = Boolean.TRUE;
+    if (commandLine.hasOption("a")) {
+      String aggregateFlag = commandLine.getOptionValue("a");
+      // set it as part of conf so that the
+      // hRaven jobProcessor can access it in the mapper
+      if (StringUtils.isNotBlank(aggregateFlag)) {
+        if (StringUtils.equalsIgnoreCase(aggregateFlag, Boolean.FALSE.toString())) {
+          aggFlagValue = Boolean.FALSE;
+        }
+      }
+    }
+    LOG.info(AggregationConstants.AGGREGATION_FLAG_NAME +"=" + aggFlagValue);
+    hbaseConf.setBoolean(AggregationConstants.AGGREGATION_FLAG_NAME, aggFlagValue);
 
     String processFileSubstring = null;
     if (commandLine.hasOption("p")) {

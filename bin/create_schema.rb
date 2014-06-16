@@ -46,5 +46,14 @@ create 'flow_queue', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFIL
 # flow_event - stores events fired during pig job execution
 create 'flow_event', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFILTER => 'ROW'}
 
+# hraven_agg_daily - stores daily aggregated job info
+# the r column family has a TTL of 30 days
+create 'hraven_agg_daily', {NAME => 'i', COMPRESSION => 'LZO', BLOOMFILTER => 'ROWCOL'},
+                           {NAME => 'r', VERSIONS => 1, COMPRESSION => 'LZO', BLOCKCACHE => false, TTL => '2592000'}
+
+# hraven_agg_weekly - stores weekly aggregated job info
+# the r column family has a TTL of 30 days
+create 'hraven_agg_weekly', {NAME => 'i', COMPRESSION => 'LZO', BLOOMFILTER => 'ROWCOL'},
+                           {NAME => 'r', VERSIONS => 1, COMPRESSION => 'LZO', BLOCKCACHE => false, TTL => '2592000'}
 
 exit

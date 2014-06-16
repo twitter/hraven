@@ -78,6 +78,7 @@ public class JobDetails implements Comparable<JobDetails> {
   private long reduceSlotMillis;
   private long reduceShuffleBytes;
   private long megabyteMillis;
+  private double cost;
 
   // job config
   private Configuration config;
@@ -353,6 +354,14 @@ public class JobDetails implements Comparable<JobDetails> {
     this.megabyteMillis = megabyteMillis;
   }
 
+  public double getCost() {
+    return cost;
+  }
+
+  public void setCost(double cost) {
+    this.cost = cost;
+  }
+
   public void addTask(TaskDetails task) {
     this.tasks.add(task);
   }
@@ -426,7 +435,8 @@ public class JobDetails implements Comparable<JobDetails> {
    * @param infoValues
    * @return value as Long or 0L
    */
-  static Long getValueAsLong(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
+  public static Long getValueAsLong(final byte[] key,
+      final NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(key);
     if (value != null) {
       try {
@@ -486,7 +496,8 @@ public class JobDetails implements Comparable<JobDetails> {
    * @param infoValues - the map containing the key values
    * @return value as Double or 0.0
    */
-  public static double getValueAsDouble(byte[] key, NavigableMap<byte[], byte[]> infoValues) {
+  public static double getValueAsDouble(byte[] key,
+      NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(key);
     if (value != null) {
       return Bytes.toDouble(value);
@@ -520,7 +531,8 @@ public class JobDetails implements Comparable<JobDetails> {
    * @param infoValues
    * @return value as a String or ""
    */
-  static String getValueAsString(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
+  public static String getValueAsString(final byte[] key,
+      final NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(key);
     if (value != null) {
       return Bytes.toString(value);
@@ -547,6 +559,7 @@ public class JobDetails implements Comparable<JobDetails> {
     this.launchTime = getValueAsLong(JobHistoryKeys.LAUNCH_TIME, infoValues);
     this.finishTime = getValueAsLong(JobHistoryKeys.FINISH_TIME, infoValues);
     this.megabyteMillis = getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues);
+    this.cost = getValueAsDouble(Constants.JOBCOST_BYTES, infoValues);
 
     // task counts
     this.totalMaps = getValueAsLong(JobHistoryKeys.TOTAL_MAPS, infoValues);
