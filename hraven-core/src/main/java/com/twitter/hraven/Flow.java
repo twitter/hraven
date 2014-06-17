@@ -108,6 +108,9 @@ public class Flow implements Comparable<Flow> {
   /** megabyte millis  in this flow */
   private long megabyteMillis;
 
+  /** cost of this flow */
+  private double cost;
+
   /** reduce shuffle bytes in this flow */
   private long reduceShuffleBytes;
 
@@ -273,6 +276,7 @@ public class Flow implements Comparable<Flow> {
     this.mapSlotMillis += job.getMapSlotMillis();
     this.reduceSlotMillis += job.getReduceSlotMillis();
     this.megabyteMillis += job.getMegabyteMillis();
+    this.cost += job.getCost();
 
     // set the submit time of the flow to the submit time of the first job
     if (( this.submitTime == 0L ) || (job.getSubmitTime() < this.submitTime)) {
@@ -416,6 +420,14 @@ public class Flow implements Comparable<Flow> {
 
   public void setMegabyteMillis(long megabyteMillis) {
     this.megabyteMillis = megabyteMillis;
+  }
+
+  public double getCost() {
+    return cost;
+  }
+
+  public void setCost(double cost) {
+    this.cost = cost;
   }
 
   public HadoopVersion getHadoopVersion() {
