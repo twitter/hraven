@@ -33,8 +33,15 @@ public class AggregationConstants {
   public static final String INFO_FAM = "i";
   public static final byte[] INFO_FAM_BYTES = Bytes.toBytes(INFO_FAM);
 
-  public static final String RAW_FAM = "r";
-  public static final byte[] RAW_FAM_BYTES = Bytes.toBytes(RAW_FAM);
+  /**
+   * The s column family has a TTL of 30 days
+   * It's used as a scratch column family
+   * It stores the run ids that are seen for that day
+   * we assume that a flow will not run for more than 30 days,
+   * hence it's fine to "expire" that data
+   */
+  public static final String SCRATCH_FAM = "s";
+  public static final byte[] SCRATCH_FAM_BYTES = Bytes.toBytes(SCRATCH_FAM);
 
   /** parameter that specifies whether or not to aggregate */
   public static final String AGGREGATION_FLAG_NAME = "aggregate";

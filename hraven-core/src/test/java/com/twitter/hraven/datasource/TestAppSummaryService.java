@@ -233,43 +233,53 @@ public class TestAppSummaryService {
         assertEquals("user", Bytes.toString(keyComponents[2]));
         assertEquals("appid", Bytes.toString(keyComponents[3]));
         long slotmillismaps =
-            Bytes.toLong(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+            Bytes.toLong(result.getColumnLatest(
+              AggregationConstants.INFO_FAM_BYTES,
               AggregationConstants.SLOTS_MILLIS_MAPS_BYTES).getValue());
         assertEquals(60L, slotmillismaps);
         assertEquals(
           666L,
-          Bytes.toLong(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Bytes.toLong(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.SLOTS_MILLIS_REDUCES_BYTES).getValue()));
         assertEquals(
           new Double(600.0),
-          (Double) Bytes.toDouble(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          (Double) Bytes.toDouble(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.JOBCOST_BYTES).getValue()));
         assertEquals(
           99L,
-          Bytes.toLong(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Bytes.toLong(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.MEGABYTEMILLIS_BYTES).getValue()));
         assertEquals(
           2L,
-          Bytes.toLong(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Bytes.toLong(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.NUMBER_RUNS_BYTES).getValue()));
         assertEquals(
           "queue_1!queue_2!",
-          Bytes.toString(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Bytes.toString(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.HRAVEN_QUEUE_BYTES).getValue()));
         assertEquals(
           2L,
-          Bytes.toLong(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Bytes.toLong(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.TOTAL_JOBS_BYTES).getValue()));
         assertEquals(
           30L,
-          Bytes.toLong(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Bytes.toLong(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.TOTAL_MAPS_BYTES).getValue()));
         assertEquals(
           30L,
-          Bytes.toLong(result.getColumnLatest(Constants.INFO_FAM_BYTES,
+          Bytes.toLong(result.getColumnLatest(
+            AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.TOTAL_REDUCES_BYTES).getValue()));
 
-        Map<byte[], byte[]> valueMap = result.getFamilyMap(Constants.RAW_FAM_BYTES);
+        Map<byte[], byte[]> valueMap = result.getFamilyMap(
+          AggregationConstants.SCRATCH_FAM_BYTES);
         assertEquals(2, valueMap.size());
         assertTrue(valueMap.containsKey(Bytes.toBytes(1402704960000L)));
         assertTrue(valueMap.containsKey(Bytes.toBytes(1402712160000L)));

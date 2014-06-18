@@ -317,7 +317,7 @@ public class AppSummaryService {
     aggIncrement.addColumn(Constants.INFO_FAM_BYTES, AggregationConstants.TOTAL_JOBS_BYTES, 1L);
 
     byte[] numberRowsCol = Bytes.toBytes(jobDetails.getJobKey().getRunId());
-    aggIncrement.addColumn(Constants.RAW_FAM_BYTES, numberRowsCol, 1L);
+    aggIncrement.addColumn(AggregationConstants.SCRATCH_FAM_BYTES, numberRowsCol, 1L);
 
     LOG.trace(" incr " + aggIncrement.numColumns() + " " + aggIncrement.toString());
     return aggIncrement;
@@ -365,14 +365,14 @@ public class AppSummaryService {
     // get the existing number of runs and list of queues
     // for this app aggregation
     Get g = new Get(rowKey);
-    g.addColumn(Constants.INFO_FAM_BYTES, AggregationConstants.HRAVEN_QUEUE_BYTES);
-    g.addColumn(Constants.INFO_FAM_BYTES, AggregationConstants.JOBCOST_BYTES);
-    g.addFamily(Constants.RAW_FAM_BYTES);
+    g.addColumn(AggregationConstants.INFO_FAM_BYTES, AggregationConstants.HRAVEN_QUEUE_BYTES);
+    g.addColumn(AggregationConstants.INFO_FAM_BYTES, AggregationConstants.JOBCOST_BYTES);
+    g.addFamily(AggregationConstants.SCRATCH_FAM_BYTES);
     Result r = aggDailyTable.get(g);
 
-    long numberRuns = getNumberRuns(r.getFamilyMap(Constants.RAW_FAM_BYTES));
+    long numberRuns = getNumberRuns(r.getFamilyMap(AggregationConstants.SCRATCH_FAM_BYTES));
     String queue = createQueueListValue(jobDetails,
-        r.getColumnLatest(Constants.INFO_FAM_BYTES,
+        r.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
           AggregationConstants.HRAVEN_QUEUE_BYTES));
     Double cost = getCost(jobDetails,
         r.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,

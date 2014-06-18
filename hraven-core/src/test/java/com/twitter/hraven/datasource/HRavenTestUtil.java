@@ -97,12 +97,14 @@ public class HRavenTestUtil {
   public static HTable createDailyAggTable(HBaseTestingUtility util)
       throws IOException {
     return util.createTable(AggregationConstants.AGG_DAILY_TABLE_BYTES,
-        new byte[][]{Constants.INFO_FAM_BYTES, Constants.RAW_FAM_BYTES});
+        new byte[][]{AggregationConstants.INFO_FAM_BYTES,
+          AggregationConstants.SCRATCH_FAM_BYTES});
   }
 
   public static HTable createWeeklyAggTable(HBaseTestingUtility util)
       throws IOException {
     return util.createTable(AggregationConstants.AGG_WEEKLY_TABLE_BYTES,
-        new byte[][]{Constants.INFO_FAM_BYTES, Constants.RAW_FAM_BYTES});
+        new byte[][]{AggregationConstants.INFO_FAM_BYTES,
+          AggregationConstants.SCRATCH_FAM_BYTES});
   }
 }
