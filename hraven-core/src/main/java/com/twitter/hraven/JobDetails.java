@@ -363,6 +363,10 @@ public class JobDetails implements Comparable<JobDetails> {
     this.tasks.add(task);
   }
 
+  public void addTasks(List<TaskDetails> tasks) {
+    this.tasks.addAll(tasks);
+  }
+
   public List<TaskDetails> getTasks() {
     return this.tasks;
   }
@@ -427,6 +431,7 @@ public class JobDetails implements Comparable<JobDetails> {
     }
   }
 
+
   /**
    * return an enum value from the NavigableMap for hadoop version
    * @param key
@@ -463,6 +468,7 @@ public class JobDetails implements Comparable<JobDetails> {
           .get(JobHistoryKeys.JOB_STATUS), infoValues);
     this.hadoopVersion = getHadoopVersionFromResult(JobHistoryKeys.hadoopversion, infoValues);
     this.version = ByteUtil.getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues);
+    this.cost = ByteUtil.getValueAsDouble(Constants.JOBCOST_BYTES, infoValues);
 
     // times
     this.submitTime = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES

@@ -17,6 +17,7 @@ package com.twitter.hraven.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 
 import org.apache.commons.logging.Log;
@@ -250,12 +251,12 @@ public class ByteUtil {
   /**
    * return a value from the NavigableMap as a Long
    * @param key
-   * @param infoValues
+   * @param taskValues
    * @return value as Long or 0L
    */
   public static Long getValueAsLong(final byte[] key,
-      final NavigableMap<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(key);
+      final Map<byte[], byte[]> taskValues) {
+    byte[] value = taskValues.get(key);
     if (value != null) {
       try {
       long retValue = Bytes.toLong(value);
@@ -279,12 +280,12 @@ public class ByteUtil {
   /**
    * return a value from the NavigableMap as a String
    * @param key
-   * @param infoValues
+   * @param taskValues
    * @return value as a String or ""
    */
   public static String getValueAsString(final byte[] key,
-      final NavigableMap<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(key);
+      final Map<byte[], byte[]> taskValues) {
+    byte[] value = taskValues.get(key);
     if (value != null) {
       return Bytes.toString(value);
     } else {
@@ -307,5 +308,34 @@ public class ByteUtil {
       return 0.0;
     }
   }
+
+  /**
+   * get value from a map as an int
+   * @param key
+   * @param infoValues
+   * @return int
+   */
+  public static int getValueAsInt(byte[] key, Map<byte[], byte[]> infoValues) {
+    byte[] value = infoValues.get(key);
+    if (value != null) {
+      try {
+        int retValue = Bytes.toInt(value);
+        return retValue;
+      } catch (NumberFormatException nfe) {
+        LOG.error("Caught NFE while converting to int " + nfe.getMessage());
+        nfe.printStackTrace();
+        return 0;
+      } catch (IllegalArgumentException iae) {
+        // for exceptions like java.lang.IllegalArgumentException:
+        // offset (0) + length (8) exceed the capacity of the array: 7
+        LOG.error("Caught IAE while converting to int " + iae.getMessage());
+        iae.printStackTrace();
+        return 0;
+      }
+    } else {
+      return 0;
+    }
+  }
+
 
 }

@@ -108,7 +108,7 @@ public class Flow implements Comparable<Flow> {
   /** megabyte millis  in this flow */
   private long megabyteMillis;
 
-  /** cost of jobs this flow */
+  /** cost of this flow */
   private double cost;
 
   /** reduce shuffle bytes in this flow */

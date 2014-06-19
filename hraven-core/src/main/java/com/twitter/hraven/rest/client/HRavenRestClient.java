@@ -32,9 +32,9 @@ import org.codehaus.jackson.type.TypeReference;
 
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.TaskDetails;
 import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.rest.ObjectMapperProvider;
-import com.twitter.hraven.util.JSONUtil;
 import com.twitter.hraven.util.StringUtil;
 
 /**
@@ -103,10 +103,6 @@ public class HRavenRestClient {
       String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d",
         apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), signature, limit);
 
-    if (LOG.isInfoEnabled()) {
-      LOG.info("Requesting job history from " + urlString);
-    }
-
     return retrieveFlowsFromURL(urlString);
   }
 
@@ -129,10 +125,6 @@ public class HRavenRestClient {
         String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d&%s",
             apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), signature, limit,
             configParam);
-
-    if (LOG.isInfoEnabled()) {
-      LOG.info("Requesting job history from " + urlString);
-    }
 
     return retrieveFlowsFromURL(urlString);
   }
@@ -157,10 +149,6 @@ public class HRavenRestClient {
             apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), signature, limit,
             configParam);
 
-    if (LOG.isInfoEnabled()) {
-      LOG.info("Requesting job history from " + urlString);
-    }
-
     return retrieveFlowsFromURL(urlString);
   }
 
@@ -177,23 +165,37 @@ public class HRavenRestClient {
 
   @SuppressWarnings("unchecked")
   private List<Flow> retrieveFlowsFromURL(String endpointURL) throws IOException {
-    InputStream input = null;
-    try {
-      URL url = new URL(endpointURL);
-      URLConnection connection = url.openConnection();
-      connection.setConnectTimeout(this.connectTimeout);
-      connection.setReadTimeout(this.readTimeout);
-      input = connection.getInputStream();
-      return (List<Flow>) JSONUtil.readJson(input, new TypeReference<List<Flow>>() {});
-    } finally {
-      if (input != null) {
-        try {
-          input.close();
-        } catch (IOException e) {
-          LOG.warn(e);
-        }
-      }
+    if (LOG.isInfoEnabled()) {
+      LOG.info("Requesting job history from " + endpointURL);
     }
+    return new UrlDataLoader<Flow>(
+        endpointURL,
+        new TypeReference<List<Flow>>() {},
+        connectTimeout,
+        readTimeout).load();
+  }
+
+  /**
+   * Fetch details tasks of a given job.
+   * @param cluster
+   * @param jobId
+   * @return
+   */
+  public List<TaskDetails> fetchTaskDetails(String cluster, String jobId) throws IOException {
+    String urlString = String.format("http://%s/api/v1/tasks/%s/%s", apiHostname, cluster, jobId);
+    return retrieveTaskDetailsFromUrl(urlString);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL) throws IOException {
+    if (LOG.isInfoEnabled()) {
+      LOG.info("Requesting task history from " + endpointURL);
+    }
+    return new UrlDataLoader<TaskDetails>(
+        endpointURL,
+        new TypeReference<List<TaskDetails>>() {},
+        connectTimeout,
+        readTimeout).load();
   }
 
   private static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -207,6 +209,7 @@ public class HRavenRestClient {
     int limit = 2;
     boolean useHBaseAPI = false;
     boolean dumpJson = false;
+    boolean hydrateTasks = false;
 
     StringBuffer usage = new StringBuffer("Usage: java ");
     usage.append(HRavenRestClient.class.getName()).append(" [-options]\n");
@@ -220,7 +223,8 @@ public class HRavenRestClient {
     usage.append(" -l <limit>\n");
     usage.append(" -h - print this message and return\n");
     usage.append(" -H - use HBase API, not the REST API\n");
-    usage.append(" -j - output json");
+    usage.append(" -j - output json\n");
+    usage.append(" -t - retrieve task information as well");
 
     for (int i = 0; i < args.length; i++) {
       if("-a".equals(args[i])) {
@@ -247,6 +251,9 @@ public class HRavenRestClient {
       } else if("-j".equals(args[i])) {
         dumpJson = true;
         continue;
+      } else if("-t".equals(args[i])) {
+        hydrateTasks = true;
+        continue;
       } else if ("-h".equals(args[i])) {
         System.err.println(usage.toString());
         System.exit(1);
@@ -263,10 +270,20 @@ public class HRavenRestClient {
     List<Flow> flows;
     if (useHBaseAPI) {
       JobHistoryService jobHistoryService = new JobHistoryService(HBaseConfiguration.create());
-      flows = jobHistoryService.getFlowSeries(cluster, username, batchDesc, signature, false, limit);
+      flows = jobHistoryService.getFlowSeries(cluster, username, batchDesc,
+          signature, hydrateTasks, limit);
     } else {
       HRavenRestClient client = new HRavenRestClient(apiHostname);
       flows = client.fetchFlows(cluster, username, batchDesc, signature, limit);
+      if (hydrateTasks) {
+        for (Flow flow : flows) {
+          for (JobDetails jd : flow.getJobs()) {
+            String jobId = jd.getJobId();
+            List<TaskDetails> td = client.fetchTaskDetails(cluster, jobId);
+            jd.addTasks(td);
+          }
+        }
+      }
     }
 
     if(dumpJson) {

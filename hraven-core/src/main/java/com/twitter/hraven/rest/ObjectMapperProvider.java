@@ -243,6 +243,8 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getReduceSlotMillis());
           jsonGenerator.writeFieldName("megabyteMillis");
           jsonGenerator.writeNumber(aFlow.getMegabyteMillis());
+          jsonGenerator.writeFieldName("cost");
+          jsonGenerator.writeNumber(aFlow.getCost());
           jsonGenerator.writeFieldName("reduceShuffleBytes");
           jsonGenerator.writeNumber(aFlow.getReduceShuffleBytes());
           jsonGenerator.writeFieldName("duration");
