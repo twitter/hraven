@@ -506,22 +506,22 @@ public class AppSummaryService {
 
     NavigableMap<byte[], byte[]> infoValues = result.getFamilyMap(Constants.INFO_FAM_BYTES);
     as.setTotalMaps(as.getTotalMaps()
-        + JobDetails.getValueAsLong(AggregationConstants.TOTAL_MAPS_BYTES, infoValues));
+        + ByteUtil.getValueAsLong(AggregationConstants.TOTAL_MAPS_BYTES, infoValues));
     as.setTotalReduces(as.getTotalReduces()
-        + JobDetails.getValueAsLong(AggregationConstants.TOTAL_REDUCES_BYTES, infoValues));
+        + ByteUtil.getValueAsLong(AggregationConstants.TOTAL_REDUCES_BYTES, infoValues));
     as.setMbMillis(as.getMbMillis()
-        + JobDetails.getValueAsLong(AggregationConstants.MEGABYTEMILLIS_BYTES, infoValues));
+        + ByteUtil.getValueAsLong(AggregationConstants.MEGABYTEMILLIS_BYTES, infoValues));
     as.setCost(as.getCost()
-        + JobDetails.getValueAsDouble(AggregationConstants.JOBCOST_BYTES, infoValues));
+        + ByteUtil.getValueAsDouble(AggregationConstants.JOBCOST_BYTES, infoValues));
     as.setJobCount(as.getJobCount()
-        + JobDetails.getValueAsLong(AggregationConstants.TOTAL_JOBS_BYTES, infoValues));
+        + ByteUtil.getValueAsLong(AggregationConstants.TOTAL_JOBS_BYTES, infoValues));
     as.setNumberRuns(as.getNumberRuns()
-        + JobDetails.getValueAsLong(AggregationConstants.NUMBER_RUNS_BYTES, infoValues));
+        + ByteUtil.getValueAsLong(AggregationConstants.NUMBER_RUNS_BYTES, infoValues));
     as.setMapSlotMillis(as.getMapSlotMillis()
-        + JobDetails.getValueAsLong(AggregationConstants.SLOTS_MILLIS_MAPS_BYTES, infoValues));
+        + ByteUtil.getValueAsLong(AggregationConstants.SLOTS_MILLIS_MAPS_BYTES, infoValues));
     as.setReduceSlotMillis(as.getReduceSlotMillis()
-        + JobDetails.getValueAsLong(AggregationConstants.SLOTS_MILLIS_REDUCES_BYTES, infoValues));
-    as.setQueuesFromString(JobDetails.getValueAsString(AggregationConstants.HRAVEN_QUEUE_BYTES,
+        + ByteUtil.getValueAsLong(AggregationConstants.SLOTS_MILLIS_REDUCES_BYTES, infoValues));
+    as.setQueuesFromString(ByteUtil.getValueAsString(AggregationConstants.HRAVEN_QUEUE_BYTES,
       infoValues));
 
     return as;
