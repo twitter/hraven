@@ -131,7 +131,7 @@
     <junit.version>4.8.1</junit.version>
     <mockito-all.version>1.8.5</mockito-all.version>
     <log4j.version>1.2.15</log4j.version>
-    <guava.version>12.0</guava.version>
+    <guava.version>14.0</guava.version>
     <jersey.version>1.12</jersey.version>
     <jackson.version>1.9.6</jackson.version>
 

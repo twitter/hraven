@@ -557,7 +557,6 @@ public class JobDetails implements Comparable<JobDetails> {
     this.failedReduces = getValueAsLong(JobHistoryKeys.FAILED_REDUCES, infoValues);
 
     this.config = JobHistoryService.parseConfiguration(infoValues);
-    LOG.debug("====== config size="+ this.config.size());
     this.queue = this.config.get(Constants.HRAVEN_QUEUE);
     this.counters = JobHistoryService.parseCounters(Constants.COUNTER_COLUMN_PREFIX_BYTES,
         infoValues);

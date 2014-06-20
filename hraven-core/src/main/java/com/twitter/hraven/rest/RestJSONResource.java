@@ -17,6 +17,7 @@ package com.twitter.hraven.rest;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -35,7 +36,6 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.sun.jersey.core.util.Base64;
-import com.twitter.common.stats.Stats;
 import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Cluster;
 import com.twitter.hraven.Constants;
@@ -147,8 +147,12 @@ public class RestJSONResource {
       LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
           + " No jobDetails found, but spent " + timer);
     }
-    Stats.exportLong(HravenResponseMetrics.JOB_API_LATENCY.toString(), timer.elapsedMillis());
+    // export latency metrics
+    HravenResponseMetrics.JOB_API_LATENCY_VALUE
+      .set(timer.elapsed(TimeUnit.MILLISECONDS));
+
     return jobDetails;
+
   }
 
   @GET
@@ -170,7 +174,10 @@ public class RestJSONResource {
       LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/" + cluster + SLASH
           + jobId + " No flow found, spent " + timer);
     }
-  //  Stats.exportLong(HravenResponseMetrics.JOBFLOW_API_LATENCY.toString(), timer.elapsedMillis());
+
+    // export latency metrics
+    HravenResponseMetrics.JOBFLOW_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flow;
   }
 
@@ -226,16 +233,17 @@ public class RestJSONResource {
           + " startTime=" + startTime + " endTime=" + endTime
           + " &includeConf=" + builderIncludeConfigs + " &includeConfRegex="
           + builderIncludeConfigRegex + " fetched " + flows.size() + " flows " + " in " + timer);
-    //  Stats.exportLong(HravenResponseMetrics.FLOW_VERSION_API_NUM_FLOWS.toString(), flows.size());
-    } else {
+     } else {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
           + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
           + " startTime=" + startTime + " endTime=" + endTime
           + " &includeConf=" + builderIncludeConfigs + "&includeConfRegex="
           + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
-      //Stats.exportLong(HravenResponseMetrics.FLOW_VERSION_API_NUM_FLOWS.toString(), 0);
     }
-    //Stats.exportLong(HravenResponseMetrics.FLOW_VERSION_API_LATENCY.toString(), timer.elapsedMillis());
+
+    // export latency metrics
+    HravenResponseMetrics.FLOW_VERSION_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flows;
   }
 
@@ -280,14 +288,15 @@ public class RestJSONResource {
           + "&endTime=" + endTime + "&includeConf=" + builderIncludeConfigs
           + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched " + flows.size()
           + " flows in " + timer);
-    //  Stats.exportLong(HravenResponseMetrics.FLOW_API_NUM_FLOWS.toString(), flows.size());
     } else {
       LOG.info("For flow/{cluster}/{user}/{appId} with input query: " + "flow/" + cluster + SLASH
           + user + SLASH + appId + "?limit=" + limit + "&includeConf=" + builderIncludeConfigs
-          + "&includeConfRegex=" + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
-   //   Stats.exportLong(HravenResponseMetrics.FLOW_API_NUM_FLOWS.toString(), 0);
+          + "&includeConfRegex=" + builderIncludeConfigRegex + " No flows fetched, spent "+ timer);
     }
-    HravenResponseMetrics.FLOW_API_LATENCY_VALUE.set(timer.elapsedMillis());
+
+    // export latency metrics
+    HravenResponseMetrics.FLOW_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flows;
 
   }
@@ -377,6 +386,10 @@ public class RestJSONResource {
         + appId + "?version=" + version + "&limit=" + limit + "&startRow=" + startRow
         + "&startTime=" + startTime + "&endTime=" + endTime + "&includeJobs=" + includeJobs
         + " fetched " + flows.size() + " in " + timer);
+
+    // export latency metrics
+    HravenResponseMetrics.FLOW_STATS_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flowStatsPage;
  }
 
@@ -404,9 +417,11 @@ public class RestJSONResource {
      LOG.info("For appVersion/{cluster}/{user}/{appId}/ with input query "
        + "appVersion/" + cluster + SLASH + user + SLASH + appId
        + "?limit=" + limit
-       + " fetched #number of VersionInfo " + distinctVersions.size() + " in " + timer);
-   //  Stats.exportLong(HravenResponseMetrics.APPVERSIONS_API_NUM_VERSIONS.toString(), distinctVersions.size());
-   //  Stats.exportLong(HravenResponseMetrics.APPVERSIONS_API_LATENCY.toString(), timer.elapsedMillis());
+       + " fetched #number of VersionInfo " + distinctVersions.size() + " in " );//+ timer);
+
+     // export latency metrics
+     HravenResponseMetrics.APPVERSIONS_API_LATENCY_VALUE
+       .set(timer.elapsed(TimeUnit.MILLISECONDS));
      return distinctVersions;
   }
 
@@ -498,7 +513,10 @@ public class RestJSONResource {
         }
       }
   }
-    //Stats.exportLong(HravenResponseMetrics.HDFS_STATS_API_LATENCY.toString(), timer.elapsedMillis());
+
+    // export latency metrics
+    HravenResponseMetrics.HDFS_STATS_API_LATENCY_VALUE
+      .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return hdfsStats;
   }
 
@@ -550,15 +568,16 @@ public class RestJSONResource {
         +  "hdfs/path/" + cluster
         + "?limit=" + limit + "&path=" + path
         + " fetched #number of HdfsStats " + hdfsStats.size() + " in " + timer);
-      //Stats.exportLong(HravenResponseMetrics.HDFS_TIMESERIES_API_NUM_STATS.toString(), hdfsStats.size());
     } else {
       LOG.info("For hdfs/path/{cluster}/{attribute} with input query "
           +  "hdfs/path/" + cluster
           + "?limit=" + limit + "&path=" + path
           + " fetched 0 HdfsStats in " + timer);
-    //  Stats.exportLong(HravenResponseMetrics.HDFS_TIMESERIES_API_NUM_STATS.toString(), 0);
     }
-    //Stats.exportLong(HravenResponseMetrics.HDFS_TIMESERIES_API_LATENCY.toString(), timer.elapsedMillis());
+
+    // export latency metrics
+    HravenResponseMetrics.HDFS_TIMESERIES_API_LATENCY_VALUE
+       .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return hdfsStats;
   }
 
@@ -608,7 +627,10 @@ public class RestJSONResource {
 
    serializationContext.set(new SerializationContext(
       SerializationContext.DetailLevel.APP_SUMMARY_STATS_NEW_JOBS_ONLY));
-   //Stats.exportLong(HravenResponseMetrics.APPVERSIONS_API_LATENCY.toString(), timer.elapsedMillis());
+
+   // export latency metrics
+   HravenResponseMetrics.NEW_JOBS_API_LATENCY_VALUE
+       .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return newApps;
  }
 

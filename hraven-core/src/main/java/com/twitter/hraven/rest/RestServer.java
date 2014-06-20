@@ -35,6 +35,7 @@ import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 /**
  * Simple REST server that spawns an embedded Jetty instance to service requests
+ * @deprecated in favor of {@link HravenRestServer}
  */
 public class RestServer extends AbstractIdleService {
   /** Default TCP port for the server to listen on */
@@ -96,7 +97,7 @@ public class RestServer extends AbstractIdleService {
         "To run the REST server, execute bin/hraven rest start|stop [-p <port>]", true);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     // parse commandline options
     Options opts = new Options();
     opts.addOption("p", "port", true, "Port for server to bind to (default 8080)");
@@ -125,7 +126,7 @@ public class RestServer extends AbstractIdleService {
       address = cmd.getOptionValue("a");
     }
     RestServer server = new RestServer(address, port);
-    server.startAndWait();
+    server.startUp();
     // run until we're done
   }
 }
