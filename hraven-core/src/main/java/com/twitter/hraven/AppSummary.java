@@ -19,7 +19,8 @@ package com.twitter.hraven;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 
 import com.twitter.hraven.datasource.ProcessingException;
 

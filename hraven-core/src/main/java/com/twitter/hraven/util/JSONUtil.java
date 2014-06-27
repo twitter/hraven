@@ -20,11 +20,10 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
 
-import org.codehaus.jackson.map.DeserializationConfig;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig;
-import org.codehaus.jackson.type.TypeReference;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.twitter.hraven.ClientObjectMapper;
 import com.twitter.hraven.rest.ObjectMapperProvider;
 
@@ -44,8 +43,8 @@ public class JSONUtil {
   public static void writeJson(Writer writer, Object object) throws IOException {
     ObjectMapper om = ObjectMapperProvider.createCustomMapper();
 
-    om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
-    om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+    om.configure(SerializationFeature.INDENT_OUTPUT, true);
+    om.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
     writer.write(om.writeValueAsString(object));
     writer.write("\n");
@@ -58,8 +57,7 @@ public class JSONUtil {
 
   public static Object readJson(InputStream inputStream, TypeReference type) throws IOException {
     ObjectMapper om = ClientObjectMapper.createCustomMapper();
-    om.getDeserializationConfig().set(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
-      false);
+    om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     return om.readValue(inputStream, type);
   }
 }

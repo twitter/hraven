@@ -132,8 +132,8 @@
     <mockito-all.version>1.8.5</mockito-all.version>
     <log4j.version>1.2.15</log4j.version>
     <guava.version>14.0</guava.version>
-    <jersey.version>1.12</jersey.version>
-    <jackson.version>1.9.6</jackson.version>
+    <jersey.version>1.18.1</jersey.version>
+    <jackson.version>2.3.3</jackson.version>
 
     <!-- default arguments for release plugin, override with -Drelease.arguments=... -->
     <release.arguments />
@@ -169,7 +169,7 @@
 	<version>0.9</version>
         <configuration>
         </configuration>
-      </plugin> 
+      </plugin>
       <!-- Assembly is handled in the hraven-assembly module -->
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>

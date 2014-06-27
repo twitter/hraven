@@ -8,8 +8,9 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.codehaus.jackson.type.TypeReference;
 
+
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.twitter.hraven.util.JSONUtil;
 
 class UrlDataLoader<T> {

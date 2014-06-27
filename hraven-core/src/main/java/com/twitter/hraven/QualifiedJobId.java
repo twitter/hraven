@@ -15,8 +15,9 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * The job ID should be relatively unique, unless two clusters start at the same

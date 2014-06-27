@@ -30,7 +30,7 @@
   <name>hRaven - etl</name>
   <packaging>jar</packaging>
   <description>ETL map reduce jobs and supporting components for data loading</description>
- 
+
   <build>
     <!-- Some plugins (javadoc for example) can be used in the normal build- and the site phase.
          These plugins inherit their options from the <reporting> section below. These settings
@@ -239,6 +239,10 @@
           <groupId>oro</groupId>
           <artifactId>oro</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -304,25 +308,10 @@
       <version>${jersey.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-core-asl</artifactId>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-json-org</artifactId>
       <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-jaxrs</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-xc</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
+   </dependency>
 
     <!-- Test dependencies -->
     <dependency>
