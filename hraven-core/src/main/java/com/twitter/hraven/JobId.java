@@ -15,8 +15,14 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.WritableComparable;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
@@ -25,7 +31,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * apart.  The jobtracker ID is parsed as: job_[epoch]_[sequence]
  *
  */
-public class JobId implements Comparable<JobId> {
+public class JobId implements WritableComparable<JobId> {
   protected static final String JOB_ID_SEP = "_";
   /**
    * The jobtracker start time from the job ID, obtained from parsing the
@@ -135,5 +141,20 @@ public class JobId implements Comparable<JobId> {
           .append(this.jobEpoch)
           .append(this.jobSequence)
           .toHashCode();
+  }
+
+  @Override
+  public void write(DataOutput out) throws IOException {
+    new LongWritable(this.jobEpoch).write(out);
+    new LongWritable(this.jobSequence).write(out);
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    LongWritable lw = new LongWritable();
+    lw.readFields(in);
+    this.jobEpoch = lw.get();
+    lw.readFields(in);
+    this.jobSequence = lw.get();
   }
 }

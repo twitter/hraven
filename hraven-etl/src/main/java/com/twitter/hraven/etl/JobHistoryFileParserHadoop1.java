@@ -17,6 +17,7 @@ package com.twitter.hraven.etl;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -25,6 +26,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.mapred.JobHistoryCopy;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.JobHistoryRecordCollection;
+import com.twitter.hraven.JobHistoryRecord;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
@@ -56,9 +59,9 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			jobHistoryListener = new JobHistoryListener(jobKey);
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 			// set the hadoop version for this record
-			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), 
-			  jobHistoryListener.getJobKeyBytes());
-			jobHistoryListener.includeHadoopVersionPut(versionPut);
+			JobHistoryRecord versionRecord = getHadoopVersionRecord(JobHistoryFileParserFactory.getHistoryFileVersion1(), 
+			jobHistoryListener.getJobKey());
+			jobHistoryListener.includeHadoopVersionRecord(versionRecord);
 		} catch (IOException ioe) {
 			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
 			throw new ProcessingException(
@@ -72,9 +75,9 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public List<Put> getJobPuts() {
+	public Collection getJobRecords() {
 		if (jobHistoryListener != null) {
-			return jobHistoryListener.getJobPuts();
+			return jobHistoryListener.getJobRecords();
 		} else {
 			return null;
 		}
@@ -84,9 +87,9 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public List<Put> getTaskPuts() {
+	public Collection getTaskRecords() {
 		if (jobHistoryListener != null) {
-			return jobHistoryListener.getTaskPuts();
+			return jobHistoryListener.getTaskRecords();
 		} else {
 			return null;
 		}

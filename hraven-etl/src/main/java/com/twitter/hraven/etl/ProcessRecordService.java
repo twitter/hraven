@@ -148,10 +148,10 @@ public class ProcessRecordService {
    *         state.
    * @throws IOException
    */
-  public ProcessRecord getLastSuccessfulProcessRecord(String cluster)
+  public ProcessRecord getLastSuccessfulProcessRecord(String cluster, String processFileSubstring)
       throws IOException {
     List<ProcessRecord> processRecords = getProcessRecords(cluster, NOT_EQUAL,
-        CREATED, 1, null);
+        CREATED, 1, processFileSubstring);
     if (processRecords.size() > 0) {
       return processRecords.get(0);
     }

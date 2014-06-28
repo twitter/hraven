@@ -31,6 +31,8 @@ public class Constants {
   public static final char SEP_CHAR = '!';
   public static final String SEP = "" + SEP_CHAR;
   public static final byte[] SEP_BYTES = Bytes.toBytes(SEP);
+  
+  public static final String PERIOD_SEP_CHAR = ".";
 
   // common default values
   public static final byte[] EMPTY_BYTES = new byte[0];
@@ -426,4 +428,29 @@ public class Constants {
 
   /** name of the properties file used for cluster to cluster identifier mapping */
   public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
+
+  public static final String JOBCONF_SINKS = "hraven.sinks";
+  
+  public static final String JOBCONF_GRAPHITE_HOST_KEY = "hraven.sink.graphite.host";
+  public static final String JOBCONF_GRAPHITE_PORT_KEY = "hraven.sink.graphite.port";
+  public static final String JOBCONF_GRAPHITE_PREFIX = "hraven.sink.graphite.prefix";
+  public static final String JOBCONF_GRAPHITE_USER_FILTER = "hraven.sink.graphite.userfilter";
+  public static final String JOBCONF_GRAPHITE_QUEUE_FILTER = "hraven.sink.graphite.queuefilter";
+  public static final String JOBCONF_GRAPHITE_EXCLUDED_COMPONENTS = "hraven.sink.graphite.excludedcomponents";
+  public static final String JOBCONF_GRAPHITE_DONOTEXCLUDE_APPS = "hraven.sink.graphite.donotexcludeapps";
+  
+  public static final int GRAPHITE_DEFAULT_PORT = 2003;
+  public static final String GRAPHITE_DEFAULT_HOST = "localhost";
+  public static final String GRAPHITE_DEFAULT_PREFIX = "DEFAULT";
+  
+  public static final String GRAPHITE_KEY_MAPPING_TABLE = PREFIX + "graphite_key_mapping";
+  public static final byte[] GRAPHITE_KEY_MAPPING_TABLE_BYTES = Bytes.toBytes(GRAPHITE_KEY_MAPPING_TABLE);
+  
+  public static final String GRAPHITE_REVERSE_KEY_MAPPING_TABLE = PREFIX + "graphite_key_mapping_r";
+  public static final byte[] GRAPHITE_REVERSE_KEY_MAPPING_TABLE_BYTES = Bytes.toBytes(GRAPHITE_REVERSE_KEY_MAPPING_TABLE);
+  
+  public static final String GRAPHITE_KEY_MAPPING_COLUMN = "k";
+  public static final byte[] GRAPHITE_KEY_MAPPING_COLUMN_BYTES = Bytes.toBytes(GRAPHITE_KEY_MAPPING_COLUMN);
+
+  
 }

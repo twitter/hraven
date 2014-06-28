@@ -680,8 +680,7 @@ public class JobHistoryService {
    *
    * @throws IllegalArgumentException if neither config param is found
    */
-   static void setHravenQueueNamePut(Configuration jobConf, Put jobPut,
-		   JobKey jobKey, byte[] jobConfColumnPrefix) {
+   static void setHravenQueueNameRecord(Configuration jobConf, JobHistoryRecordCollection recordCollection, JobKey jobKey) {
 
      String hRavenQueueName = HadoopConfUtil.getQueueName(jobConf);
      if (hRavenQueueName.equalsIgnoreCase(Constants.DEFAULT_VALUE_QUEUENAME)){
@@ -692,9 +691,8 @@ public class JobHistoryService {
 
      // set the "queue" property defined by hRaven
      // this makes it independent of hadoop version config parameters
-     byte[] column = Bytes.add(jobConfColumnPrefix, Constants.HRAVEN_QUEUE_BYTES);
-     jobPut.add(Constants.INFO_FAM_BYTES, column,
-    			  Bytes.toBytes(hRavenQueueName));
+	 recordCollection.add(RecordCategory.CONF_META, new RecordDataKey(
+				Constants.HRAVEN_QUEUE), hRavenQueueName);
    }
 
   /**
@@ -708,40 +706,28 @@ public class JobHistoryService {
    *          the job configuration
    * @return puts for the given job configuration
    */
-  public static List<Put> getHbasePuts(JobDesc jobDesc, Configuration jobConf) {
-    List<Put> puts = new LinkedList<Put>();
-
+  public static JobHistoryRecordCollection getConfRecord(JobDesc jobDesc, Configuration jobConf) {
     JobKey jobKey = new JobKey(jobDesc);
-    byte[] jobKeyBytes = new JobKeyConverter().toBytes(jobKey);
 
     // Add all columns to one put
-    Put jobPut = new Put(jobKeyBytes);
-    jobPut.add(Constants.INFO_FAM_BYTES, Constants.VERSION_COLUMN_BYTES,
-        Bytes.toBytes(jobDesc.getVersion()));
-    jobPut.add(Constants.INFO_FAM_BYTES, Constants.FRAMEWORK_COLUMN_BYTES,
-        Bytes.toBytes(jobDesc.getFramework().toString()));
+    JobHistoryRecordCollection recordCollection = new JobHistoryRecordCollection(jobKey);
 
-    // Avoid doing string to byte conversion inside loop.
-    byte[] jobConfColumnPrefix = Bytes.toBytes(Constants.JOB_CONF_COLUMN_PREFIX
-        + Constants.SEP);
+    recordCollection.add(RecordCategory.CONF_META, new RecordDataKey(Constants.VERSION_COLUMN),
+      jobDesc.getVersion());
+    recordCollection.add(RecordCategory.CONF_META, new RecordDataKey(Constants.FRAMEWORK_COLUMN), jobDesc
+        .getFramework().toString());
 
-    // Create puts for all the parameters in the job configuration
+    // Create records for all the parameters in the job configuration
     Iterator<Entry<String, String>> jobConfIterator = jobConf.iterator();
     while (jobConfIterator.hasNext()) {
       Entry<String, String> entry = jobConfIterator.next();
-      // Prefix the job conf entry column with an indicator to
-      byte[] column = Bytes.add(jobConfColumnPrefix,
-          Bytes.toBytes(entry.getKey()));
-      jobPut.add(Constants.INFO_FAM_BYTES, column,
-          Bytes.toBytes(entry.getValue()));
+      recordCollection.add(RecordCategory.CONF, new RecordDataKey(entry.getKey()), entry.getValue());
     }
 
     // ensure pool/queuename is set correctly
-    setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
+    setHravenQueueNameRecord(jobConf, recordCollection, jobKey);
 
-    puts.add(jobPut);
-
-    return puts;
+    return recordCollection;
   }
 
   /**

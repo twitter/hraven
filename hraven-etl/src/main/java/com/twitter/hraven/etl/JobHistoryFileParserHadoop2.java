@@ -10,12 +10,12 @@ package com.twitter.hraven.etl;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -26,14 +26,10 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.commons.configuration.ConversionException;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.mapred.JobHistoryCopy.RecordTypes;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -42,7 +38,12 @@ import org.codehaus.jettison.json.JSONObject;
 import com.google.common.collect.Maps;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobHistoryKeys;
+import com.twitter.hraven.JobHistoryRecord;
+import com.twitter.hraven.JobHistoryRecordCollection;
+import com.twitter.hraven.JobHistoryTaskRecord;
 import com.twitter.hraven.JobKey;
+import com.twitter.hraven.RecordCategory;
+import com.twitter.hraven.RecordDataKey;
 import com.twitter.hraven.TaskKey;
 import com.twitter.hraven.util.ByteArrayWrapper;
 import com.twitter.hraven.datasource.JobKeyConverter;
@@ -59,8 +60,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   /** Job ID, minus the leading "job_" */
   private String jobNumber = "";
   private byte[] jobKeyBytes;
-  private List<Put> jobPuts = new LinkedList<Put>();
-  private List<Put> taskPuts = new LinkedList<Put>();
+  private Collection jobRecords;
+  private Collection taskRecords = new ArrayList<JobHistoryTaskRecord>();
   boolean uberized = false;
 
   /**
@@ -223,6 +224,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       throws ProcessingException {
 
     this.jobKey = jobKey;
+    
+    if (this.jobRecords == null) {
+      this.jobRecords = new JobHistoryRecordCollection(jobKey);
+    }
+    
     this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
     setJobId(jobKey.getJobId().getJobIdString());
 
@@ -293,27 +299,24 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
      * events are not so we need to look through the whole file to confirm
      * the job status and then generate the put
      */
-    Put jobStatusPut = getJobStatusPut();
-    this.jobPuts.add(jobStatusPut);
+    this.jobRecords.add(getJobStatusRecord());
 
     // set the hadoop version for this record
-    Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion2(), this.jobKeyBytes);
-    this.jobPuts.add(versionPut);
+    JobHistoryRecord versionRecord =
+        getHadoopVersionRecord(JobHistoryFileParserFactory.getHistoryFileVersion2(), this.jobKey);
+    this.jobRecords.add(versionRecord);
 
-    LOG.info("For " + this.jobKey + " #jobPuts " + jobPuts.size() + " #taskPuts: "
-        + taskPuts.size());
+    LOG.info("For " + this.jobKey + " #jobPuts " + jobRecords.size() + " #taskPuts: "
+        + taskRecords.size());
   }
 
   /**
    * generates a put for job status
    * @return Put that contains Job Status
    */
-  private Put getJobStatusPut() {
-    Put pStatus = new Put(jobKeyBytes);
-    byte[] valueBytes = Bytes.toBytes(this.jobStatus);
-    byte[] qualifier = Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase());
-    pStatus.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
-    return pStatus;
+  private JobHistoryRecord getJobStatusRecord() {
+    return new JobHistoryRecord(RecordCategory.HISTORY_META, this.jobKey, new RecordDataKey(
+        JobHistoryKeys.JOB_STATUS.toString().toLowerCase()), this.jobStatus);
   }
 
   /**
@@ -377,7 +380,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * "counts":[ { "name":"MAP_INPUT_RECORDS", "displayName":"Map input records", "value":10 }, {
    * "name":"MAP_OUTPUT_RECORDS", "displayName":"Map output records", "value":10 } ] } ] }
    */
-  private void processCounters(Put p, JSONObject eventDetails, String key) {
+  private void processCounters(JSONObject eventDetails, String key) {
 
     try {
       JSONObject jsonCounters = eventDetails.getJSONObject(key);
@@ -388,8 +391,21 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
         JSONArray counts = aCounter.getJSONArray(COUNTS);
         for (int j = 0; j < counts.length(); j++) {
           JSONObject countDetails = counts.getJSONObject(j);
-          populatePut(p, Constants.INFO_FAM_BYTES, counterMetaGroupName, aCounter.get(NAME)
-              .toString(), countDetails.get(NAME).toString(), countDetails.getLong(VALUE));
+          //counterMetaGroupName;
+          String groupName = aCounter.get(NAME).toString();
+          String counterName = countDetails.get(NAME).toString();
+          Long counterValue = countDetails.getLong(VALUE);
+          
+          /**
+           * correct and populate map and reduce slot millis
+           */
+          if ((Constants.SLOTS_MILLIS_MAPS.equals(counterName)) ||
+              (Constants.SLOTS_MILLIS_REDUCES.equals(counterName))) {
+            counterValue = getStandardizedCounterValue(counterName, counterValue);
+          }
+          
+          this.jobRecords.add(new JobHistoryRecord(RecordCategory.HISTORY_COUNTER, this.jobKey,
+              new RecordDataKey(counterMetaGroupName, groupName, counterName), counterValue));
         }
       }
     } catch (JSONException e) {
@@ -403,57 +419,57 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * @throws JSONException
    */
   private void
-      processAllTypes(Put p, Hadoop2RecordType recType, JSONObject eventDetails, String key)
+      processAllTypes(Hadoop2RecordType recType, JSONObject eventDetails, String dataKey, RecordAdder adder)
           throws JSONException {
 
-    if (COUNTER_NAMES.contains(key)) {
-      processCounters(p, eventDetails, key);
+    if (COUNTER_NAMES.contains(dataKey)) {
+      processCounters(eventDetails, dataKey);
     } else {
-      String type = fieldTypes.get(recType).get(key);
+      String type = fieldTypes.get(recType).get(dataKey);
       if (type.equalsIgnoreCase(TYPE_STRING)) {
         // look for job status
         if (JobHistoryKeys.JOB_STATUS.toString().equals(
-          JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
+          JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(dataKey))) {
           // store it only if it's one of the terminal state events
           if ((recType.equals(Hadoop2RecordType.JobFinished))
               || (recType.equals(Hadoop2RecordType.JobUnsuccessfulCompletion))) {
-            this.jobStatus = eventDetails.getString(key);
+            this.jobStatus = eventDetails.getString(dataKey);
           }
         } else {
-          String value = eventDetails.getString(key);
-          populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+          String value = eventDetails.getString(dataKey);
+          populateRecord(dataKey, value, adder);
         }
       } else if (type.equalsIgnoreCase(TYPE_LONG)) {
-        long value = eventDetails.getLong(key);
-        populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        long value = eventDetails.getLong(dataKey);
+        populateRecord(dataKey, value, adder);
         // populate start time of the job for megabytemillis calculations
         if ((recType.equals(Hadoop2RecordType.JobInited)) &&
-            LAUNCH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
+            LAUNCH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(dataKey))) {
           this.startTime = value;
         }
         // populate end time of the job for megabytemillis calculations
         if ((recType.equals(Hadoop2RecordType.JobFinished))
             || (recType.equals(Hadoop2RecordType.JobUnsuccessfulCompletion))) {
-          if (FINISH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
+          if (FINISH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(dataKey))) {
             this.endTime = value;
           }
         }
       } else if (type.equalsIgnoreCase(TYPE_INT)) {
-        int value = eventDetails.getInt(key);
-        populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        int value = eventDetails.getInt(dataKey);
+        populateRecord(dataKey, value, adder);
       } else if (type.equalsIgnoreCase(TYPE_BOOLEAN)) {
-        boolean value = eventDetails.getBoolean(key);
-        populatePut(p, Constants.INFO_FAM_BYTES, key, Boolean.toString(value));
+        boolean value = eventDetails.getBoolean(dataKey);
+        populateRecord(dataKey, Boolean.toString(value), adder);
       } else if (type.equalsIgnoreCase(TYPE_ARRAY_INTS)) {
-        String value = eventDetails.getString(key);
-        populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        String value = eventDetails.getString(dataKey);
+        populateRecord(dataKey, value, adder);
       } else if (type.equalsIgnoreCase(NULL_STRING)) {
         // usually seen in FAILED tasks
-        String value = eventDetails.getString(key);
-        populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        String value = eventDetails.getString(dataKey);
+        populateRecord(dataKey, value, adder);
       } else if (type.equalsIgnoreCase(TYPE_MAP_STRINGS)) {
-        JSONObject ms = new JSONObject(eventDetails.get(key).toString());
-        populatePut(p, Constants.INFO_FAM_BYTES, key, ms.toString());
+        JSONObject ms = new JSONObject(eventDetails.get(dataKey).toString());
+        populateRecord(dataKey, ms.toString(), adder);
       } else {
         throw new ProcessingException("Encountered a new type " + type
             + " unable to complete processing " + this.jobKey);
@@ -465,15 +481,19 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * iterate over the event details and prepare puts
    * @throws JSONException
    */
-  private void iterateAndPreparePuts(JSONObject eventDetails, Put p, Hadoop2RecordType recType)
+  private void iterateAndAddRecords(JSONObject eventDetails, Hadoop2RecordType recType, RecordAdder adder)
       throws JSONException {
     Iterator<?> keys = eventDetails.keys();
     while (keys.hasNext()) {
-      String key = (String) keys.next();
-      processAllTypes(p, recType, eventDetails, key);
+      String dataKey = (String) keys.next();
+      processAllTypes(recType, eventDetails, dataKey, adder);
     }
   }
 
+  private interface RecordAdder {
+    public void addRecord(RecordDataKey key, Object value, boolean isNumeric);
+  }
+  
   /**
    * process individual records
    * @throws JSONException
@@ -492,65 +512,95 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     case JobStatusChanged:
     case JobSubmitted:
     case JobUnsuccessfulCompletion:
-      Put pJob = new Put(this.jobKeyBytes);
-      iterateAndPreparePuts(eventDetails, pJob, recType);
-      this.jobPuts.add(pJob);
+      iterateAndAddRecords(eventDetails, recType, new RecordAdder() {
+        @Override
+        public void addRecord(RecordDataKey key, Object value, boolean isNumeric) {
+          jobRecords.add(new JobHistoryRecord(isNumeric ? RecordCategory.HISTORY_COUNTER
+              : RecordCategory.HISTORY_META, jobKey, key, value));
+        }
+      });
       break;
 
     case AMStarted:
-      byte[] amAttemptIdKeyBytes =
-          getAMKey(AM_ATTEMPT_PREFIX, eventDetails.getString(APPLICATION_ATTEMPTID));
-      // generate a new put per AM Attempt
-      Put pAM = new Put(amAttemptIdKeyBytes);
-      pAM.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.Task.toString()));
-      iterateAndPreparePuts(eventDetails, pAM, recType);
-      taskPuts.add(pAM);
+        final TaskKey amAttemptIdKey =
+            getAMKey(AM_ATTEMPT_PREFIX, eventDetails.getString(APPLICATION_ATTEMPTID));
+        // generate a new record per AM Attempt
+        taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, amAttemptIdKey,
+            new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.Task.toString()));
+        
+        iterateAndAddRecords(eventDetails, recType, new RecordAdder() {
+          @Override
+          public void addRecord(RecordDataKey key, Object value, boolean isNumeric) {
+            taskRecords.add(new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+                : RecordCategory.HISTORY_TASK_META, amAttemptIdKey, key, value));
+          }
+        });  
       break;
 
     case MapAttemptFinished:
-      byte[] taskMAttemptIdKeyBytes =
-          getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
-      Put pMTaskAttempt = new Put(taskMAttemptIdKeyBytes);
-      pMTaskAttempt.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.MapAttempt.toString()));
-      iterateAndPreparePuts(eventDetails, pMTaskAttempt, recType);
-      this.taskPuts.add(pMTaskAttempt);
+        final TaskKey taskMAttemptIdKey =
+            getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
+        
+        taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, taskMAttemptIdKey,
+          new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.MapAttempt.toString()));
+        
+        iterateAndAddRecords(eventDetails, recType, new RecordAdder() {
+          @Override
+          public void addRecord(RecordDataKey key, Object value, boolean isNumeric) {
+            taskRecords.add(new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+                : RecordCategory.HISTORY_TASK_META, taskMAttemptIdKey, key, value));
+          }
+        });  
       break;
 
     case ReduceAttemptFinished:
-      byte[] taskRAttemptIdKeyBytes =
-          getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
-      Put pRTaskAttempt = new Put(taskRAttemptIdKeyBytes);
-      pRTaskAttempt.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.ReduceAttempt.toString()));
-      iterateAndPreparePuts(eventDetails, pRTaskAttempt, recType);
-      this.taskPuts.add(pRTaskAttempt);
+        final TaskKey taskRAttemptIdKey =
+            getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
+        taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, taskRAttemptIdKey,
+          new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.ReduceAttempt.toString()));
+        
+        iterateAndAddRecords(eventDetails, recType, new RecordAdder() {
+          @Override
+          public void addRecord(RecordDataKey key, Object value, boolean isNumeric) {
+            taskRecords.add(new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+                : RecordCategory.HISTORY_TASK_META, taskRAttemptIdKey, key, value));
+          }
+        });
       break;
 
     case TaskAttemptFinished:
     case TaskAttemptStarted:
     case TaskAttemptUnsuccessfulCompletion:
-      byte[] taskAttemptIdKeyBytes =
-          getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
-      Put pTaskAttempt = new Put(taskAttemptIdKeyBytes);
-      pTaskAttempt.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.Task.toString()));
-      iterateAndPreparePuts(eventDetails, pTaskAttempt, recType);
-      taskPuts.add(pTaskAttempt);
+        final TaskKey taskAttemptIdKey =
+            getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
+        taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, taskAttemptIdKey,
+          new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.Task.toString()));
+        
+        iterateAndAddRecords(eventDetails, recType, new RecordAdder() {
+          @Override
+          public void addRecord(RecordDataKey key, Object value, boolean isNumeric) {
+            taskRecords.add(new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+                : RecordCategory.HISTORY_TASK_META, taskAttemptIdKey, key, value));
+          }
+        });  
       break;
 
     case TaskFailed:
     case TaskStarted:
     case TaskUpdated:
     case TaskFinished:
-      byte[] taskIdKeyBytes =
-          getTaskKey(TASK_PREFIX, this.jobNumber, eventDetails.getString(TASKID));
-      Put pTask = new Put(taskIdKeyBytes);
-      pTask.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.Task.toString()));
-      iterateAndPreparePuts(eventDetails, pTask, recType);
-      taskPuts.add(pTask);
+        final TaskKey taskIdKey =
+            getTaskKey(TASK_PREFIX, this.jobNumber, eventDetails.getString(TASKID));
+        taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, taskIdKey,
+          new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.Task.toString()));
+        
+        iterateAndAddRecords(eventDetails, recType, new RecordAdder() {
+          @Override
+          public void addRecord(RecordDataKey key, Object value, boolean isNumeric) {
+            taskRecords.add(new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+                : RecordCategory.HISTORY_TASK_META, taskIdKey, key, value));
+          }
+        });        
       break;
     default:
       LOG.error("Check if recType was modified and has new members?");
@@ -587,12 +637,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * @param String key
    * @param long value
    */
-  private void populatePut(Put p, byte[] family, String key, long value) {
-
-    byte[] valueBytes = null;
-    valueBytes = (value != 0L) ? Bytes.toBytes(value) : Constants.ZERO_LONG_BYTES;
-    byte[] qualifier = Bytes.toBytes(getKey(key).toLowerCase());
-    p.add(family, qualifier, valueBytes);
+  private void populateRecord(String key, long value, RecordAdder adder) {
+    adder.addRecord(new RecordDataKey(getKey(key).toLowerCase()), value, true);
   }
 
   /**
@@ -602,19 +648,19 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * keeping this function package level visible (unit testing)
    * @throws IllegalArgumentException if new key is encountered
    */
-   byte[] getValue(String key, int value) {
-    byte[] valueBytes = null;
+   Object getValue(String key, int value) {
+    Object valueObject = null;
     Class<?> clazz = JobHistoryKeys.KEY_TYPES.get(JobHistoryKeys.valueOf(key));
     if (clazz == null) {
       throw new IllegalArgumentException(" unknown key " + key + " encountered while parsing "
           + this.jobKey);
     }
     if (Long.class.equals(clazz)) {
-      valueBytes = (value != 0L) ? Bytes.toBytes(new Long(value)) : Constants.ZERO_LONG_BYTES;
+      valueObject = (value != 0L) ? new Long(value) : 0L;
     } else {
-      valueBytes = (value != 0) ? Bytes.toBytes(value) : Constants.ZERO_INT_BYTES;
+      valueObject = (int)value;
     }
-    return valueBytes;
+    return valueObject;
   }
 
   /**
@@ -624,14 +670,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * @param String key
    * @param int value
    */
-  private void populatePut(Put p, byte[] family, String key, int value) {
-
+  private void populateRecord(String key, int value, RecordAdder adder) {
     String jobHistoryKey = getKey(key);
-    byte[] valueBytes = getValue(jobHistoryKey, value);
-    byte[] qualifier = Bytes.toBytes(jobHistoryKey.toLowerCase());
-    p.add(family, qualifier, valueBytes);
+    adder.addRecord(new RecordDataKey(jobHistoryKey), getValue(jobHistoryKey, value), true);
   }
-
+  
   /**
    * populates a put for string values
    * @param {@link Put} p
@@ -639,72 +682,13 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * @param {@link String} key
    * @param String value
    */
-  private void populatePut(Put p, byte[] family, String key, String value) {
-    byte[] valueBytes = null;
-    valueBytes = Bytes.toBytes(value);
-    byte[] qualifier = Bytes.toBytes(getKey(key).toLowerCase());
-    p.add(family, qualifier, valueBytes);
-  }
-
-  /**
-   * populates a put for {@link Counters}
-   * @param {@link Put} p
-   * @param {@link Constants} family
-   * @param String key
-   * @param String groupName
-   * @param String counterName
-   * @param long counterValue
-   */
-  private void populatePut(Put p, byte[] family, String key, String groupName, String counterName,
-      Long counterValue) {
-    byte[] counterPrefix = null;
-
-    try {
-      switch (JobHistoryKeys.valueOf(JobHistoryKeys.class, key)) {
-      case COUNTERS:
-      case TOTAL_COUNTERS:
-      case TASK_COUNTERS:
-      case TASK_ATTEMPT_COUNTERS:
-        counterPrefix = Bytes.add(Constants.COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
-        break;
-      case MAP_COUNTERS:
-        counterPrefix = Bytes.add(Constants.MAP_COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
-        break;
-      case REDUCE_COUNTERS:
-        counterPrefix =
-            Bytes.add(Constants.REDUCE_COUNTER_COLUMN_PREFIX_BYTES, Constants.SEP_BYTES);
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown counter type " + key.toString());
-      }
-    } catch (IllegalArgumentException iae) {
-      throw new ProcessingException("Unknown counter type " + key, iae);
-    } catch (NullPointerException npe) {
-      throw new ProcessingException("Null counter type " + key, npe);
-    }
-
-    byte[] groupPrefix = Bytes.add(counterPrefix, Bytes.toBytes(groupName), Constants.SEP_BYTES);
-    byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
-
-    /**
-     * correct and populate map and reduce slot millis
-     */
-    if ((Constants.SLOTS_MILLIS_MAPS.equals(counterName)) ||
-        (Constants.SLOTS_MILLIS_REDUCES.equals(counterName))) {
-      counterValue = getStandardizedCounterValue(counterName, counterValue);
-    }
-
-    p.add(family, qualifier, Bytes.toBytes(counterValue));
-
+  private void populateRecord(String key, String value, RecordAdder adder) {
+    adder.addRecord(new RecordDataKey(getKey(key).toLowerCase()), value, false);
   }
 
   private long getMemoryMb(String key) {
     long memoryMb = 0L;
-    if (Constants.MAP_MEMORY_MB_CONF_KEY.equals(key)){
-	memoryMb =  this.jobConf.getLong(key, Constants.DEFAULT_MAP_MEMORY_MB);
-    }else if (Constants.REDUCE_MEMORY_MB_CONF_KEY.equals(key)){
-	memoryMb = this.jobConf.getLong(key, Constants.DEFAULT_REDUCE_MEMORY_MB);
-    }
+    memoryMb = this.jobConf.getLong(key, 0L);
     if (memoryMb == 0L) {
       throw new ProcessingException(
           "While correcting slot millis, " + key + " was found to be 0 ");
@@ -755,7 +739,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * Returns the Task ID or Task Attempt ID, stripped of the leading job ID, appended to the job row
    * key.
    */
-  public byte[] getTaskKey(String prefix, String jobNumber, String fullId) {
+  public TaskKey getTaskKey(String prefix, String jobNumber, String fullId) {
     String taskComponent = fullId;
     if (fullId == null) {
       taskComponent = "";
@@ -765,50 +749,31 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
         taskComponent = fullId.substring(expectedPrefix.length());
       }
     }
-    return taskKeyConv.toBytes(new TaskKey(this.jobKey, taskComponent));
+    return new TaskKey(this.jobKey, taskComponent);
   }
 
   /**
    * Returns the AM Attempt id stripped of the leading job ID, appended to the job row key.
    */
-  public byte[] getAMKey(String prefix, String fullId) {
-
+  public TaskKey getAMKey(String prefix, String fullId) {
     String taskComponent = prefix + fullId;
-    return taskKeyConv.toBytes(new TaskKey(this.jobKey, taskComponent));
+    return new TaskKey(this.jobKey, taskComponent);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public List<Put> getJobPuts() {
-    return jobPuts;
+  public Collection getJobRecords() {
+    return jobRecords;
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public List<Put> getTaskPuts() {
-    return taskPuts;
-  }
-
-  /**
-   * utitlity function for printing all puts
-   */
-  public void printAllPuts(List<Put> p) {
-    for (Put p1 : p) {
-      Map<byte[], List<KeyValue>> d = p1.getFamilyMap();
-      for (byte[] k : d.keySet()) {
-        System.out.println(" k " + Bytes.toString(k));
-      }
-      for (List<KeyValue> lkv : d.values()) {
-        for (KeyValue kv : lkv) {
-          System.out.println("\n row: " + taskKeyConv.fromBytes(kv.getRow())
-              + "\n " + Bytes.toString(kv.getQualifier()) + ": " + Bytes.toString(kv.getValue()));
-        }
-      }
-    }
+  public Collection getTaskRecords() {
+    return taskRecords;
   }
 
   /**
