@@ -316,7 +316,7 @@ public class JobFilePartitioner extends Configured implements Tool {
 
     // Accept only jobFiles and only those that fall in the desired range of
     // modification time.
-    JobFileModifiedRangePathFilter jobFileModifiedRangePathFilter = new JobFileModifiedRangePathFilter(
+    JobFileModifiedRangeSubstringPathFilter jobFileModifiedRangePathFilter = new JobFileModifiedRangeSubstringPathFilter(
         myConf, 0L);
 
     ContentSummary contentSummary = hdfs.getContentSummary(inputPath);

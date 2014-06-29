@@ -70,7 +70,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(expPath));
     origList[1] = hdfs.getFileStatus(expPath);
 
-    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
+    FileStatus [] prunedList = FileLister.pruneFileList(maxFileSize, origList);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 0);
 
@@ -87,7 +87,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(emptyConfFile));
     origList[1] = hdfs.getFileStatus(emptyConfFile);
 
-    prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
+    prunedList = FileLister.pruneFileList(maxFileSize, origList);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 2);
 
@@ -129,7 +129,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(expPath));
     origList[1] = hdfs.getFileStatus(expPath);
 
-    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
+    FileStatus [] prunedList = FileLister.pruneFileList(maxFileSize, origList);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 0);
   }
@@ -235,7 +235,7 @@ public class TestFileLister {
     assertTrue(hdfs.exists(emptyConfFile4));
     origList[11] = hdfs.getFileStatus(emptyConfFile4);
 
-    FileStatus [] prunedList = FileLister.pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
+    FileStatus [] prunedList = FileLister.pruneFileList(maxFileSize, origList);
     assertNotNull(prunedList);
     assertTrue(prunedList.length == 4);
   }
