@@ -21,30 +21,30 @@
 #
 #     hbase [--config /path/to/hbase/conf] shell bin/create_table.rb
 #
-create 'job_history', {NAME => 'i', COMPRESSION => 'LZO'}
+create 'hraven.job_history', {NAME => 'i', COMPRESSION => 'LZO'}
 
-create 'job_history_task', {NAME => 'i', COMPRESSION => 'LZO'}
+create 'hraven.job_history_task', {NAME => 'i', COMPRESSION => 'LZO'}
 
 # job_history  (indexed) by jobId table contains 1 column family:
 #   i:  job-level information specifically the rowkey into the 
-create 'job_history-by_jobId', {NAME => 'i', COMPRESSION => 'LZO'}
+create 'hraven.job_history-by_jobId', {NAME => 'i', COMPRESSION => 'LZO'}
 
 # job_history_app_version - stores all version numbers seen for a single app ID
 #   i:  "info" -- version information
-create 'job_history_app_version', {NAME => 'i', COMPRESSION => 'LZO'}
+create 'hraven.job_history_app_version', {NAME => 'i', COMPRESSION => 'LZO'}
 
-create 'job_history_raw', {NAME => 'i', COMPRESSION => 'LZO', BLOOMFILTER => 'ROWCOL'},
+create 'hraven.job_history_raw', {NAME => 'i', COMPRESSION => 'LZO', BLOOMFILTER => 'ROWCOL'},
                                 {NAME => 'r', VERSIONS => 1, COMPRESSION => 'LZO', BLOCKCACHE => false}
 
 # job_history_process - stores metadata about job history data loading process
 #   i:  "info" -- process information
-create 'job_history_process', {NAME => 'i', VERSIONS => 10, COMPRESSION => 'LZO'}
+create 'hraven.job_history_process', {NAME => 'i', VERSIONS => 10, COMPRESSION => 'LZO'}
 
 # flow_queue - stores reference to each flow ID running on a cluster, reverse timestamp ordered
-create 'flow_queue', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFILTER => 'ROW'}
+create 'hraven.flow_queue', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFILTER => 'ROW'}
 
 # flow_event - stores events fired during pig job execution
-create 'flow_event', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFILTER => 'ROW'}
+create 'hraven.flow_event', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFILTER => 'ROW'}
 
 
 exit
