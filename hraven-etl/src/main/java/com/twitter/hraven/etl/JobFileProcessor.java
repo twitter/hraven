@@ -632,17 +632,11 @@ public class JobFileProcessor extends Configured implements Tool {
 
   /**
    * DoIt.
-   * 
-   * @param args
-   *          the arguments to do it with
+   * @param args the arguments to do it with
+   * @throws Exception
    */
-  public static void main(String[] args) {
-    try {
-      ToolRunner.run(new JobFileProcessor(), args);
-    } catch (Exception e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+  public static void main(String[] args) throws Exception {
+    ToolRunner.run(new JobFileProcessor(), args);
   }
 
 }

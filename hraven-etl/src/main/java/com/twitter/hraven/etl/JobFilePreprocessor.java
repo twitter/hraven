@@ -446,14 +446,10 @@ public class JobFilePreprocessor extends Configured implements Tool {
    * 
    * @param args
    *          the arguments to do it with
+   * @throws Exception 
    */
-  public static void main(String[] args) {
-    try {
-      ToolRunner.run(new JobFilePreprocessor(), args);
-    } catch (Exception e) {
-      e.printStackTrace();
-      LOG.error("Error running job.", e);
-    }
+  public static void main(String[] args) throws Exception {
+    ToolRunner.run(new JobFilePreprocessor(), args);
   }
 
 }
