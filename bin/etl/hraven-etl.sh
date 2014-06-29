@@ -40,8 +40,12 @@ costfile=/var/lib/hraven/conf/costFile
 hadoopconfdir=${HADOOP_CONF_DIR:-$HADOOP_HOME/conf}
 hbaseconfdir=${HBASE_CONF_DIR:-$HBASE_HOME/conf}
 # HDFS directories for processing and loading job history data
-historyRawDir=/yarn/history/done/
-historyProcessingDir=/hraven/processing/
+year=2014
+month="*"
+day="*"
+historyDirPattern=/hadoop/mapred/history/done/*/$year/$month/$day/*/*
+historyBasePath=/hadoop/mapred/history/done
+historyProcessingDir=/hadoop/mapred/history/processing/
 #######################################################
 
 #If costfile is empty, fill it with default values
@@ -65,7 +69,7 @@ create_pidfile $HRAVEN_PID_DIR
 trap 'cleanup_pidfile_and_exit $HRAVEN_PID_DIR' INT TERM EXIT
 
 # Pre-process
-$home/jobFilePreprocessor.sh $hadoopconfdir $historyRawDir $historyProcessingDir $cluster $batchsize $defaultrawfilesizelimit
+$home/jobFilePreprocessor.sh $hadoopconfdir $historyBasePath $historyDirPattern $historyProcessingDir $cluster $batchsize $defaultrawfilesizelimit
 
 # Load
 $home/jobFileLoader.sh $hadoopconfdir $mapredmaxsplitsize $schedulerpoolname $cluster $historyProcessingDir
