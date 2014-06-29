@@ -297,7 +297,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
       if (!forceAllFiles) {
         lastProcessRecord = processRecordService
-            .getLastSuccessfulProcessRecord(cluster);
+            .getLastSuccessfulProcessRecord(cluster, output);
       }
 
       long minModificationTimeMillis = 0;
