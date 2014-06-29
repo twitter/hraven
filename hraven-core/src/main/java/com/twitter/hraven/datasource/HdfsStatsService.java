@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.filter.FuzzyRowFilter;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -44,8 +43,8 @@ import com.twitter.hraven.HdfsConstants;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.HdfsStatsKey;
 import com.twitter.hraven.QualifiedPathKey;
+import com.twitter.hraven.util.FuzzyRowFilter;
 import com.twitter.hraven.util.StringUtil;
-
 
 /**
  * Service that accesses the hdfs stats tables and populates the HdfsStats object
@@ -296,10 +295,10 @@ public class HdfsStatsService {
 
     @SuppressWarnings("unchecked")
     FuzzyRowFilter rowFilter =
-        new FuzzyRowFilter(Arrays.asList(
-          new Pair<byte[], byte[]>(Bytes.toBytesBinary(rowKey), fuzzyInfo)));
+        new FuzzyRowFilter(Arrays.asList(new Pair<byte[], byte[]>(Bytes.toBytesBinary(rowKey),
+            fuzzyInfo)));
 
-    scan.setFilter(rowFilter);
+   scan.setFilter(rowFilter);
     String minStartKey = Long.toString(getEncodedRunId(starttime));
     String maxEndKey = Long.toString(getEncodedRunId(endtime));
     LOG.info(starttime + " " + getEncodedRunId(starttime) + " min " + minStartKey + " " + endtime
