@@ -338,15 +338,10 @@ public class JobFileRawLoader extends Configured implements Tool {
    * 
    * @param args
    *          the arguments to do it with
+   * @throws Exception 
    */
-  public static void main(String[] args) {
-    try {
-      ToolRunner.run(new JobFileRawLoader(), args);
-    } catch (Exception e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-      LOG.error("Error running job.", e);
-    }
+  public static void main(String[] args) throws Exception {
+    ToolRunner.run(new JobFileRawLoader(), args);
   }
 
 }
