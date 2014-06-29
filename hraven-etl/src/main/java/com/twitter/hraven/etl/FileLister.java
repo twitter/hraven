@@ -123,7 +123,6 @@ public class FileLister {
       LOG.info(" No files found, orig list returning 0");
       return new FileStatus[0];
     }
-    return pruneFileListBySize(maxFileSize, origList, hdfs, inputPath);
     return pruneFileList(maxFileSize, origList);
    }
 
