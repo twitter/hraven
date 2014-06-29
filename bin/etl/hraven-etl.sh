@@ -35,7 +35,7 @@ schedulerpoolname="mypool" #name of scheduler pool (arbitrary)
 threads="20"
 defaultrawfilesizelimit="524288000"
 machinetype="mymachine" #name of machine (arbitrary)
-costfile=/var/lib/hraven/conf/costFile
+
 #conf directories
 hadoopconfdir=${HADOOP_CONF_DIR:-$HADOOP_HOME/conf}
 hbaseconfdir=${HBASE_CONF_DIR:-$HBASE_HOME/conf}
@@ -44,11 +44,6 @@ historyRawDir=/yarn/history/done/
 historyProcessingDir=/hraven/processing/
 #######################################################
 
-#If costfile is empty, fill it with default values
-if [[ -z `cat $costfile` ]]; then
-  echo "$machinetype.computecost=3.0" > $costfile
-  echo "$machinetype.machinememory=12000" >> $costfile
-fi
 
 source $(dirname $0)/hraven-etl-env.sh
 
@@ -71,4 +66,4 @@ $home/jobFilePreprocessor.sh $hadoopconfdir $historyRawDir $historyProcessingDir
 $home/jobFileLoader.sh $hadoopconfdir $mapredmaxsplitsize $schedulerpoolname $cluster $historyProcessingDir
 
 # Process
-$home/jobFileProcessor.sh $hbaseconfdir $schedulerpoolname $historyProcessingDir $cluster $threads $batchsize $machinetype $costfile
+$home/jobFileProcessor.sh $hbaseconfdir $schedulerpoolname $historyProcessingDir $cluster $threads $batchsize $machinetype
