@@ -426,4 +426,8 @@ public class Constants {
 
   /** name of the properties file used for cluster to cluster identifier mapping */
   public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
+
+  public static final String HRAVEN_HDFS_LIB_PATH_CONF = "hraven.conf.libpath";
+
+  public static final String HADOOP_TMP_JARS_CONF = "tmpjars";
 }

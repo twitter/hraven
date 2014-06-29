@@ -603,6 +603,9 @@ public class JobFileProcessor extends Configured implements Tool {
     // Note: must be BEFORE the job construction with the new mapreduce API.
     confClone.setBoolean("mapred.map.tasks.speculative.execution", false);
 
+    //Set tmpjars for hadoop to be able to find hraven-core and other required libs
+    HadoopUtil.setTmpJars(Constants.HRAVEN_HDFS_LIB_PATH_CONF, confClone);
+        
     // Set up job
     Job job = new Job(confClone, getJobName(totalJobCount));
 
