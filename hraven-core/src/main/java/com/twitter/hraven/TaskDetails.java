@@ -22,12 +22,12 @@ import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import com.twitter.hraven.datasource.JobHistoryService;
+import com.twitter.hraven.util.ByteUtil;
 
 /**
  * Captures the details of tasks for a hadoop job
@@ -228,28 +228,42 @@ public class TaskDetails implements Comparable<TaskDetails> {
    */
   public void populate(Map<byte[],byte[]> taskValues) {
 
-    this.taskId = JobDetails.getValueAsString(JobHistoryKeys.TASKID, taskValues);
+    this.taskId = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+        .get(JobHistoryKeys.TASKID), taskValues);
     if(StringUtils.isBlank(taskId)) {
       this.taskId = this.taskKey.getTaskId();
     }
     LOG.debug(" in populate in task details " + this.taskId);
 
-    this.type = JobDetails.getValueAsString(JobHistoryKeys.TASK_TYPE, taskValues);
-    this.status = JobDetails.getValueAsString(JobHistoryKeys.TASK_STATUS, taskValues);
-    String taskSplits = JobDetails.getValueAsString(JobHistoryKeys.SPLITS, taskValues);
+    this.type = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+        .get(JobHistoryKeys.TASK_TYPE), taskValues);
+    this.status = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.TASK_STATUS), taskValues);
+    String taskSplits = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.SPLITS), taskValues);
     if (taskSplits != null) {
       this.splits = taskSplits.split(",");
     }
-    this.startTime = JobDetails.getValueAsLong(JobHistoryKeys.START_TIME, taskValues);
-    this.finishTime = JobDetails.getValueAsLong(JobHistoryKeys.FINISH_TIME, taskValues);
-    this.taskAttemptId = JobDetails.getValueAsString(JobHistoryKeys.TASK_ATTEMPT_ID, taskValues);
-    this.trackerName = JobDetails.getValueAsString(JobHistoryKeys.TRACKER_NAME, taskValues);
-    this.httpPort = JobDetails.getValueAsInt(JobHistoryKeys.HTTP_PORT, taskValues);
-    this.hostname = JobDetails.getValueAsString(JobHistoryKeys.HOSTNAME, taskValues);
-    this.state = JobDetails.getValueAsString(JobHistoryKeys.STATE_STRING, taskValues);
-    this.error = JobDetails.getValueAsString(JobHistoryKeys.ERROR, taskValues);
-    this.shuffleFinished = JobDetails.getValueAsLong(JobHistoryKeys.SHUFFLE_FINISHED, taskValues);
-    this.sortFinished = JobDetails.getValueAsLong(JobHistoryKeys.SORT_FINISHED, taskValues);
+    this.startTime = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.START_TIME), taskValues);
+    this.finishTime = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.FINISH_TIME), taskValues);
+    this.taskAttemptId = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.TASK_ATTEMPT_ID), taskValues);
+    this.trackerName = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.TRACKER_NAME), taskValues);
+    this.httpPort = ByteUtil.getValueAsInt(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.HTTP_PORT), taskValues);
+    this.hostname = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.HOSTNAME), taskValues);
+    this.state = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.STATE_STRING), taskValues);
+    this.error = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.ERROR), taskValues);
+    this.shuffleFinished = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.SHUFFLE_FINISHED), taskValues);
+    this.sortFinished = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.SORT_FINISHED), taskValues);
 
     // populate task counters
     this.counters = JobHistoryService.parseCounters(

@@ -36,11 +36,15 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
+
+import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobDesc;
 import com.twitter.hraven.JobDescFactory;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.QualifiedJobId;
+import com.twitter.hraven.datasource.AppSummaryService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobHistoryRawService;
@@ -53,6 +57,7 @@ import com.twitter.hraven.etl.JobHistoryFileParser;
 import com.twitter.hraven.etl.JobHistoryFileParserBase;
 import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
+import com.twitter.hraven.util.HadoopConfUtil;
 
 /**
  * Takes in results from a scan from {@link ProcessRecordService
@@ -74,6 +79,7 @@ public class JobFileTableMapper extends
       Constants.HISTORY_TASK_TABLE_BYTES);
   private static final ImmutableBytesWritable RAW_TABLE = new ImmutableBytesWritable(
       Constants.HISTORY_RAW_TABLE_BYTES);
+
   private static JobKeyConverter jobKeyConv = new JobKeyConverter();
 
   /**
@@ -91,7 +97,17 @@ public class JobFileTableMapper extends
    */
   private JobHistoryRawService rawService = null;
 
+  /**
+   * Used to store aggregations of this job
+   */
+  private AppSummaryService appSummaryService = null;
+
   private long keyCount = 0;
+
+  /**
+   * determines whether or not to store aggregate stats
+   */
+  private boolean aggregationFlag = Boolean.TRUE;
 
   /**
    * @return the key class for the job output data.
@@ -115,6 +131,9 @@ public class JobFileTableMapper extends
     jobHistoryByIdService = new JobHistoryByIdService(myConf);
     appVersionService = new AppVersionService(myConf);
     rawService = new JobHistoryRawService(myConf);
+    aggregationFlag = myConf.getBoolean(AggregationConstants.AGGREGATION_FLAG_NAME,
+      Boolean.TRUE);
+    appSummaryService = new AppSummaryService(myConf);
 
     keyCount = 0;
   }
@@ -261,6 +280,23 @@ public class JobFileTableMapper extends
       LOG.info("Writing jobCost puts to " + Constants.HISTORY_TABLE);
       context.write(JOB_TABLE, jobCostPut);
       context.progress();
+
+      // aggregate metrics for daily and weekly for this job
+      if (aggregationFlag == Boolean.TRUE) {
+        JobDetails jobDetails = historyFileParser.getJobDetails();
+        if (jobDetails != null) {
+          jobDetails.setCost(jobCost);
+          jobDetails.setMegabyteMillis(mbMillis);
+          jobDetails.setSubmitTime(jobKey.getRunId());
+          jobDetails.setQueue(HadoopConfUtil.getQueueName(jobConf));
+          LOG.info("Aggregating stats for daily ");
+          appSummaryService.aggregateJobDetailsDaily(jobDetails);
+          context.progress();
+          LOG.info("Aggregating stats for weekly ");
+          appSummaryService.aggregateJobDetailsWeekly(jobDetails);
+          context.progress();
+        }
+      }
 
     } catch (RowKeyParseException rkpe) {
       LOG.error("Failed to process record "

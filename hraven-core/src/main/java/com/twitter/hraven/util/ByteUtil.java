@@ -17,12 +17,21 @@ package com.twitter.hraven.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
 
 /**
  */
 public class ByteUtil {
+
+  private static Log LOG = LogFactory.getLog(ByteUtil.class);
+
   public static class Range {
     private int startIdx;
     private int endIdx;
@@ -238,4 +247,95 @@ public class ByteUtil {
     System.arraycopy(source, offset, copy, 0, length);
     return copy;
   }
+
+  /**
+   * return a value from the NavigableMap as a Long
+   * @param key
+   * @param taskValues
+   * @return value as Long or 0L
+   */
+  public static Long getValueAsLong(final byte[] key,
+      final Map<byte[], byte[]> taskValues) {
+    byte[] value = taskValues.get(key);
+    if (value != null) {
+      try {
+      long retValue = Bytes.toLong(value);
+      return retValue;
+      } catch (NumberFormatException nfe) {
+        LOG.error("Caught NFE while converting to long " + nfe.getMessage());
+        nfe.printStackTrace();
+        return 0L;
+      } catch (IllegalArgumentException iae ) {
+        // for exceptions like java.lang.IllegalArgumentException:
+        // offset (0) + length (8) exceed the capacity of the array: 7
+        LOG.error("Caught IAE while converting to long " +  iae.getMessage());
+        iae.printStackTrace();
+        return 0L;
+      }
+    } else {
+      return 0L;
+    }
+  }
+
+  /**
+   * return a value from the NavigableMap as a String
+   * @param key
+   * @param taskValues
+   * @return value as a String or ""
+   */
+  public static String getValueAsString(final byte[] key,
+      final Map<byte[], byte[]> taskValues) {
+    byte[] value = taskValues.get(key);
+    if (value != null) {
+      return Bytes.toString(value);
+    } else {
+      return "";
+    }
+  }
+
+  /**
+   * return a value from the NavigableMap as a Double
+   * @param key to be looked up for the value
+   * @param infoValues - the map containing the key values
+   * @return value as Double or 0.0
+   */
+  public static double getValueAsDouble(byte[] key,
+      NavigableMap<byte[], byte[]> infoValues) {
+    byte[] value = infoValues.get(key);
+    if (value != null) {
+      return Bytes.toDouble(value);
+    } else {
+      return 0.0;
+    }
+  }
+
+  /**
+   * get value from a map as an int
+   * @param key
+   * @param infoValues
+   * @return int
+   */
+  public static int getValueAsInt(byte[] key, Map<byte[], byte[]> infoValues) {
+    byte[] value = infoValues.get(key);
+    if (value != null) {
+      try {
+        int retValue = Bytes.toInt(value);
+        return retValue;
+      } catch (NumberFormatException nfe) {
+        LOG.error("Caught NFE while converting to int " + nfe.getMessage());
+        nfe.printStackTrace();
+        return 0;
+      } catch (IllegalArgumentException iae) {
+        // for exceptions like java.lang.IllegalArgumentException:
+        // offset (0) + length (8) exceed the capacity of the array: 7
+        LOG.error("Caught IAE while converting to int " + iae.getMessage());
+        iae.printStackTrace();
+        return 0;
+      }
+    } else {
+      return 0;
+    }
+  }
+
+
 }
