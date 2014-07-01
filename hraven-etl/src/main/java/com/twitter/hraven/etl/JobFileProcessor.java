@@ -35,6 +35,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -53,6 +54,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.datasource.JobHistoryRawService;
 import com.twitter.hraven.etl.ProcessRecordService;
@@ -120,6 +122,27 @@ public class JobFileProcessor extends Configured implements Tool {
         "reprocess",
         false,
         "Reprocess only those records that have been marked to be reprocessed. Otherwise process all rows indicated in the processing records, but successfully processed job files are skipped.");
+    o.setRequired(false);
+    options.addOption(o);
+
+    // Whether to aggregate or not.
+    // if re-process is on, need to consider turning aggregation off
+    o = new Option(
+        "a",
+        "aggregate",
+        true,
+        "Whether to aggreagate job details or not.");
+    o.setArgName("aggreagte");
+    o.setRequired(false);
+    options.addOption(o);
+
+    // Whether to force re-aggregation or not.
+    o = new Option(
+        "ra",
+        "re-aggregate",
+        true,
+        "Whether to re-aggreagate job details or not.");
+    o.setArgName("re-aggreagte");
     o.setRequired(false);
     options.addOption(o);
 
@@ -265,6 +288,46 @@ public class JobFileProcessor extends Configured implements Tool {
     // set it as part of conf so that the
     // hRaven job can access it in the mapper
     hbaseConf.set(Constants.HRAVEN_MACHINE_TYPE, machineType);
+
+    // check if re-aggregate option is forced on
+    // if yes, we need to aggregate for this job inspite of
+    // job having aggregation done status in raw table
+    boolean reAggregateFlagValue = Boolean.FALSE;
+    if (commandLine.hasOption("ra")) {
+      String reaggregateFlag = commandLine.getOptionValue("ra");
+      // set it as part of conf so that the
+      // hRaven jobProcessor can access it in the mapper
+      if (StringUtils.isNotBlank(reaggregateFlag)) {
+        LOG.info(" reaggregateFlag is: " + reaggregateFlag);
+        if (StringUtils.equalsIgnoreCase(reaggregateFlag, Boolean.TRUE.toString())) {
+          reAggregateFlagValue = Boolean.TRUE;
+        }
+      }
+    }
+    LOG.info(AggregationConstants.RE_AGGREGATION_FLAG_NAME +"=" + reAggregateFlagValue);
+    hbaseConf.setBoolean(AggregationConstants.RE_AGGREGATION_FLAG_NAME, reAggregateFlagValue);
+
+    // set aggregation to off by default
+    Boolean aggFlagValue = Boolean.FALSE;
+    if (commandLine.hasOption("a")) {
+      String aggregateFlag = commandLine.getOptionValue("a");
+      // set it as part of conf so that the
+      // hRaven jobProcessor can access it in the mapper
+      if (StringUtils.isNotBlank(aggregateFlag)) {
+        LOG.info(" aggregateFlag is: " + aggregateFlag);
+        if (StringUtils.equalsIgnoreCase(aggregateFlag, Boolean.TRUE.toString())) {
+          aggFlagValue = Boolean.TRUE;
+        } 
+      }
+    }
+    if(reprocess) {
+      // turn off aggregation if reprocessing is true
+      // we don't want to inadvertently aggregate again while re-processing
+      // re-aggregation needs to be a conscious setting
+      aggFlagValue = Boolean.FALSE;
+    }
+    LOG.info(AggregationConstants.AGGREGATION_FLAG_NAME +"=" + aggFlagValue);
+    hbaseConf.setBoolean(AggregationConstants.AGGREGATION_FLAG_NAME, aggFlagValue);
 
     String processFileSubstring = null;
     if (commandLine.hasOption("p")) {

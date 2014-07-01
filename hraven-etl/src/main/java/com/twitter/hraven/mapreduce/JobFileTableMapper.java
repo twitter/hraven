@@ -36,11 +36,15 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
+
+import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobDesc;
 import com.twitter.hraven.JobDescFactory;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.QualifiedJobId;
+import com.twitter.hraven.datasource.AppSummaryService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobHistoryRawService;
@@ -53,6 +57,7 @@ import com.twitter.hraven.etl.JobHistoryFileParser;
 import com.twitter.hraven.etl.JobHistoryFileParserBase;
 import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
+import com.twitter.hraven.util.HadoopConfUtil;
 
 /**
  * Takes in results from a scan from {@link ProcessRecordService
@@ -74,6 +79,7 @@ public class JobFileTableMapper extends
       Constants.HISTORY_TASK_TABLE_BYTES);
   private static final ImmutableBytesWritable RAW_TABLE = new ImmutableBytesWritable(
       Constants.HISTORY_RAW_TABLE_BYTES);
+
   private static JobKeyConverter jobKeyConv = new JobKeyConverter();
 
   /**
@@ -91,7 +97,22 @@ public class JobFileTableMapper extends
    */
   private JobHistoryRawService rawService = null;
 
+  /**
+   * Used to store aggregations of this job
+   */
+  private AppSummaryService appSummaryService = null;
+
   private long keyCount = 0;
+
+  /**
+   * determines whether or not to store aggregate stats
+   */
+  private boolean aggregationFlag = Boolean.FALSE;
+
+  /**
+   * determines whether or not to re-aggregate stats
+   */
+  private boolean reAggregationFlag = Boolean.FALSE;
 
   /**
    * @return the key class for the job output data.
@@ -115,6 +136,19 @@ public class JobFileTableMapper extends
     jobHistoryByIdService = new JobHistoryByIdService(myConf);
     appVersionService = new AppVersionService(myConf);
     rawService = new JobHistoryRawService(myConf);
+    // set aggregation to false by default
+    aggregationFlag = myConf.getBoolean(AggregationConstants.AGGREGATION_FLAG_NAME,
+      Boolean.FALSE);
+    if (!aggregationFlag) {
+      LOG.info("Aggregation is turned off ");
+    }
+    reAggregationFlag = myConf.getBoolean(AggregationConstants.RE_AGGREGATION_FLAG_NAME,
+      Boolean.FALSE);
+    if (reAggregationFlag) {
+      LOG.info("Re-aggregation is turned ON, will be aggregating stats again "
+        + " for jobs even if already aggregated status is true in raw table ");
+    }
+    appSummaryService = new AppSummaryService(myConf);
 
     keyCount = 0;
   }
@@ -262,6 +296,18 @@ public class JobFileTableMapper extends
       context.write(JOB_TABLE, jobCostPut);
       context.progress();
 
+      JobDetails jobDetails = historyFileParser.getJobDetails();
+      if (jobDetails != null) {
+        jobDetails.setCost(jobCost);
+        jobDetails.setMegabyteMillis(mbMillis);
+        jobDetails.setSubmitTime(jobKey.getRunId());
+        jobDetails.setQueue(HadoopConfUtil.getQueueName(jobConf));
+      }
+      aggreagteJobStats(jobDetails, value.getRow(), context,
+        AggregationConstants.AGGREGATION_TYPE.DAILY);
+      aggreagteJobStats(jobDetails, value.getRow(), context,
+        AggregationConstants.AGGREGATION_TYPE.WEEKLY);
+
     } catch (RowKeyParseException rkpe) {
       LOG.error("Failed to process record "
           + (qualifiedJobId != null ? qualifiedJobId.toString() : ""), rkpe);
@@ -298,6 +344,52 @@ public class JobFileTableMapper extends
     // any case with multiple simultaneous runs with different outcome).
     context.write(RAW_TABLE, successPut);
 
+  }
+
+  /**
+   * aggregate this job's stats only if
+   *      re-aggregation is turned on
+   *   OR
+   *      aggreation is on AND job not already aggregated
+   *
+   *  if job has already been aggregated, we don't want to
+   *  mistakenly aggregate again
+   */
+  private void aggreagteJobStats(JobDetails jobDetails, byte[] rowKey, Context context,
+      AggregationConstants.AGGREGATION_TYPE aggType) throws IOException, InterruptedException {
+
+    byte[] aggStatusCol = null;
+    switch (aggType) {
+    case DAILY:
+      aggStatusCol = AggregationConstants.JOB_DAILY_AGGREGATION_STATUS_COL_BYTES;
+      break;
+    case WEEKLY:
+      aggStatusCol = AggregationConstants.JOB_WEEKLY_AGGREGATION_STATUS_COL_BYTES;
+      break;
+    default:
+      LOG.error("Unknown aggregation type " + aggType);
+      return;
+    }
+    if ((reAggregationFlag == true)
+        || ((aggregationFlag == Boolean.TRUE) && (!rawService.getStatusAgg(rowKey, aggStatusCol)))) {
+      Boolean aggStatus = appSummaryService.aggregateJobDetails(jobDetails, aggType);
+      context.progress();
+      LOG.debug("Status of aggreagting stats for " + aggType + "=" + aggStatus);
+      if (aggStatus) {
+        // update raw table for this history file with aggregation status
+        // Indicate that we processed the agg for this RAW successfully
+        // so that we can skip it on the next scan (or not).
+        Put aggStatusPut = rawService.getAggregatedStatusPut(rowKey, aggStatusCol, aggStatus);
+        // TODO
+        // In the unlikely event of multiple mappers running against one RAW
+        // row, with one succeeding and one failing,
+        // there could be a race where the
+        // raw does not properly indicate the true status
+        // (which is questionable in
+        // any case with multiple simultaneous runs with different outcome).
+        context.write(RAW_TABLE, aggStatusPut);
+      }
+    }
   }
 
   /**

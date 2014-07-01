@@ -40,7 +40,10 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 import com.google.common.collect.Maps;
+import com.twitter.hraven.AppKey;
+import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.TaskKey;
@@ -59,6 +62,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   /** Job ID, minus the leading "job_" */
   private String jobNumber = "";
   private byte[] jobKeyBytes;
+  private JobDetails jobDetails = null;
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   boolean uberized = false;
@@ -83,14 +87,6 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    */
   public static final String JOB_STATUS_SUCCEEDED = "SUCCEEDED";
 
-  /** explicitly initializing map millis and
-   * reduce millis in case it's not found
-   */
-  private long mapSlotMillis = 0L;
-  private long reduceSlotMillis = 0L;
-
-  private long startTime = Constants.NOTFOUND_VALUE;
-  private long endTime = Constants.NOTFOUND_VALUE;
   private static final String LAUNCH_TIME_KEY_STR = JobHistoryKeys.LAUNCH_TIME.toString();
   private static final String FINISH_TIME_KEY_STR = JobHistoryKeys.FINISH_TIME.toString();
 
@@ -224,6 +220,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
     this.jobKey = jobKey;
     this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
+    this.jobDetails = new JobDetails(jobKey);
+    initializeJobDetails();
     setJobId(jobKey.getJobId().getJobIdString());
 
     try {
@@ -302,6 +300,15 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
 
     LOG.info("For " + this.jobKey + " #jobPuts " + jobPuts.size() + " #taskPuts: "
         + taskPuts.size());
+  }
+
+  /**
+   * set some initial values which help while later determining if
+   * values were found or not in the history file
+   */
+  private void initializeJobDetails() {
+    this.jobDetails.setSubmitTime(Constants.NOTFOUND_VALUE);
+    this.jobDetails.setFinishTime(Constants.NOTFOUND_VALUE);
   }
 
   /**
@@ -409,6 +416,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     if (COUNTER_NAMES.contains(key)) {
       processCounters(p, eventDetails, key);
     } else {
+      String keyH2H1Mapping = JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key);
       String type = fieldTypes.get(recType).get(key);
       if (type.equalsIgnoreCase(TYPE_STRING)) {
         // look for job status
@@ -429,18 +437,27 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
         // populate start time of the job for megabytemillis calculations
         if ((recType.equals(Hadoop2RecordType.JobInited)) &&
             LAUNCH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
-          this.startTime = value;
+          this.jobDetails.setSubmitTime(value);
         }
         // populate end time of the job for megabytemillis calculations
         if ((recType.equals(Hadoop2RecordType.JobFinished))
             || (recType.equals(Hadoop2RecordType.JobUnsuccessfulCompletion))) {
           if (FINISH_TIME_KEY_STR.equals(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key))) {
-            this.endTime = value;
+            this.jobDetails.setFinishTime(value);
           }
         }
       } else if (type.equalsIgnoreCase(TYPE_INT)) {
         int value = eventDetails.getInt(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, value);
+        // populate total maps, reduces of the job
+        if (keyH2H1Mapping != null) {
+          if (keyH2H1Mapping.equals(JobHistoryKeys.TOTAL_MAPS.toString())) {
+            this.jobDetails.setTotalMaps(value);
+          }
+          if (keyH2H1Mapping.equals(JobHistoryKeys.TOTAL_REDUCES.toString())) {
+            this.jobDetails.setTotalReduces(value);
+            }
+        }
       } else if (type.equalsIgnoreCase(TYPE_BOOLEAN)) {
         boolean value = eventDetails.getBoolean(key);
         populatePut(p, Constants.INFO_FAM_BYTES, key, Boolean.toString(value));
@@ -737,12 +754,12 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       key = Constants.MAP_MEMORY_MB_CONF_KEY;
       memoryMb = getMemoryMb(key);
       updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
-      this.mapSlotMillis = updatedCounterValue;
+      this.jobDetails.setMapSlotMillis(updatedCounterValue);
     } else {
       key = Constants.REDUCE_MEMORY_MB_CONF_KEY;
       memoryMb = getMemoryMb(key);
       updatedCounterValue = counterValue * yarnSchedulerMinMB / memoryMb;
-      this.reduceSlotMillis = updatedCounterValue;
+      this.jobDetails.setReduceSlotMillis(updatedCounterValue);
     }
 
     LOG.info("Updated " + counterName + " from " + counterValue + " to " + updatedCounterValue
@@ -793,6 +810,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     return taskPuts;
   }
 
+
   /**
    * utitlity function for printing all puts
    */
@@ -823,6 +841,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   @Override
   public Long getMegaByteMillis() {
 
+    long endTime = this.jobDetails.getFinishTime();
+    long startTime = this.jobDetails.getSubmitTime();
     if (endTime == Constants.NOTFOUND_VALUE || startTime == Constants.NOTFOUND_VALUE)
     {
       throw new ProcessingException("Cannot calculate megabytemillis for " + jobKey
@@ -858,6 +878,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     }
 
     Long mbMillis = 0L;
+    Long mapSlotMillis = this.jobDetails.getMapSlotMillis();
+    Long reduceSlotMillis = this.jobDetails.getReduceSlotMillis();
     if (uberized) {
       mbMillis = amMb * jobRunTime;
     } else {
@@ -868,8 +890,14 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
         + " since \n uberized: " + uberized + " \n " + "mapMb: " + mapMb + " mapSlotMillis: "
         + mapSlotMillis + " \n " + " reduceMb: " + reduceMb + " reduceSlotMillis: "
         + reduceSlotMillis + " \n " + " amMb: " + amMb + " jobRunTime: " + jobRunTime
-        + " start time: " + this.startTime + " endtime " + this.endTime);
+        + " start time: " + startTime + " endtime " + endTime);
 
+    this.jobDetails.setMegabyteMillis(mbMillis);
     return mbMillis;
+  }
+
+  @Override
+  public JobDetails getJobDetails() {
+    return this.jobDetails;
   }
 }

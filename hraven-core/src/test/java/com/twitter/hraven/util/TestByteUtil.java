@@ -21,11 +21,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.util.ByteUtil;
 
 /**
@@ -48,6 +51,14 @@ public class TestByteUtil {
 
   byte[] source6 = Bytes.toBytes("single:source");
   byte[] sep6 = Bytes.toBytes("::");
+
+  private static final class JobDetailsValues {
+    // job-level stats
+    static final String jobName = "Sleep Job";
+    static final String version = "5b6900cfdcaa2a17db3d5f3f";
+    static final long totalMaps = 100L;
+    static final long megabytemillis = 46317568L;
+  }
 
   @Test
   public void testSplit() {
@@ -262,6 +273,85 @@ public class TestByteUtil {
     byte[] sub = java.util.Arrays.copyOfRange(array, index, index
         + target.length);
     assertEquals(0, Bytes.compareTo(target, sub));
+  }
+
+  /**
+   * test get value as long
+   */
+  @Test
+  public void testGetValueAsLong() {
+    NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
+    infoValues.put(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_MAPS),
+      Bytes.toBytes(JobDetailsValues.totalMaps));
+    Long expVal = JobDetailsValues.totalMaps;
+    assertEquals(expVal, ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.TOTAL_MAPS), infoValues));
+
+    // test non existent value
+    expVal = 0L;
+    assertEquals(expVal, ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+      .get(JobHistoryKeys.TOTAL_REDUCES), infoValues));
+    
+    infoValues.put(Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(JobDetailsValues.megabytemillis));
+    expVal = JobDetailsValues.megabytemillis;
+    assertEquals(expVal, ByteUtil.getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues));
+
+    // test non existent value
+    expVal = 0L;
+    assertEquals(expVal, ByteUtil.getValueAsLong(Constants.HRAVEN_QUEUE_BYTES, infoValues));
+
+    infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
+    infoValues.put(Bytes.toBytes("checking_iae"),
+      Bytes.toBytes("abc"));
+    assertEquals(expVal, ByteUtil.getValueAsLong(Bytes.toBytes("checking_iae"), infoValues));
+
+  }
+
+  /**
+   * test get value as String
+   */
+  @Test
+  public void testGetValueAsString() {
+    NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
+    infoValues.put(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOBNAME),
+      Bytes.toBytes(JobDetailsValues.jobName));
+    assertEquals(JobDetailsValues.jobName, ByteUtil.getValueAsString(
+      JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOBNAME), infoValues));
+    // test non existent values
+    assertEquals("", ByteUtil.getValueAsString(
+      JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOB_QUEUE), infoValues));
+  }
+
+  /**
+   * test get value as String
+   */
+  @Test
+  public void testGetValueAsString2() {
+    NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
+    infoValues.put(Constants.VERSION_COLUMN_BYTES, Bytes.toBytes(JobDetailsValues.version));
+    assertEquals(JobDetailsValues.version,
+      ByteUtil.getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues));
+    // test non existent values
+    assertEquals("", ByteUtil.getValueAsString(Constants.HRAVEN_QUEUE_BYTES, infoValues));
+  }
+
+  /**
+   * test get value as long
+   */
+  @Test
+  public void testGetValueAsDouble() {
+    NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
+    double value = 34.567;
+    double delta = 0.01;
+    byte[] key = Bytes.toBytes("testingForDouble");
+    infoValues.put(key, Bytes.toBytes(value));
+    assertEquals(value, ByteUtil.getValueAsDouble(key, infoValues), delta);
+
+    // test non existent value
+    double expVal = 0.0;
+    key = Bytes.toBytes("testingForDoubleNonExistent");
+    assertEquals(expVal, ByteUtil.getValueAsDouble(key, infoValues), delta);
+
   }
 
 }

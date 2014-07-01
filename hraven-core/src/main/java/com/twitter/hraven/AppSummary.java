@@ -19,6 +19,7 @@ package com.twitter.hraven;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import com.twitter.hraven.datasource.ProcessingException;
@@ -103,6 +104,33 @@ public class AppSummary {
 
   public Set<String> getQueue() {
     return queues;
+  }
+
+  /**
+   * @returns the set of queue names as a {@link String}
+   */
+  public String getQueuesAsString() {
+    StringBuilder sb = new StringBuilder();
+    for (String q : queues) {
+      sb.append(q);
+      sb.append(Constants.SEP);
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Adding to {@link Set} of queue names from a
+   * {@link String} representation
+   * @param {@link String}
+   */
+  public void setQueuesFromString(String queueList) {
+
+    if (StringUtils.isNotBlank(queueList)) {
+      String[] queues = queueList.split(Constants.SEP);
+      for (String q : queues) {
+        this.queues.add(q);
+      }
+    }
   }
 
   public void setQueue(Set<String> queue) {
