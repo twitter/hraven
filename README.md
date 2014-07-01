@@ -1,4 +1,4 @@
-hRaven [![Build Status](https://travis-ci.org/twitter/hraven.png)](https://travis-ci.org/twitter/hraven)
+hRaven [![Build Status](https://travis-ci.org/twitter/hraven.png)](https://travis-ci.org/twitter/hraven) [![Coverage Status](https://coveralls.io/repos/twitter/hraven/branch.png?branch=master)](https://coveralls.io/r/twitter/hraven?branch=master)
 ==========
 
 hRaven collects run time data and statistics from map reduce jobs running on
