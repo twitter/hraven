@@ -60,10 +60,7 @@
               <compression>none</compression>
               <installDir>/opt/${artifactId}</installDir>
               <controlDir>${basedir}/src/deb/control</controlDir>
-              <deb>target/hraven_${version}.deb</deb>
-              <changesOut></changesOut>
-              <changesIn></changesIn>
-              <changesSave></changesSave>
+              <deb>${basedir}/target/hraven_${version}.deb</deb>
               <dataSet>
                 <data>
                   <src>${basedir}/src/deb/init.d</src>
