@@ -27,6 +27,18 @@
   <description>hRaven - Assembly artifacts</description>
   <packaging>pom</packaging>
 
+  <dependencies>
+    <dependency>
+      <groupId>com.twitter.hraven</groupId>
+      <artifactId>hraven-core</artifactId>
+      <version>0.9.16.inmobi-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.twitter.hraven</groupId>
+      <artifactId>hraven-etl</artifactId>
+      <version>0.9.16.inmobi-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
   <build>
     <plugins>
       <plugin>
