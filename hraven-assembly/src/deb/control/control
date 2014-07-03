@@ -1,0 +1,7 @@
+Package: hRaven
+Version: [[version]]
+Section: misc
+Priority: low
+Architecture: all
+Description: [[description]]
+Maintainer: hraven-dev@googlegroups.com

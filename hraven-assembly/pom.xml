@@ -44,6 +44,112 @@
           </descriptors>
         </configuration>
       </plugin>
+      <plugin>
+        <artifactId>jdeb</artifactId>
+        <groupId>org.vafer</groupId>
+        <version>1.2</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>jdeb</goal>
+            </goals>
+            <configuration>
+              <verbose>true</verbose>
+              <skipPOMs>false</skipPOMs>
+              <compression>none</compression>
+              <installDir>/opt/${artifactId}</installDir>
+              <controlDir>${basedir}/src/deb/control</controlDir>
+              <deb>target/hraven_${version}.deb</deb>
+              <changesOut></changesOut>
+              <changesIn></changesIn>
+              <changesSave></changesSave>
+              <dataSet>
+                <data>
+                  <src>${basedir}/src/deb/init.d</src>
+                  <type>directory</type>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/etc/init.d</prefix>
+                    <user>root</user>
+                    <group>root</group>
+                    <filemode>0755</filemode>
+                    <dirmode>0755</dirmode>
+                  </mapper>
+                </data>
+
+                <data>
+                  <src>${basedir}/../conf</src>
+                  <type>directory</type>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/opt/hraven/conf</prefix>
+                    <user>root</user>
+                    <group>root</group>
+                    <filemode>0644</filemode>
+                    <dirmode>0755</dirmode>
+                  </mapper>
+                </data>
+
+
+                <data>
+                  <src>${basedir}/../bin</src>
+                  <type>directory</type>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/opt/hraven/bin</prefix>
+                    <user>root</user>
+                    <group>root</group>
+                    <filemode>0755</filemode>
+                    <dirmode>0755</dirmode>
+                  </mapper>
+                </data>
+
+                <data>
+                  <src>${basedir}/../hraven-core/target</src>
+                  <type>directory</type>
+                  <includes>*.jar</includes>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/opt/hraven/lib</prefix>
+                  </mapper>
+                </data>
+
+                <data>
+                  <src>${basedir}/../hraven-etl/target</src>
+                  <type>directory</type>
+                  <includes>*.jar</includes>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/opt/hraven/lib</prefix>
+                  </mapper>
+                </data>
+
+                <data>
+                  <src>${basedir}/../hraven-core/target/dependency</src>
+                  <type>directory</type>
+                  <includes>*.jar</includes>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/opt/hraven/lib</prefix>
+                  </mapper>
+                </data>
+
+                <data>
+                  <src>${basedir}/../hraven-etl/target/dependency</src>
+                  <type>directory</type>
+                  <includes>*.jar</includes>
+                  <mapper>
+                    <type>perm</type>
+                    <prefix>/opt/hraven/lib</prefix>
+                  </mapper>
+                </data>
+
+              </dataSet>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>
