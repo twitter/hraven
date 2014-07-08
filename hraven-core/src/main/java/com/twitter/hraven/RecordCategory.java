@@ -1,0 +1,6 @@
+package com.twitter.hraven;
+
+public enum RecordCategory {
+  HISTORY_COUNTER, HISTORY_META, HISTORY_TASK_COUNTER, HISTORY_TASK_META, CONF, CONF_META, META,
+  INFERRED
+}

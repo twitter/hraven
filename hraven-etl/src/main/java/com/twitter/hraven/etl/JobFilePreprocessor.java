@@ -18,6 +18,8 @@ package com.twitter.hraven.etl;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -214,15 +216,13 @@ public class JobFilePreprocessor extends Configured implements Tool {
     // Output should be an hdfs path.
     FileSystem hdfs = FileSystem.get(hbaseConf);
 
-    // Grab the input path argument
-    String output = commandLine.getOptionValue("o");
-    LOG.info(" output=" + output);
-    Path outputPath = new Path(output);
-    FileStatus outputFileStatus = hdfs.getFileStatus(outputPath);
+    // Grab the output path argument
+    String processingDirectory = commandLine.getOptionValue("o");
+    LOG.info("output: " + processingDirectory);
+    Path processingDirectoryPath = new Path(processingDirectory);
 
-    if (!outputFileStatus.isDir()) {
-      throw new IOException("Output is not a directory"
-          + outputFileStatus.getPath().getName());
+    if (!hdfs.exists(processingDirectoryPath)) {
+      hdfs.mkdirs(processingDirectoryPath);
     }
 
     // Grab the input path argument
@@ -253,6 +253,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
     } else {
       batchSize = DEFAULT_BATCH_SIZE;
     }
+    
+    LOG.info("Batch size: " + batchSize);
 
     boolean forceAllFiles = commandLine.hasOption("f");
     LOG.info("forceAllFiles: " + forceAllFiles);
@@ -267,7 +269,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
     // Grab the cluster argument
     String cluster = commandLine.getOptionValue("c");
-    LOG.info("cluster=" + cluster);
+    LOG.info("cluster: " + cluster);
 
     /**
      * Grab the size of huge files to be moved argument
@@ -277,7 +279,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
      * {@link https://github.com/twitter/hraven/issues/59}
      */
     String maxFileSizeStr = commandLine.getOptionValue("s");
-    LOG.info("maxFileSize=" + maxFileSizeStr);
+    LOG.info("maxFileSize: " + maxFileSizeStr);
     long maxFileSize = DEFAULT_RAW_FILE_SIZE_LIMIT;
     try {
       maxFileSize = Long.parseLong(maxFileSizeStr);
@@ -297,7 +299,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
       if (!forceAllFiles) {
         lastProcessRecord = processRecordService
-            .getLastSuccessfulProcessRecord(cluster);
+            .getLastSuccessfulProcessRecord(cluster, processingDirectory);
       }
 
       long minModificationTimeMillis = 0;
@@ -344,7 +346,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
       LOG.info("Batch count: " + batchCount);
       for (int b = 0; b < batchCount; b++) {
         processBatch(jobFileStatusses, b, batchSize, processRecordService,
-            cluster, outputPath);
+            cluster, processingDirectoryPath);
       }
 
     } finally {

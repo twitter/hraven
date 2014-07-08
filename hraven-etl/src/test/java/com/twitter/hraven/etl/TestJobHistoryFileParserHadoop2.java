@@ -23,13 +23,19 @@ import com.google.common.io.Files;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobHistoryKeys;
+import com.twitter.hraven.JobHistoryRecord;
+import com.twitter.hraven.JobHistoryRecordCollection;
+import com.twitter.hraven.JobHistoryTaskRecord;
 import com.twitter.hraven.JobKey;
+import com.twitter.hraven.RecordCategory;
+import com.twitter.hraven.RecordDataKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.TaskKeyConverter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -64,72 +70,30 @@ public class TestJobHistoryFileParserHadoop2 {
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
     historyFileParser.parse(contents, jobKey);
 
-    List<Put> jobPuts = historyFileParser.getJobPuts();
-    assertEquals(6, jobPuts.size());
+    JobHistoryRecordCollection jobRecords = (JobHistoryRecordCollection)historyFileParser.getJobRecords();
+    assertEquals(156, jobRecords.size());
 
-    JobKeyConverter jobKeyConv = new JobKeyConverter();
     assertEquals("cluster1!user!Sleep!1!job_1329348432655_0001",
-      jobKeyConv.fromBytes(jobPuts.get(0).getRow()).toString());
+      jobRecords.getKey().toString());
 
     // check hadoop version
-    boolean foundVersion2 = false;
-    for (Put p : jobPuts) {
-    	List<KeyValue> kv2 = p.get(Constants.INFO_FAM_BYTES,
-    			Bytes.toBytes(JobHistoryKeys.hadoopversion.toString()));
-    	if (kv2.size() == 0) {
-    	  // we are interested in hadoop version put only
-    	  // hence continue
-          continue;
-    	}
-    	assertEquals(1, kv2.size());
-    	Map<byte[], List<KeyValue>> d = p.getFamilyMap();
-    	for (List<KeyValue> lkv : d.values()) {
-    	  for (KeyValue kv : lkv) {
-    		// ensure we have a hadoop2 version as the value
-    		assertEquals(Bytes.toString(kv.getValue()), 
-    				HadoopVersion.TWO.toString()); 
-
-    	    // ensure we don't see the same put twice
-    	    assertFalse(foundVersion2);
-    		// now set this to true
-    		foundVersion2 = true;
-    	  }
-       }
-    }
-    // ensure that we got the hadoop2 version put
-    assertTrue(foundVersion2);
+    Object versionRecord =
+        jobRecords.getValue(RecordCategory.HISTORY_META, new RecordDataKey(
+            JobHistoryKeys.hadoopversion.toString().toLowerCase()));
+    
+    assertNotNull(versionRecord);
+    assertEquals((String)versionRecord, HadoopVersion.TWO.toString());
 
     // check job status
-    boolean foundJobStatus = false;
-    for (Put p : jobPuts) {
-      List<KeyValue> kv2 =
-          p.get(Constants.INFO_FAM_BYTES,
-            Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase()));
-      if (kv2.size() == 0) {
-        // we are interested in JobStatus put only
-        // hence continue
-        continue;
-      }
-      assertEquals(1, kv2.size());
+    Object statusRecord =
+        jobRecords.getValue(RecordCategory.HISTORY_META, new RecordDataKey(
+            JobHistoryKeys.JOB_STATUS.toString().toLowerCase()));
+    
+    assertNotNull(statusRecord);
+    assertEquals((String)statusRecord, JobHistoryFileParserHadoop2.JOB_STATUS_SUCCEEDED);
 
-      for (KeyValue kv : kv2) {
-        // ensure we have a job status value as the value
-        assertEquals(Bytes.toString(kv.getValue()),
-          JobHistoryFileParserHadoop2.JOB_STATUS_SUCCEEDED);
-
-        // ensure we don't see the same put twice
-        assertFalse(foundJobStatus);
-        // now set this to true
-        foundJobStatus = true;
-      }
-    }
-    // ensure that we got the JobStatus put
-    assertTrue(foundJobStatus);
-
-    List<Put> taskPuts = historyFileParser.getTaskPuts();
-    assertEquals(taskPuts.size(), 45);
-
-    TaskKeyConverter taskKeyConv = new TaskKeyConverter();
+    List<JobHistoryTaskRecord> taskRecords = (List<JobHistoryTaskRecord>) historyFileParser.getTaskRecords();
+    assertEquals(382, taskRecords.size());
 
     Set<String> putRowKeys =
         new HashSet<String>(Arrays.asList(
@@ -158,9 +122,8 @@ public class TestJobHistoryFileParserHadoop2 {
           "cluster1!user!Sleep!1!job_1329348432655_0001!m_000001_0"));
 
     String tKey;
-    for (Put p : taskPuts) {
-      tKey = taskKeyConv.fromBytes(p.getRow()).toString();
-      assertTrue(putRowKeys.contains(tKey));
+    for (JobHistoryTaskRecord p: taskRecords) {
+      assertTrue(putRowKeys.contains(p.getKey().toString()));
     }
 
     // check post processing for megabytemillis
@@ -227,15 +190,15 @@ public class TestJobHistoryFileParserHadoop2 {
 
     String[] keysToBeChecked = {"totalMaps", "totalReduces", "finishedMaps",
                                  "finishedReduces", "failedMaps", "failedReduces"};
-    byte[] byteValue = null;
+    Long longValue = null;
     int intValue10 = 10;
     long longValue10 = 10L;
 
     JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2(null);
 
     for(String key: keysToBeChecked) {
-      byteValue = jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);
-      assertEquals(Bytes.toLong(byteValue), longValue10);
+      longValue = (Long) jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);
+      assertEquals(longValue.longValue(), longValue10);
      }
   }
 
@@ -246,14 +209,14 @@ public class TestJobHistoryFileParserHadoop2 {
   public void testIntExpGetValuesIntBytes() {
 
     String[] keysToBeChecked = {"httpPort"};
-    byte[] byteValue = null;
+    Integer intValue = null;
     int intValue10 = 10;
 
     JobHistoryFileParserHadoop2 jh = new JobHistoryFileParserHadoop2(null);
 
     for(String key: keysToBeChecked) {
-      byteValue = jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);
-      assertEquals(Bytes.toInt(byteValue), intValue10);
+      intValue = (Integer) jh.getValue(JobHistoryKeys.HADOOP2_TO_HADOOP1_MAPPING.get(key), intValue10);
+      assertEquals(intValue.intValue(), intValue10);
      }
   }
 }

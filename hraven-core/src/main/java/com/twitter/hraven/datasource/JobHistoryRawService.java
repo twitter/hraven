@@ -551,4 +551,8 @@ public class JobHistoryRawService {
     byte[] jobHistoryRaw = keyValue.getValue();
     return jobHistoryRaw;
   }
+
+  public HTable getTable() {
+	return rawTable;
+  }
 }

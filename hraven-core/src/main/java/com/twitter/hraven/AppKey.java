@@ -16,27 +16,33 @@ limitations under the License.
 
 package com.twitter.hraven;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.WritableComparable;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-public class AppKey implements Comparable<Object> {
+public class AppKey implements WritableComparable<Object> {
 
   /**
    * The cluster on which the application ran
    */
-  protected final String cluster;
+  protected String cluster;
   /**
    * Who ran the application on Hadoop
    */
-  protected final String userName;
+  protected String userName;
 
   /**
    * The thing that identifies an application,
    * such as Pig script identifier, or Scalding identifier.
    */
-  protected final String appId;
+  protected String appId;
 
   @JsonCreator
   public AppKey(@JsonProperty("cluster") String cluster, @JsonProperty("userName") String userName,
@@ -109,6 +115,20 @@ public class AppKey implements Comparable<Object> {
         .append(this.userName)
         .append(this.appId)
         .toHashCode();
+  }
+
+  @Override
+  public void write(DataOutput out) throws IOException {
+    Text.writeString(out, this.cluster);
+    Text.writeString(out, this.userName);
+    Text.writeString(out, this.appId);
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    this.cluster = Text.readString(in);
+    this.userName = Text.readString(in);
+    this.appId = Text.readString(in);
   }
 
 }

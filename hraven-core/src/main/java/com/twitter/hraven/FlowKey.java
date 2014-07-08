@@ -15,12 +15,19 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.WritableComparable;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-public class FlowKey extends AppKey implements Comparable<Object> {
+public class FlowKey extends AppKey implements WritableComparable<Object> {
 
   /**
    * Identifying one single run of a version of an app. Smaller values indicate
@@ -111,4 +118,17 @@ public class FlowKey extends AppKey implements Comparable<Object> {
           .toHashCode();
   }
 
+  @Override
+  public void write(DataOutput out) throws IOException {
+    super.write(out);
+    new LongWritable(this.runId).write(out);
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    super.readFields(in);
+    LongWritable lw = new LongWritable();
+    lw.readFields(in);
+    this.runId = lw.get();
+  }
 }

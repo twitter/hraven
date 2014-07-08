@@ -30,6 +30,8 @@ import org.junit.Test;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobHistoryKeys;
+import com.twitter.hraven.JobHistoryRecord;
+import com.twitter.hraven.JobHistoryRecordCollection;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
@@ -50,39 +52,33 @@ public class TestJobHistoryListener {
 		JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1,
 				"job_1329348432655_0001");
 		JobHistoryListener jobHistoryListener = new JobHistoryListener(jobKey);
-		assertEquals(jobHistoryListener.getJobPuts().size(), 0);
+		assertEquals(jobHistoryListener.getJobRecords().size(), 0);
 		
 		JobHistoryFileParserHadoop1 jh = new JobHistoryFileParserHadoop1(null);
 
-		Put versionPut = jh.getHadoopVersionPut(
+		JobHistoryRecord versionRecord = jh.getHadoopVersionRecord(
 				HadoopVersion.ONE,
-				jobHistoryListener.getJobKeyBytes());
-		jobHistoryListener.includeHadoopVersionPut(versionPut);
-		assertEquals(jobHistoryListener.getJobPuts().size(), 1);
+				jobHistoryListener.getJobKey());
+		jobHistoryListener.includeHadoopVersionRecord(versionRecord);
+		assertEquals(jobHistoryListener.getJobRecords().size(), 1);
 
 		// check hadoop version
 		boolean foundVersion1 = false;
-		for (Put p : jobHistoryListener.getJobPuts()) {
-		  List<KeyValue> kv2 = p.get(Constants.INFO_FAM_BYTES,
-				  Bytes.toBytes(JobHistoryKeys.hadoopversion.toString()));
-		  if (kv2.size() == 0) {
+		for (JobHistoryRecord p : (JobHistoryRecordCollection)jobHistoryListener.getJobRecords()) {
+		  if (!p.getDataKey().get(0).equals(JobHistoryKeys.hadoopversion.toString().toLowerCase())) {
 			// we are interested in hadoop version put only
 			// hence continue
 			continue;
 		  }
-		  assertEquals(1, kv2.size());
-		  Map<byte[], List<KeyValue>> d = p.getFamilyMap();
-		  for (List<KeyValue> lkv : d.values()) {
-			for (KeyValue kv : lkv) {
-			  // ensure we have a hadoop2 version as the value
-			  assertEquals(Bytes.toString(kv.getValue()),
-						HadoopVersion.ONE.toString() );
- 			  // ensure we don't see the same put twice
-			  assertFalse(foundVersion1);
-			  // now set this to true
-			  foundVersion1 = true;
-			  }
-		   }
+		  assert(p.getDataValue() != null);
+		  
+		  // ensure we have a hadoop2 version as the value
+		  assertEquals(p.getDataValue(),
+					HadoopVersion.ONE.toString());
+		  // ensure we don't see the same put twice
+		  assertFalse(foundVersion1);
+		  // now set this to true
+		  foundVersion1 = true;
 		}
 		// ensure that we got the hadoop1 version put
 		assertTrue(foundVersion1);

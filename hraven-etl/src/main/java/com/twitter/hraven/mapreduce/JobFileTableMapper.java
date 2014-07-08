@@ -19,9 +19,14 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
+import javax.annotation.Nullable;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -33,14 +38,23 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.io.Writable;
-import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
+
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.HravenRecord;
+import com.twitter.hraven.HravenService;
 import com.twitter.hraven.JobDesc;
 import com.twitter.hraven.JobDescFactory;
+import com.twitter.hraven.JobHistoryRecordCollection;
+import com.twitter.hraven.JobHistoryRecord;
+import com.twitter.hraven.JobHistoryTaskRecord;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.QualifiedJobId;
+import com.twitter.hraven.RecordCategory;
+import com.twitter.hraven.RecordDataKey;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobHistoryRawService;
@@ -53,18 +67,21 @@ import com.twitter.hraven.etl.JobHistoryFileParser;
 import com.twitter.hraven.etl.JobHistoryFileParserBase;
 import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
+import com.twitter.hraven.etl.Sink;
+import com.twitter.hraven.util.EnumWritable;
 
 /**
  * Takes in results from a scan from {@link ProcessRecordService
  * @getHistoryRawTableScan}, process both job file and history file and emit out
- * as puts for the {@link Constants#HISTORY_TABLE}
+ * as {@link HravenService}, {@link HravenRecord}. {@link Sink}s will process these
+ * and convert to their respective storage formats
  * <p>
  * As a side-affect we'll load an index record into the
  * {@link Constants#HISTORY_BY_JOBID_TABLE} as well.
  * 
  */
 public class JobFileTableMapper extends
-    TableMapper<ImmutableBytesWritable, Put> {
+    TableMapper<HravenService, HravenRecord> {
 
   private static Log LOG = LogFactory.getLog(JobFileTableMapper.class);
 
@@ -76,6 +93,14 @@ public class JobFileTableMapper extends
       Constants.HISTORY_RAW_TABLE_BYTES);
   private static JobKeyConverter jobKeyConv = new JobKeyConverter();
 
+  private MultipleOutputs mos;
+  
+  /**
+   *  Define the sinks to output to 
+   */
+  
+  private ArrayList<Sink> sinks;
+  
   /**
    * Used to create secondary index.
    */
@@ -96,46 +121,68 @@ public class JobFileTableMapper extends
   /**
    * @return the key class for the job output data.
    */
-  public static Class<? extends WritableComparable<ImmutableBytesWritable>> getOutputKeyClass() {
-    return ImmutableBytesWritable.class;
+  public static Class<?> getOutputKeyClass() {
+    return EnumWritable.class;
   }
 
   /**
    * @return the value class for the job output data.
    */
-  public static Class<? extends Writable> getOutputValueClass() {
-    return Put.class;
+  public static Class<?> getOutputValueClass() {
+    return HravenRecord.class;
   }
 
   @Override
   protected void setup(
-      Mapper<ImmutableBytesWritable, Result, ImmutableBytesWritable, Put>.Context context)
+      Mapper<ImmutableBytesWritable, Result, HravenService, HravenRecord>.Context context)
       throws java.io.IOException, InterruptedException {
     Configuration myConf = context.getConfiguration();
     jobHistoryByIdService = new JobHistoryByIdService(myConf);
     appVersionService = new AppVersionService(myConf);
     rawService = new JobHistoryRawService(myConf);
-
     keyCount = 0;
+
+    sinks =
+        new ArrayList<Sink>(Collections2.transform(Arrays.asList(StringUtils.split(context
+            .getConfiguration().get(Constants.JOBCONF_SINKS), ',')), new Function<String, Sink>() {
+
+          @Override
+          @Nullable
+          public Sink apply(@Nullable String input) {
+            return Sink.valueOf(input);
+          }
+        }));
+
+    mos = new MultipleOutputs<HravenService, HravenRecord>(context);
   }
 
   @Override
   protected void map(
       ImmutableBytesWritable key,
       Result value,
-      Mapper<ImmutableBytesWritable, Result, ImmutableBytesWritable, Put>.Context context)
+      Mapper<ImmutableBytesWritable, Result, HravenService, HravenRecord>.Context context)
       throws java.io.IOException, InterruptedException {
 
     keyCount++;
     boolean success = true;
     QualifiedJobId qualifiedJobId = null;
     try {
+    	
+    	
+      /**
+       *  STEP 0
+       *  
+       *  init and extract meaningful data out of raw value
+       *  
+       *   **/
+    	
       qualifiedJobId = rawService.getQualifiedJobIdFromResult(value);
       context.progress();
 
       Configuration jobConf = rawService.createConfigurationFromResult(value);
       context.progress();
 
+      //figure out submit time
       byte[] jobhistoryraw = rawService.getJobHistoryRawFromResult(value);
       long submitTimeMillis = JobHistoryFileParserBase.getSubmitTimeMillisFromJobHistory(
             jobhistoryraw);
@@ -151,22 +198,29 @@ public class JobFileTableMapper extends
 
       Put submitTimePut = rawService.getJobSubmitTimePut(value.getRow(),
           submitTimeMillis);
-      context.write(RAW_TABLE, submitTimePut);
-
+      
+      rawService.getTable().put(submitTimePut);
+      
+      /** 
+       * STEP 1
+       * 
+       * process and extract job xml/conf
+       * 
+       * **/
       JobDesc jobDesc = JobDescFactory.createJobDesc(qualifiedJobId,
           submitTimeMillis, jobConf);
       JobKey jobKey = new JobKey(jobDesc);
       context.progress();
-
+      
       // TODO: remove sysout
       String msg = "JobDesc (" + keyCount + "): " + jobDesc
           + " submitTimeMillis: " + submitTimeMillis;
       LOG.info(msg);
 
-      List<Put> puts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
+      JobHistoryRecordCollection confRecordCollection = JobHistoryService.getConfRecord(jobDesc, jobConf);
 
-      LOG.info("Writing " + puts.size() + " JobConf puts to "
-          + Constants.HISTORY_TABLE);
+      LOG.info("Sending JobConf records to "
+          + HravenService.JOB_HISTORY + " service");
 
       // TODO:
       // For Scalding just convert the flowID as a Hex number. Use that for the
@@ -176,13 +230,18 @@ public class JobFileTableMapper extends
       // Scan should get the first (lowest job-id) then grab the start-time from
       // the Job.
 
-      // Emit the puts
-      for (Put put : puts) {
-        context.write(JOB_TABLE, put);
-        context.progress();
-      }
+      //1.1 Emit the records for job xml/conf/"JobDesc"
+      //Don't sink config seperately - merge with all other records and then sink
+      //sink(HravenService.JOB_HISTORY, confRecord);
+      context.progress();
 
-      // Write secondary index(es)
+      /** 
+       * STEP 2
+       * 
+       * Write secondary index(es)
+       * 
+       * **/
+      
       LOG.info("Writing secondary indexes");
       jobHistoryByIdService.writeIndexes(jobKey);
       context.progress();
@@ -190,6 +249,14 @@ public class JobFileTableMapper extends
           jobDesc.getAppId(), jobDesc.getVersion(), jobDesc.getRunId());
       context.progress();
 
+      /** 
+       * STEP 3
+       * 
+       * Process and extact actual job history
+       * 
+       * **/
+      
+      //3.1: get job history
       KeyValue keyValue = value.getColumnLatest(Constants.RAW_FAM_BYTES,
        Constants.JOBHISTORY_COL_BYTES);
 
@@ -200,44 +267,25 @@ public class JobFileTableMapper extends
       } else {
         historyFileContents = keyValue.getValue();
       }
+      
+      //3.2: parse job history
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
     		  .createJobHistoryFileParser(historyFileContents, jobConf);
 
       historyFileParser.parse(historyFileContents, jobKey);
       context.progress();
 
-      puts = historyFileParser.getJobPuts();
-      if (puts == null) {
-    	  throw new ProcessingException(
-    			  " Unable to get job puts for this record!" + jobKey);
-      }
-      LOG.info("Writing " + puts.size() + " Job puts to "
-          + Constants.HISTORY_TABLE);
+      //3.3: get and write job related data
+      JobHistoryRecordCollection jobHistoryRecords = (JobHistoryRecordCollection) historyFileParser.getJobRecords();
+      jobHistoryRecords.setSubmitTime(submitTimeMillis);
+      jobHistoryRecords.mergeWith(confRecordCollection);
+      
+      LOG.info("Sending " + jobHistoryRecords.size() + " Job history records to "
+          + HravenService.JOB_HISTORY + " service");
+      
+      context.progress();
 
-      // Emit the puts
-      for (Put put : puts) {
-        context.write(JOB_TABLE, put);
-        // TODO: we should not have to do this, but need to confirm that
-        // TableRecordWriter does this for us.
-        context.progress();
-      }
-
-      puts = historyFileParser.getTaskPuts();
-      if (puts == null) {
-    	  throw new ProcessingException(
-    			  " Unable to get task puts for this record!" + jobKey);
-      }
-      LOG.info("Writing " + puts.size() + " Job puts to "
-          + Constants.HISTORY_TASK_TABLE);
-
-      for (Put put : puts) {
-        context.write(TASK_TABLE, put);
-        // TODO: we should not have to do this, but need to confirm that
-        // TableRecordWriter does this for us.
-        context.progress();
-      }
-
-      /** post processing steps on job puts and job conf puts */
+      //3.4: post processing steps on job records and job conf records
       Long mbMillis = historyFileParser.getMegaByteMillis();
       context.progress();
       if (mbMillis == null) {
@@ -245,21 +293,37 @@ public class JobFileTableMapper extends
               + jobKey);
       }
 
-      Put mbPut = getMegaByteMillisPut(mbMillis, jobKey);
-      LOG.info("Writing mega byte millis  puts to " + Constants.HISTORY_TABLE);
-      context.write(JOB_TABLE, mbPut);
+      JobHistoryRecord mbRecord = getMegaByteMillisRecord(mbMillis, jobKey);
+      LOG.info("Send mega byte millis records to " + HravenService.JOB_HISTORY + " service");
+      
+      jobHistoryRecords.add(mbRecord);
       context.progress();
 
-      /** post processing steps to get cost of the job */
+      //3.5: post processing steps to get cost of the job */
       Double jobCost = getJobCost(mbMillis, context.getConfiguration());
       context.progress();
       if (jobCost == null) {
         throw new ProcessingException(" Unable to get job cost calculation for this record!"
             + jobKey);
       }
-      Put jobCostPut = getJobCostPut(jobCost, jobKey);
-      LOG.info("Writing jobCost puts to " + Constants.HISTORY_TABLE);
-      context.write(JOB_TABLE, jobCostPut);
+      JobHistoryRecord jobCostRecord = getJobCostRecord(jobCost, jobKey);
+      LOG.info("Send jobCost records to " + HravenService.JOB_HISTORY + " service");
+      jobHistoryRecords.add(jobCostRecord);
+      
+      //Sink the merged record
+      sink(HravenService.JOB_HISTORY, jobHistoryRecords);
+      context.progress();
+      
+      //3.6: get and write task related data
+      ArrayList<JobHistoryTaskRecord> taskHistoryRecords = (ArrayList<JobHistoryTaskRecord>) historyFileParser.getTaskRecords();
+      
+      LOG.info("Sending " + taskHistoryRecords.size() + " Task history records to "
+          + HravenService.JOB_HISTORY_TASK + " service");
+
+      for (JobHistoryTaskRecord taskRecord: taskHistoryRecords) {
+        sink(HravenService.JOB_HISTORY_TASK, taskRecord);  
+      }
+      
       context.progress();
 
     } catch (RowKeyParseException rkpe) {
@@ -280,6 +344,12 @@ public class JobFileTableMapper extends
       success = false;
     }
 
+    /**
+     * STEP 4
+     * 
+     * Finalization
+     * 
+     * **/
     if (success) {
       // Update counter to indicate failure.
       HadoopCompat.incrementCounter(context.getCounter(ProcessingCounter.RAW_ROW_SUCCESS_COUNT), 1);
@@ -296,21 +366,28 @@ public class JobFileTableMapper extends
     // row, with one succeeding and one failing, there could be a race where the
     // raw does not properly indicate the true status (which is questionable in
     // any case with multiple simultaneous runs with different outcome).
-    context.write(RAW_TABLE, successPut);
-
+    rawService.getTable().put(successPut);
   }
 
-  /**
-   * generates a put for the megabytemillis
+	private void sink(HravenService service, HravenRecord record)
+			throws IOException, InterruptedException {
+		
+	  for (Sink sink: sinks) {
+	    mos.write(sink.name(), new EnumWritable(service), record);
+	  }
+	}
+
+/**
+   * generates a record for the megabytemillis
    * @param mbMillis
    * @param jobKey
-   * @return the put with megabytemillis
+   * @return the record with megabytemillis
    */
-  private Put getMegaByteMillisPut(Long mbMillis, JobKey jobKey) {
-    Put pMb = new Put(jobKeyConv.toBytes(jobKey));
-    pMb.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(mbMillis));
-    return pMb;
-  }
+	private JobHistoryRecord getMegaByteMillisRecord(Long mbMillis,
+			JobKey jobKey) {
+		return new JobHistoryRecord(RecordCategory.INFERRED, jobKey,
+				new RecordDataKey(Constants.MEGABYTEMILLIS), mbMillis);
+	}
 
   /**
    * looks for cost file in distributed cache
@@ -400,24 +477,28 @@ public class JobFileTableMapper extends
   }
 
   /**
-   * generates a put for the job cost
+   * generates a record for the job cost
    * @param jobCost
    * @param jobKey
-   * @return the put with job cost
+   * @return the record with job cost
    */
-  private Put getJobCostPut(Double jobCost, JobKey jobKey) {
-    Put pJobCost = new Put(jobKeyConv.toBytes(jobKey));
-    pJobCost.add(Constants.INFO_FAM_BYTES, Constants.JOBCOST_BYTES, Bytes.toBytes(jobCost));
-    return pJobCost;
+  
+  private JobHistoryRecord getJobCostRecord(Double jobCost, JobKey jobKey) {
+	return new JobHistoryRecord(RecordCategory.INFERRED, jobKey,
+			new RecordDataKey(Constants.JOBCOST), jobCost);
   }
 
   @Override
   protected void cleanup(
-      Mapper<ImmutableBytesWritable, Result, ImmutableBytesWritable, Put>.Context context)
+      Mapper<ImmutableBytesWritable, Result, HravenService, HravenRecord>.Context context)
       throws java.io.IOException, InterruptedException {
 
     IOException caught = null;
-
+    
+    //Close the MultipleOutputs instance
+    //to call close on all wrapped OutputFormats's RecordWriters
+    mos.close();
+    
     if (jobHistoryByIdService != null) {
       try {
         jobHistoryByIdService.close();

@@ -17,9 +17,13 @@ package com.twitter.hraven.mapreduce;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import javax.annotation.Nullable;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,9 +34,17 @@ import org.apache.hadoop.mapred.JobHistoryCopy;
 import org.apache.hadoop.mapred.JobHistoryCopy.Listener;
 import org.apache.hadoop.mapred.JobHistoryCopy.RecordTypes;
 
+import com.google.common.base.Function;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.HravenRecord;
+import com.twitter.hraven.JobHistoryRecordCollection;
 import com.twitter.hraven.JobHistoryKeys;
+import com.twitter.hraven.JobHistoryRawRecord;
+import com.twitter.hraven.JobHistoryRecord;
+import com.twitter.hraven.JobHistoryTaskRecord;
+import com.twitter.hraven.RecordDataKey;
 import com.twitter.hraven.JobKey;
+import com.twitter.hraven.RecordCategory;
 import com.twitter.hraven.TaskKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.TaskKeyConverter;
@@ -47,17 +59,14 @@ public class JobHistoryListener implements Listener {
   private String jobId;
   /** Job ID, minus the leading "job_" */
   private String jobNumber = "";
-  private final byte[] jobKeyBytes;
 
   /** explicitly initializing map millis and
    * reduce millis in case it's not found
    */
   private long mapSlotMillis = 0L;
   private long reduceSlotMillis = 0L;
-  private List<Put> jobPuts = new LinkedList<Put>();
-  private List<Put> taskPuts = new LinkedList<Put>();
-  private JobKeyConverter jobKeyConv = new JobKeyConverter();
-  private TaskKeyConverter taskKeyConv = new TaskKeyConverter();
+  private Collection jobRecords;
+  private Collection taskRecords;
 
   /**
    * Constructor for listener to be used to read in a Job History File. While
@@ -72,7 +81,8 @@ public class JobHistoryListener implements Listener {
       throw new IllegalArgumentException(msg);
     }
     this.jobKey = jobKey;
-    this.jobKeyBytes = jobKeyConv.toBytes(jobKey);
+    this.jobRecords = new JobHistoryRecordCollection(jobKey);
+    this.taskRecords = new ArrayList<JobHistoryTaskRecord>();
     setJobId(jobKey.getJobId().getJobIdString());
   }
 
@@ -96,9 +106,12 @@ public class JobHistoryListener implements Listener {
       // skip other types
       ;
     }
-    //System.out.println("Reading: " + recType.toString());
   }
 
+  private interface RecordGenerator {
+	  public HravenRecord getRecord(RecordDataKey key, Object value, boolean isNumeric);
+  }
+  
   private void handleJob(Map<JobHistoryKeys, String> values) {
     String id = values.get(JobHistoryKeys.JOBID);
 
@@ -110,13 +123,15 @@ public class JobHistoryListener implements Listener {
       LOG.error(msg);
       throw new ImportException(msg);
     }
-    // add job ID to values to put
-    Put p = new Put(this.jobKeyBytes);
+    
     for (Map.Entry<JobHistoryKeys, String> e : values.entrySet()) {
-      addKeyValues(p, Constants.INFO_FAM_BYTES, e.getKey(), e.getValue());
+      addRecords(jobRecords, e.getKey(), e.getValue(), new RecordGenerator() {
+        @Override
+        public JobHistoryRecord getRecord(RecordDataKey key, Object value, boolean isNumeric) {
+          return new JobHistoryRecord(isNumeric ? RecordCategory.HISTORY_COUNTER : RecordCategory.HISTORY_META, jobKey, key, value);
+        }
+      });
     }
-    this.jobPuts.add(p);
-
   }
 
   /**
@@ -124,10 +139,10 @@ public class JobHistoryListener implements Listener {
    * @param pVersion
    * @throws IllegalArgumentException if put is null
    */
-  public void includeHadoopVersionPut(Put pVersion) {
+  public void includeHadoopVersionRecord(JobHistoryRecord pVersion) {
 	  // set the hadoop version for this record
 	  if (pVersion != null) {
-		  this.jobPuts.add(pVersion);
+		  this.jobRecords.add(pVersion);
 	  } else {
 		  String msg = "Hadoop Version put cannot be null";
 		  LOG.error(msg);
@@ -136,75 +151,76 @@ public class JobHistoryListener implements Listener {
   }
 
   private void handleTask(Map<JobHistoryKeys, String> values) {
-    byte[] taskIdKeyBytes = getTaskKey("task_", this.jobNumber, values.get(JobHistoryKeys.TASKID));
-    Put p = new Put(taskIdKeyBytes);
+    final TaskKey taskKey = getTaskKey("task_", this.jobNumber, values.get(JobHistoryKeys.TASKID));
 
-    p.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.Task.toString()));
-    for (Map.Entry<JobHistoryKeys,String> e : values.entrySet()) {
-      addKeyValues(p, Constants.INFO_FAM_BYTES, e.getKey(), e.getValue());
+    this.taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, taskKey,
+        new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.Task.toString()));
+
+    for (Map.Entry<JobHistoryKeys, String> e : values.entrySet()) {
+      addRecords(taskRecords, e.getKey(), e.getValue(), new RecordGenerator() {
+        @Override
+        public JobHistoryTaskRecord getRecord(RecordDataKey key, Object value, boolean isNumeric) {
+          return new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+              : RecordCategory.HISTORY_TASK_META, taskKey, key, value);
+        }
+      });
     }
-    this.taskPuts.add(p);
   }
 
   private void handleMapAttempt(Map<JobHistoryKeys, String> values) {
-    byte[] taskIdKeyBytes = getTaskKey("attempt_", this.jobNumber, values.get(JobHistoryKeys.TASK_ATTEMPT_ID));
-    Put p = new Put(taskIdKeyBytes);
+    final TaskKey taskKey =
+        getTaskKey("attempt_", this.jobNumber, values.get(JobHistoryKeys.TASK_ATTEMPT_ID));
 
-    p.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.MapAttempt.toString()));
-    for (Map.Entry<JobHistoryKeys,String> e : values.entrySet()) {
-      addKeyValues(p, Constants.INFO_FAM_BYTES, e.getKey(), e.getValue());
+    this.taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, taskKey,
+        new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.MapAttempt.toString()));
+
+    for (Map.Entry<JobHistoryKeys, String> e : values.entrySet()) {
+      addRecords(taskRecords, e.getKey(), e.getValue(), new RecordGenerator() {
+        @Override
+        public JobHistoryTaskRecord getRecord(RecordDataKey key, Object value, boolean isNumeric) {
+          return new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+              : RecordCategory.HISTORY_TASK_META, taskKey, key, value);
+        }
+      });
     }
-
-    this.taskPuts.add(p);
   }
 
   private void handleReduceAttempt(Map<JobHistoryKeys, String> values) {
-    byte[] taskIdKeyBytes = getTaskKey("attempt_", this.jobNumber, values.get(JobHistoryKeys.TASK_ATTEMPT_ID));
-    Put p = new Put(taskIdKeyBytes);
+    final TaskKey taskKey =
+        getTaskKey("attempt_", this.jobNumber, values.get(JobHistoryKeys.TASK_ATTEMPT_ID));
 
-    p.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
-        Bytes.toBytes(RecordTypes.ReduceAttempt.toString()));
-    for (Map.Entry<JobHistoryKeys,String> e : values.entrySet()) {
-      addKeyValues(p, Constants.INFO_FAM_BYTES, e.getKey(), e.getValue());
+    this.taskRecords.add(new JobHistoryTaskRecord(RecordCategory.HISTORY_TASK_META, taskKey,
+        new RecordDataKey(Constants.RECORD_TYPE_COL), RecordTypes.ReduceAttempt.toString()));
+
+    for (Map.Entry<JobHistoryKeys, String> e : values.entrySet()) {
+      addRecords(taskRecords, e.getKey(), e.getValue(), new RecordGenerator() {
+        @Override
+        public JobHistoryTaskRecord getRecord(RecordDataKey key, Object value, boolean isNumeric) {
+          return new JobHistoryTaskRecord(isNumeric ? RecordCategory.HISTORY_TASK_COUNTER
+              : RecordCategory.HISTORY_TASK_META, taskKey, key, value);
+        }
+      });
     }
-
-    this.taskPuts.add(p);
   }
 
-  private void addKeyValues(Put p, byte[] family, JobHistoryKeys key, String value) {
+  private void addRecords(Collection recordCollection, JobHistoryKeys key, String value,
+      RecordGenerator generator) {
     if (key == JobHistoryKeys.COUNTERS || key == JobHistoryKeys.MAP_COUNTERS
         || key == JobHistoryKeys.REDUCE_COUNTERS) {
       try {
         Counters counters = Counters.fromEscapedCompactString(value);
-        /*
-         * Name counter columns as:
-         *     g!groupname!countername
-         */
-        byte[] counterPrefix = null;
-        if (key == JobHistoryKeys.COUNTERS) {
-            counterPrefix = Bytes.add(Constants.COUNTER_COLUMN_PREFIX_BYTES,
-                Constants.SEP_BYTES);
-        } else if (key == JobHistoryKeys.MAP_COUNTERS) {
-          counterPrefix = Bytes.add(Constants.MAP_COUNTER_COLUMN_PREFIX_BYTES,
-              Constants.SEP_BYTES);
-        } else if (key == JobHistoryKeys.REDUCE_COUNTERS) {
-          counterPrefix = Bytes.add(Constants.REDUCE_COUNTER_COLUMN_PREFIX_BYTES,
-              Constants.SEP_BYTES);
-        } else {
-          throw new IllegalArgumentException("Unknown counter type "+key.toString());
-        }
 
         for (Counters.Group group : counters) {
-          byte[] groupPrefix = Bytes.add(
-              counterPrefix, Bytes.toBytes(group.getName()), Constants.SEP_BYTES);
           for (Counters.Counter counter : group) {
+            RecordDataKey dataKey = new RecordDataKey(key.toString());
+            dataKey.add(group.getName());
             String counterName = counter.getName();
             long counterValue = counter.getValue();
-            byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
-            p.add(family, qualifier, Bytes.toBytes(counterValue));
-            // get the map and reduce slot millis for megabytemillis calculations
+            dataKey.add(counterName);
+            recordCollection.add(generator.getRecord(dataKey, counterValue, true));
+
+            // get the map and reduce slot millis for megabytemillis
+            // calculations
             if (Constants.SLOTS_MILLIS_MAPS.equals(counterName)) {
               this.mapSlotMillis = counterValue;
             }
@@ -214,34 +230,31 @@ public class JobHistoryListener implements Listener {
           }
         }
       } catch (ParseException pe) {
-        LOG.error("Counters could not be parsed from string'"+value+"'", pe);
+        LOG.error("Counters could not be parsed from string'" + value + "'", pe);
       }
     } else {
       @SuppressWarnings("rawtypes")
       Class clazz = JobHistoryKeys.KEY_TYPES.get(key);
-      byte[] valueBytes = null;
+      Object valueObj = value;
+      boolean isNumeric = false;
       if (Integer.class.equals(clazz)) {
+        isNumeric = true;
         try {
-          valueBytes = (value != null && value.trim().length() > 0) ?
-              Bytes.toBytes(Integer.parseInt(value)) : Constants.ZERO_INT_BYTES;
+          valueObj = (value != null && value.trim().length() > 0) ? Integer.parseInt(value) : 0;
         } catch (NumberFormatException nfe) {
-          // us a default value
-          valueBytes = Constants.ZERO_INT_BYTES;
+          valueObj = 0;
         }
       } else if (Long.class.equals(clazz)) {
+        isNumeric = true;
         try {
-          valueBytes = (value != null && value.trim().length() > 0) ?
-              Bytes.toBytes(Long.parseLong(value)) : Constants.ZERO_LONG_BYTES;
+          valueObj = (value != null && value.trim().length() > 0) ? Long.parseLong(value) : 0;
         } catch (NumberFormatException nfe) {
-          // us a default value
-          valueBytes = Constants.ZERO_LONG_BYTES;
+          valueObj = 0;
         }
-      } else {
-        // keep the string representation by default
-        valueBytes = Bytes.toBytes(value);
       }
-      byte[] qualifier = Bytes.toBytes(key.toString().toLowerCase());
-      p.add(family, qualifier, valueBytes);
+      
+      recordCollection.add(generator.getRecord(new RecordDataKey(key.toString()),
+        valueObj, isNumeric));
     }
   }
 
@@ -260,7 +273,7 @@ public class JobHistoryListener implements Listener {
    * Returns the Task ID or Task Attempt ID, stripped of the leading job ID,
    * appended to the job row key.
    */
-  public byte[] getTaskKey(String prefix, String jobNumber, String fullId) {
+  public TaskKey getTaskKey(String prefix, String jobNumber, String fullId) {
     String taskComponent = fullId;
     if (fullId == null) {
       taskComponent = "";
@@ -272,15 +285,15 @@ public class JobHistoryListener implements Listener {
       }
     }
 
-    return taskKeyConv.toBytes(new TaskKey(this.jobKey, taskComponent));
+    return new TaskKey(this.jobKey, taskComponent);
   }
 
   /**
    * getter for jobKeyBytes
    * @return the byte array of jobKeyBytes
    */
-  public byte[] getJobKeyBytes() {
-	return this.jobKeyBytes;
+  public JobKey getJobKey() {
+	return this.jobKey;
   }
 
   /**
@@ -289,12 +302,12 @@ public class JobHistoryListener implements Listener {
    *         is called with this listener.
    * @return a non-null (possibly empty) list of jobPuts
    */
-  public List<Put> getJobPuts() {
-    return this.jobPuts;
+  public Collection getJobRecords() {
+    return this.jobRecords;
   }
 
-  public List<Put> getTaskPuts() {
-    return this.taskPuts;
+  public Collection getTaskRecords() {
+    return this.taskRecords;
   }
 
   public Long getMapSlotMillis() {
