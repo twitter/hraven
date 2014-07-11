@@ -81,6 +81,14 @@ public class TestJobHistoryService {
     flowDataGen.loadFlow("c1@local", "fuser", "app1", 2345, "a", 2, 10,idService, historyTable);
     flowDataGen.loadFlow("c1@local", "fuser", "app1", 2456, "b", 2, 10,idService, historyTable);
 
+    // load flows for checking timebound flow scan with version
+    flowDataGen.loadFlow("c3@local", "kuser", "app9", 1395786712000L,
+        "version", 2, 10,idService, historyTable);
+    flowDataGen.loadFlow("c3@local", "kuser", "app9", 1395786725000L,
+      "version", 2, 10,idService, historyTable);
+    flowDataGen.loadFlow("c3@local", "kuser", "app9", 1395786712000L,
+      "version2", 3, 10,idService, historyTable);
+
     // read out job history flow directly
     JobHistoryService service = new JobHistoryService(UTIL.getConfiguration());
     try {
@@ -119,6 +127,22 @@ public class TestJobHistoryService {
       assertEquals("buser", firstJob.getJobKey().getUserName());
       assertEquals("app2", firstJob.getJobKey().getAppId());
       assertEquals(1212L, firstJob.getJobKey().getRunId());
+
+      // check the timebound scan for default time
+      long endTime = System.currentTimeMillis();
+      long startTime = endTime - Constants.THIRTY_DAYS_MILLIS;
+      flowSeries = service.getFlowSeries("c1@local", "buser", "app2",
+        "a", true, startTime, endTime, 100);
+      assertNotNull(flowSeries);
+      assertEquals(0, flowSeries.size());
+
+      // check the timebound scan for start and end times
+      endTime = System.currentTimeMillis();
+      startTime = 1395786712000L - 86400000L;
+      flowSeries = service.getFlowSeries( "c3@local", "kuser", "app9",
+        "version",true, startTime, endTime, 100);
+      assertNotNull(flowSeries);
+      assertEquals(2, flowSeries.size());
 
       flowSeries = service.getFlowSeries("c1@local", "fuser", "app1", 100);
       assertNotNull(flowSeries);
@@ -212,10 +236,6 @@ public class TestJobHistoryService {
       assertEquals( numJobs * baseStats , f.getMegabyteMillis());
       assertEquals( numJobs * 1000, f.getDuration());
       assertEquals( f.getDuration() + GenerateFlowTestData.SUBMIT_LAUCH_DIFF, f.getWallClockTime());
-      // verify that job configurations are empty
-      for (JobDetails job : f.getJobs()) {
-        assertEquals(0, job.getConfiguration().size());
-      }
     }
 
   }

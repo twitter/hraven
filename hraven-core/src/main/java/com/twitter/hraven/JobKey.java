@@ -24,8 +24,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Represents the row key for a given job. Row keys are stored as: username !
  * appid ! version ! runid ! jobid
  */
-@SuppressWarnings("rawtypes")
-public class JobKey extends FlowKey implements Comparable{
+public class JobKey extends FlowKey implements Comparable<Object>{
 
   /**
    * Fully qualified cluster + parsed job identifier
@@ -34,7 +33,7 @@ public class JobKey extends FlowKey implements Comparable{
 
   /**
    * Constructor.
-   * 
+   *
    * @param cluster
    *          the Hadoop cluster on which the job ran.
    * @param userName
@@ -78,7 +77,7 @@ public class JobKey extends FlowKey implements Comparable{
 
   /**
    * Constructor.
-   * 
+   *
    * @param jobDesc
    *          from which to construct this JobKey.
    */
@@ -103,15 +102,12 @@ public class JobKey extends FlowKey implements Comparable{
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see java.lang.Object#toString()
    */
   public String toString() {
-    return getCluster() + Constants.SEP + this.userName + Constants.SEP
-        + this.appId + Constants.SEP + this.getRunId()
-        + Constants.SEP + this.jobId.getJobIdString();
+    return super.toString() + Constants.SEP + this.jobId.getJobIdString();
   }
-
   /**
    * Compares two JobKey QualifiedJobId
    *

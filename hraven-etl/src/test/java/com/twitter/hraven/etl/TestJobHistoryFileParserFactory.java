@@ -35,7 +35,7 @@ public class TestJobHistoryFileParserFactory {
 		String jHist = "Meta VERSION=\"1\" .\n"
 				+ "Job JOBID=\"job_201301010000_12345\"";
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(jHist.getBytes());
+				.createJobHistoryFileParser(jHist.getBytes(), null);
 
 		assertNotNull(historyFileParser);
 
@@ -90,7 +90,7 @@ public class TestJobHistoryFileParserFactory {
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateJobHistoryFileParserNullCreation() {
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(null);
+				.createJobHistoryFileParser(null, null);
 		assertNull(historyFileParser);
 	}
 }

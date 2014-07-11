@@ -17,14 +17,25 @@ package com.twitter.hraven;
 
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
+
 import com.twitter.hraven.datasource.JobHistoryService;
 
 /**
+ * Captures the details of tasks for a hadoop job
  */
+@JsonSerialize(include=JsonSerialize.Inclusion.NON_NULL)
 public class TaskDetails implements Comparable<TaskDetails> {
+
+  private static Log LOG = LogFactory.getLog(TaskDetails.class);
 
   private TaskKey taskKey;
 
@@ -49,7 +60,8 @@ public class TaskDetails implements Comparable<TaskDetails> {
   private long shuffleFinished;
   private long sortFinished;
 
-  public TaskDetails(TaskKey taskKey) {
+  @JsonCreator
+  public TaskDetails(@JsonProperty("taskKey") TaskKey taskKey) {
     this.taskKey = taskKey;
   }
 
@@ -209,48 +221,35 @@ public class TaskDetails implements Comparable<TaskDetails> {
     this.sortFinished = sortFinished;
   }
 
+  /**
+   * Looks through the hbase result's map of task details
+   * and populates fields of {@link TaskDetails}
+   * @param taskValues
+   */
   public void populate(Map<byte[],byte[]> taskValues) {
-    this.taskId = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TASKID)));
-    this.type = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TASK_TYPE)));
-    this.status = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TASK_STATUS)));
-    String taskSplits = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.SPLITS)));
+
+    this.taskId = JobDetails.getValueAsString(JobHistoryKeys.TASKID, taskValues);
+    if(StringUtils.isBlank(taskId)) {
+      this.taskId = this.taskKey.getTaskId();
+    }
+    LOG.debug(" in populate in task details " + this.taskId);
+
+    this.type = JobDetails.getValueAsString(JobHistoryKeys.TASK_TYPE, taskValues);
+    this.status = JobDetails.getValueAsString(JobHistoryKeys.TASK_STATUS, taskValues);
+    String taskSplits = JobDetails.getValueAsString(JobHistoryKeys.SPLITS, taskValues);
     if (taskSplits != null) {
       this.splits = taskSplits.split(",");
     }
-    this.startTime = Bytes.toLong(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.START_TIME)));
-    this.finishTime = Bytes.toLong(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISH_TIME)));
-
-    this.taskAttemptId = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TASK_ATTEMPT_ID)));
-    this.trackerName = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TRACKER_NAME)));
-    byte[] httpPortBytes =
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.HTTP_PORT));
-    if (httpPortBytes != null) {
-      this.httpPort = Bytes.toInt(httpPortBytes);
-    }
-    this.hostname = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.HOSTNAME)));
-    this.state = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.STATE_STRING)));
-    this.error = Bytes.toString(
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.ERROR)));
-    byte[] shuffleFinishedBytes =
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.SHUFFLE_FINISHED));
-    if (shuffleFinishedBytes != null) {
-      this.shuffleFinished = Bytes.toLong(shuffleFinishedBytes);
-    }
-    byte[] sortFinishedBytes =
-        taskValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.SORT_FINISHED));
-    if (sortFinishedBytes != null) {
-      this.sortFinished = Bytes.toLong(sortFinishedBytes);
-    }
+    this.startTime = JobDetails.getValueAsLong(JobHistoryKeys.START_TIME, taskValues);
+    this.finishTime = JobDetails.getValueAsLong(JobHistoryKeys.FINISH_TIME, taskValues);
+    this.taskAttemptId = JobDetails.getValueAsString(JobHistoryKeys.TASK_ATTEMPT_ID, taskValues);
+    this.trackerName = JobDetails.getValueAsString(JobHistoryKeys.TRACKER_NAME, taskValues);
+    this.httpPort = JobDetails.getValueAsInt(JobHistoryKeys.HTTP_PORT, taskValues);
+    this.hostname = JobDetails.getValueAsString(JobHistoryKeys.HOSTNAME, taskValues);
+    this.state = JobDetails.getValueAsString(JobHistoryKeys.STATE_STRING, taskValues);
+    this.error = JobDetails.getValueAsString(JobHistoryKeys.ERROR, taskValues);
+    this.shuffleFinished = JobDetails.getValueAsLong(JobHistoryKeys.SHUFFLE_FINISHED, taskValues);
+    this.sortFinished = JobDetails.getValueAsLong(JobHistoryKeys.SORT_FINISHED, taskValues);
 
     // populate task counters
     this.counters = JobHistoryService.parseCounters(

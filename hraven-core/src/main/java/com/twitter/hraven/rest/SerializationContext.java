@@ -20,12 +20,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 
 /**
 */
 public class SerializationContext {
+
+  @SuppressWarnings("unused")
+  private static final Log LOG = LogFactory.getLog(SerializationContext.class);
+
   public enum DetailLevel {
 
     /**
@@ -37,6 +44,12 @@ public class SerializationContext {
      * Indicating that only summary stats are to be returned
      */
     FLOW_SUMMARY_STATS_ONLY,
+
+    /**
+     * Indicating that only queue and run id are to be returned
+     * for newJobs
+     */
+    APP_SUMMARY_STATS_NEW_JOBS_ONLY,
 
     /**
      * Indicating that job details along with summary stats are to be returned

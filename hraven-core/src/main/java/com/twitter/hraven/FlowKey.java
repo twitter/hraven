@@ -20,21 +20,8 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
-//Leaving comparable as a raw due to sub-typing/overriding issues.
-@SuppressWarnings("rawtypes")
-public class FlowKey implements Comparable {
-  /**
-   * The cluster on which the job ran.
-   */
-  protected final String cluster;
-  /**
-   * Who ran the final map-reduce flow on Hadoop.
-   */
-  protected final String userName;
-  /**
-   * Identifying an application, which can go through different versions.
-   */
-  protected final String appId;
+public class FlowKey extends AppKey implements Comparable<Object> {
+
   /**
    * Identifying one single run of a version of an app. Smaller values indicate
    * a later run. We're using an inverted timestamp Long.MAXVALUE -
@@ -47,36 +34,12 @@ public class FlowKey implements Comparable {
                  @JsonProperty("userName") String userName,
                  @JsonProperty("appId") String appId,
                  @JsonProperty("runId") long runId) {
-    this.cluster = cluster;
+    super(cluster, userName, appId);
     this.runId = runId;
-    this.userName = (null == userName) ? Constants.UNKNOWN : userName.trim();
-    this.appId = (null == appId) ? Constants.UNKNOWN : appId.trim();
   }
 
   public FlowKey(FlowKey toCopy) {
     this(toCopy.getCluster(), toCopy.getUserName(), toCopy.getAppId(), toCopy.getRunId());
-  }
-
-  /**
-   * @return The cluster on which the job ran.
-   */
-  public String getCluster() {
-    return cluster;
-  }
-
-  /**
-   * @return Who ran the final map-reduce flow on Hadoop.
-   */
-  public String getUserName() {
-    return userName;
-  }
-
-  /**
-   * @return The thing that identifies an application, such as Pig script
-   *         identifier, or Scalding identifier.
-   */
-  public String getAppId() {
-    return appId;
   }
 
   /**
@@ -103,6 +66,10 @@ public class FlowKey implements Comparable {
     return runId;
   }
 
+  public String toString() {
+    return super.toString() + Constants.SEP + this.getRunId();
+  }
+
   /**
    * Compares two FlowKey objects on the basis of
    * their cluster, userName, appId and encodedRunId
@@ -122,9 +89,8 @@ public class FlowKey implements Comparable {
       return -1;
     }
     FlowKey otherKey = (FlowKey)other;
-    return new CompareToBuilder().append(this.cluster, otherKey.getCluster())
-        .append(this.userName, otherKey.getUserName())
-        .append(this.appId, otherKey.getAppId())
+    return new CompareToBuilder()
+        .appendSuper(super.compareTo(other))
         .append(getEncodedRunId(), otherKey.getEncodedRunId())
         .toComparison();
   }
@@ -140,9 +106,7 @@ public class FlowKey implements Comparable {
   @Override
   public int hashCode(){
       return new HashCodeBuilder()
-          .append(this.cluster)
-          .append(this.userName)
-          .append(this.appId)
+          .appendSuper(super.hashCode())
           .append(getEncodedRunId())
           .toHashCode();
   }

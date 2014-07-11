@@ -1,4 +1,4 @@
-hRaven [![Build Status](https://travis-ci.org/twitter/hraven.png)](https://travis-ci.org/twitter/hraven)
+hRaven [![Build Status](https://travis-ci.org/twitter/hraven.png)](https://travis-ci.org/twitter/hraven) [![Coverage Status](https://coveralls.io/repos/twitter/hraven/badge.png?branch=master)](https://coveralls.io/r/twitter/hraven?branch=master)
 ==========
 
 hRaven collects run time data and statistics from map reduce jobs running on
@@ -168,9 +168,7 @@ For more details on how to contribute to hRaven, see CONTRIBUTING.md.
 Known Issues
 --------------------
 
-1. CDH3u5 has changed the directory layout used by the Job Tracker to store history files for completed map reduce jobs.  The JobFilePrepocessor needs to be updated to correctly handle the new structure.
-2. hRaven needs to be updated to load job history files from Hadoop 2.0.
-3. While hRaven stores the full data available from job history logs, the rolled-up statistics in the `Flow` class only represent data from sucessful task attempts.  We plan to extend this so that the `Flow` class also reflects resources used by failed and killed task attempts.
+1. While hRaven stores the full data available from job history logs, the rolled-up statistics in the `Flow` class only represent data from sucessful task attempts.  We plan to extend this so that the `Flow` class also reflects resources used by failed and killed task attempts.
 
 Copyright and License
 ---------------------

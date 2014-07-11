@@ -17,6 +17,7 @@ package com.twitter.hraven.rest;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -26,20 +27,31 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
+import com.google.common.base.Predicate;
+import com.google.common.base.Stopwatch;
+import com.sun.jersey.core.util.Base64;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Stopwatch;
-import com.sun.jersey.core.util.Base64;
+import com.twitter.hraven.AppSummary;
+import com.twitter.hraven.Cluster;
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
+import com.twitter.hraven.HdfsConstants;
+import com.twitter.hraven.HdfsStats;
+import com.twitter.hraven.HravenResponseMetrics;
 import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.TaskDetails;
+import com.twitter.hraven.datasource.AppSummaryService;
 import com.twitter.hraven.datasource.AppVersionService;
 import com.twitter.hraven.datasource.FlowKeyConverter;
+import com.twitter.hraven.datasource.HdfsStatsService;
 import com.twitter.hraven.datasource.JobHistoryService;
+import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.VersionInfo;
 
 /**
@@ -82,6 +94,34 @@ public class RestJSONResource {
       }
     };
 
+  private static final ThreadLocal<AppSummaryService> serviceThreadLocalAppService =
+        new ThreadLocal<AppSummaryService>() {
+
+        @Override
+        protected AppSummaryService initialValue() {
+          try {
+            LOG.info("Initializing AppService");
+            return new AppSummaryService(HBASE_CONF);
+          } catch (IOException e) {
+            throw new RuntimeException("Could not initialize AppService", e);
+          }
+        }
+      };
+
+    private static final ThreadLocal<HdfsStatsService> serviceThreadLocalHdfsStats =
+        new ThreadLocal<HdfsStatsService>() {
+
+        @Override
+        protected HdfsStatsService initialValue() {
+          try {
+            LOG.info("Initializing HdfsStatsService");
+            return new HdfsStatsService(HBASE_CONF);
+          } catch (IOException e) {
+            throw new RuntimeException("Could not initialize HdfsStatsService", e);
+          }
+        }
+      };
+
   public static final ThreadLocal<SerializationContext> serializationContext =
                                 new ThreadLocal<SerializationContext>() {
     @Override
@@ -109,7 +149,34 @@ public class RestJSONResource {
       LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
           + " No jobDetails found, but spent " + timer);
     }
-   return jobDetails;
+    // export latency metrics
+    HravenResponseMetrics.JOB_API_LATENCY_VALUE
+      .set(timer.elapsed(TimeUnit.MILLISECONDS));
+
+    return jobDetails;
+
+  }
+
+  @GET
+  @Path("tasks/{cluster}/{jobId}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
+                                           @PathParam("jobId") String jobId) throws IOException {
+    LOG.info("Fetching tasks info for jobId=" + jobId);
+    Stopwatch timer = new Stopwatch().start();
+    serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING));
+    JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId, true);
+    timer.stop();
+    List<TaskDetails> tasks = jobDetails.getTasks();
+    if(tasks != null && !tasks.isEmpty()) {
+      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId + ", fetched "
+          + tasks.size() + " tasks, spent time " + timer);
+    } else {
+      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId
+          + ", found no tasks, spent time " + timer);
+    }
+    return tasks;
   }
 
   @GET
@@ -131,6 +198,10 @@ public class RestJSONResource {
       LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/" + cluster + SLASH
           + jobId + " No flow found, spent " + timer);
     }
+
+    // export latency metrics
+    HravenResponseMetrics.JOBFLOW_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flow;
   }
 
@@ -142,11 +213,24 @@ public class RestJSONResource {
                                    @PathParam("appId") String appId,
                                    @PathParam("version") String version,
                                    @QueryParam("limit") int limit,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
 
     Stopwatch timer = new Stopwatch().start();
+
+    if(startTime == 0) {
+      // look back one month
+      startTime = System.currentTimeMillis() - Constants.THIRTY_DAYS_MILLIS;
+    }
+
+    if(endTime == 0) {
+      // default to now
+      endTime = System.currentTimeMillis();
+    }
+
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
       configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
@@ -155,7 +239,7 @@ public class RestJSONResource {
     }
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    List<Flow> flows = getFlowList(cluster, user, appId, version, limit);
+    List<Flow> flows = getFlowList(cluster, user, appId, version, startTime, endTime, limit);
     timer.stop();
 
     StringBuilder builderIncludeConfigs = new StringBuilder();
@@ -169,15 +253,21 @@ public class RestJSONResource {
 
     if (flows != null) {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
-          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched "
-          + flows.size() + " flows " + " in " + timer);
-    } else {
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+          + " startTime=" + startTime + " endTime=" + endTime
+          + " &includeConf=" + builderIncludeConfigs + " &includeConfRegex="
+          + builderIncludeConfigRegex + " fetched " + flows.size() + " flows " + " in " + timer);
+     } else {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit + "&includeConf="
-          + builderIncludeConfigs + "&includeConfRegex=" + builderIncludeConfigRegex
-          + " No flows fetched, spent " + timer);
+          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+          + " startTime=" + startTime + " endTime=" + endTime
+          + " &includeConf=" + builderIncludeConfigs + "&includeConfRegex="
+          + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
     }
+
+    // export latency metrics
+    HravenResponseMetrics.FLOW_VERSION_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flows;
   }
 
@@ -188,6 +278,8 @@ public class RestJSONResource {
                                    @PathParam("user") String user,
                                    @PathParam("appId") String appId,
                                    @QueryParam("limit") int limit,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
                                    @QueryParam("includeConf") List<String> includeConfig,
                                    @QueryParam("includeConfRegex") List<String> includeConfigRegex)
   throws IOException {
@@ -198,10 +290,11 @@ public class RestJSONResource {
       configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
     } else if (includeConfigRegex != null && !includeConfigRegex.isEmpty()) {
       configFilter = new SerializationContext.RegexConfigurationFilter(includeConfigRegex);
-    }
-    serializationContext.set(new SerializationContext(
+    } else {
+      serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    List<Flow> flows =  getFlowList(cluster, user, appId, null, limit);
+    }
+    List<Flow> flows = getFlowList(cluster, user, appId, null, startTime, endTime, limit);
     timer.stop();
 
     StringBuilder builderIncludeConfigs = new StringBuilder();
@@ -215,15 +308,19 @@ public class RestJSONResource {
 
     if (flows != null) {
       LOG.info("For flow/{cluster}/{user}/{appId} with input query: " + "flow/" + cluster + SLASH
-          + user + SLASH + appId + "?limit=" + limit + "&includeConf=" + builderIncludeConfigs
+          + user + SLASH + appId + "?limit=" + limit + "&startTime=" + startTime 
+          + "&endTime=" + endTime + "&includeConf=" + builderIncludeConfigs
           + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched " + flows.size()
           + " flows in " + timer);
     } else {
       LOG.info("For flow/{cluster}/{user}/{appId} with input query: " + "flow/" + cluster + SLASH
           + user + SLASH + appId + "?limit=" + limit + "&includeConf=" + builderIncludeConfigs
-          + "&includeConfRegex=" + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
+          + "&includeConfRegex=" + builderIncludeConfigRegex + " No flows fetched, spent "+ timer);
     }
 
+    // export latency metrics
+    HravenResponseMetrics.FLOW_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flows;
 
   }
@@ -246,7 +343,7 @@ public class RestJSONResource {
       + appId + "?version=" + version + "&limit=" + limit
       + "&startRow=" + startRowParam + "&startTime=" + startTime + "&endTime=" + endTime
       + "&includeJobs=" + includeJobs);
- 
+
     Stopwatch timer = new Stopwatch().start();
     byte[] startRow = null;
     if (startRowParam != null) {
@@ -313,6 +410,10 @@ public class RestJSONResource {
         + appId + "?version=" + version + "&limit=" + limit + "&startRow=" + startRow
         + "&startTime=" + startTime + "&endTime=" + endTime + "&includeJobs=" + includeJobs
         + " fetched " + flows.size() + " in " + timer);
+
+    // export latency metrics
+    HravenResponseMetrics.FLOW_STATS_API_LATENCY_VALUE
+        .set(timer.elapsed(TimeUnit.MILLISECONDS));
     return flowStatsPage;
  }
 
@@ -340,25 +441,237 @@ public class RestJSONResource {
      LOG.info("For appVersion/{cluster}/{user}/{appId}/ with input query "
        + "appVersion/" + cluster + SLASH + user + SLASH + appId
        + "?limit=" + limit
-       + " fetched #number of VersionInfo " + distinctVersions.size() + " in " + timer);
+       + " fetched #number of VersionInfo " + distinctVersions.size() + " in " );//+ timer);
 
+     // export latency metrics
+     HravenResponseMetrics.APPVERSIONS_API_LATENCY_VALUE
+       .set(timer.elapsed(TimeUnit.MILLISECONDS));
      return distinctVersions;
   }
+
+   @GET
+   @Path("getCluster/")
+   @Produces(MediaType.APPLICATION_JSON)
+   public String getCluster(@QueryParam("hostname") String hostname)
+                                        throws ProcessingException, IOException {
+
+     if(StringUtils.isBlank(hostname)) {
+       throw new ProcessingException("hostname not present, "
+         + "please resend with that info");
+     }
+    String cluster = Cluster.getIdentifier(hostname);
+    LOG.info("Fetched cluster identifier=" + cluster + " for hostname=" + hostname);
+    return cluster;
+   }
 
   private List<Flow> getFlowList(String cluster,
                                  String user,
                                  String appId,
                                  String version,
+                                 long startTime,
+                                 long endTime,
                                  int limit) throws IOException {
-    if (limit < 1) { limit = 1; }
+    if (limit < 1) {
+      limit = 1;
+    }
     LOG.info(String.format(
-      "Fetching Flow series for cluster=%s, user=%s, appId=%s, version=%s, limit=%s",
-      cluster, user, appId, version, limit));
+      "Fetching Flow series for cluster=%s, user=%s, appId=%s, version=%s, limit=%s", cluster,
+      user, appId, version, limit));
 
     List<Flow> flows =
-        getJobHistoryService().getFlowSeries(cluster, user, appId, version, false, limit);
+        getJobHistoryService().getFlowSeries(cluster, user, appId, version, false, startTime,
+          endTime, limit);
     LOG.info(String.format("Found %s flows", flows.size()));
     return flows;
+  }
+
+  @GET
+  @Path("hdfs/{cluster}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<HdfsStats> getHdfsStats(@PathParam("cluster") String cluster,
+                                // run Id is timestamp in seconds
+                                @QueryParam("timestamp") long runid,
+                                @QueryParam("path") String pathPrefix,
+                                @QueryParam("limit") int limit)
+                                    throws IOException {
+    if (limit == 0) {
+      limit = HdfsConstants.RECORDS_RETURNED_LIMIT;
+    }
+
+    boolean noRunId = false;
+    if (runid == 0L) {
+      // default it to 2 hours back
+      long lastHour = System.currentTimeMillis() - 2 * 3600000L;
+      // convert milliseconds to seconds
+      runid = lastHour / 1000L;
+      noRunId = true;
+    }
+
+    LOG.info(String.format("Fetching hdfs stats for cluster=%s, path=%s limit=%d, runId=%d",
+      cluster, pathPrefix, limit, runid));
+    Stopwatch timer = new Stopwatch().start();
+    serializationContext.set(new SerializationContext(SerializationContext.DetailLevel.EVERYTHING));
+    List<HdfsStats> hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
+    timer.stop();
+    /**
+     * if we find NO hdfs stats for the default timestamp
+     * consider the case when no runId is passed
+     * in that means user is expecting a default response
+     * we set the default runId to 2 hours back
+     * as above but what if there was an error in
+     * collection at that time? hence we try to look back
+     * for some older runIds
+     */
+    if (hdfsStats == null || hdfsStats.size() == 0L) {
+      if (noRunId) {
+        // consider reading the daily aggregation table instead of hourly
+        // or consider reading older data since runId was a default timestamp
+        int retryCount = 0;
+        while (retryCount < HdfsConstants.ageMult.length) {
+          runid = HdfsStatsService.getOlderRunId(retryCount, runid);
+          hdfsStats = getHdfsStatsService().getAllDirs(cluster, pathPrefix, limit, runid);
+          if ((hdfsStats != null) && (hdfsStats.size() != 0L)) {
+            break;
+          }
+          retryCount++;
+        }
+      }
+  }
+
+    // export latency metrics
+    HravenResponseMetrics.HDFS_STATS_API_LATENCY_VALUE
+      .set(timer.elapsed(TimeUnit.MILLISECONDS));
+    return hdfsStats;
+  }
+
+  @GET
+  @Path("hdfs/path/{cluster}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<HdfsStats> getHdfsPathTimeSeriesStats(
+                                @PathParam("cluster") String cluster,
+                                @QueryParam("path") String path,
+                                @QueryParam("starttime") long starttime,
+                                @QueryParam("endtime") long endtime,
+                                @QueryParam("limit") int limit)
+                                    throws IOException {
+    if( StringUtils.isEmpty(path)) {
+      throw new RuntimeException("Required query param missing: path ");
+    }
+
+    if (limit == 0) {
+      limit = HdfsConstants.RECORDS_RETURNED_LIMIT;
+    }
+
+    if (starttime == 0L) {
+      // default it to current hour's top
+      long lastHour = System.currentTimeMillis();
+      // convert milliseconds to seconds
+      starttime = lastHour / 1000L;
+    }
+
+    if (endtime == 0L) {
+      // default it to one week ago
+      endtime = starttime - 7 * 86400;
+    }
+
+    if(endtime > starttime) {
+      throw new RuntimeException("Ensure endtime " + endtime + " is older than starttime " + starttime);
+    }
+
+    LOG.info(String.format(
+      "Fetching hdfs timeseries stats for cluster=%s, path=%s limit=%d, starttime=%d endtime=%d", cluster,
+      path, limit, starttime, endtime));
+    Stopwatch timer = new Stopwatch().start();
+    List<HdfsStats> hdfsStats =
+        getHdfsStatsService().getHdfsTimeSeriesStats(cluster, path, limit, starttime,
+          endtime);
+    timer.stop();
+
+    if( hdfsStats != null ){
+    LOG.info("For hdfs/path/{cluster}/{attribute} with input query "
+        +  "hdfs/path/" + cluster
+        + "?limit=" + limit + "&path=" + path
+        + " fetched #number of HdfsStats " + hdfsStats.size() + " in " + timer);
+    } else {
+      LOG.info("For hdfs/path/{cluster}/{attribute} with input query "
+          +  "hdfs/path/" + cluster
+          + "?limit=" + limit + "&path=" + path
+          + " fetched 0 HdfsStats in " + timer);
+    }
+
+    // export latency metrics
+    HravenResponseMetrics.HDFS_TIMESERIES_API_LATENCY_VALUE
+       .set(timer.elapsed(TimeUnit.MILLISECONDS));
+    return hdfsStats;
+  }
+
+  @GET
+  @Path("newJobs/{cluster}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<AppSummary> getNewJobs(@PathParam("cluster") String cluster,
+                                   @QueryParam("user") String user,
+                                   @QueryParam("startTime") long startTime,
+                                   @QueryParam("endTime") long endTime,
+                                   @QueryParam("limit") int limit)
+                                       throws IOException {
+    Stopwatch timer = new Stopwatch().start();
+
+    if(limit == 0) {
+      limit = Integer.MAX_VALUE;
+    }
+    if(startTime == 0L) {
+      // 24 hours back
+      startTime = System.currentTimeMillis() - Constants.MILLIS_ONE_DAY ;
+      // get top of the hour
+      startTime -= (startTime % 3600);
+    }
+    if(endTime == 0L) {
+      // now
+      endTime = System.currentTimeMillis() ;
+      // get top of the hour
+      endTime -= (endTime % 3600);
+    }
+
+    LOG.info("Fetching new Jobs for cluster=" + cluster + " user=" + user
+       + " startTime=" + startTime + " endTime=" + endTime);
+    AppSummaryService as = getAppSummaryService();
+    // get the row keys from AppVersions table via JobHistoryService
+    List<AppSummary> newApps = as.getNewApps(getJobHistoryService(),
+          StringUtils.trimToEmpty(cluster), StringUtils.trimToEmpty(user),
+          startTime, endTime, limit);
+
+    timer.stop();
+
+    LOG.info("For newJobs/{cluster}/{user}/{appId}/ with input query "
+      + "newJobs/" + cluster + SLASH + user
+      + "?limit=" + limit
+      + "&startTime=" + startTime
+      + "&endTime=" + endTime
+      + " fetched " + newApps.size() + " flows in " + timer);
+
+   serializationContext.set(new SerializationContext(
+      SerializationContext.DetailLevel.APP_SUMMARY_STATS_NEW_JOBS_ONLY));
+
+   // export latency metrics
+   HravenResponseMetrics.NEW_JOBS_API_LATENCY_VALUE
+       .set(timer.elapsed(TimeUnit.MILLISECONDS));
+    return newApps;
+ }
+
+  private AppSummaryService getAppSummaryService() {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(String.format("Returning AppService %s bound to thread %s",
+        serviceThreadLocalAppService.get(), Thread.currentThread().getName()));
+    }
+    return serviceThreadLocalAppService.get();
+  }
+
+  private HdfsStatsService getHdfsStatsService() {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(String.format("Returning HdfsStats %s bound to thread %s",
+        serviceThreadLocalHdfsStats.get(), Thread.currentThread().getName()));
+    }
+    return serviceThreadLocalHdfsStats.get();
   }
 
   private static JobHistoryService getJobHistoryService() throws IOException {

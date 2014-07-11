@@ -17,6 +17,9 @@ package com.twitter.hraven;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 
 /**
@@ -26,12 +29,14 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
  *   (m|r)_tasknumber(_attemptnumber)?
  * </pre>
  */
-//Leaving comparable as a raw due to sub-typing/overriding issues.
-@SuppressWarnings("rawtypes")
-public class TaskKey extends JobKey implements Comparable {
+@JsonSerialize(
+    include=JsonSerialize.Inclusion.NON_NULL
+  )
+public class TaskKey extends JobKey implements Comparable<Object> {
   private String taskId;
 
-  public TaskKey(JobKey jobKey, String taskId) {
+  @JsonCreator
+  public TaskKey(@JsonProperty("jobId") JobKey jobKey, @JsonProperty("taskId") String taskId) {
     super(jobKey.getQualifiedJobId(), jobKey.getUserName(), jobKey.getAppId(),
         jobKey.getRunId());
     this.taskId = taskId;
@@ -42,8 +47,7 @@ public class TaskKey extends JobKey implements Comparable {
   }
 
   public String toString() {
-    return new StringBuilder(super.toString())
-        .append(Constants.SEP).append(taskId).toString();
+    return super.toString() + Constants.SEP + getTaskId();
   }
 
   /**

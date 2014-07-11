@@ -52,7 +52,7 @@ public class TestJobHistoryListener {
 		JobHistoryListener jobHistoryListener = new JobHistoryListener(jobKey);
 		assertEquals(jobHistoryListener.getJobPuts().size(), 0);
 		
-		JobHistoryFileParserHadoop1 jh = new JobHistoryFileParserHadoop1();
+		JobHistoryFileParserHadoop1 jh = new JobHistoryFileParserHadoop1(null);
 
 		Put versionPut = jh.getHadoopVersionPut(
 				HadoopVersion.ONE,

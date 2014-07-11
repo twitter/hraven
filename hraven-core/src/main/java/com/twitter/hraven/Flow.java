@@ -108,6 +108,9 @@ public class Flow implements Comparable<Flow> {
   /** megabyte millis  in this flow */
   private long megabyteMillis;
 
+  /** cost of this flow */
+  private double cost;
+
   /** reduce shuffle bytes in this flow */
   private long reduceShuffleBytes;
 
@@ -148,6 +151,9 @@ public class Flow implements Comparable<Flow> {
 
   /**  hadoop Version for this flow  */
   private HadoopVersion hadoopVersion ;
+
+  /**  hadoop pool/queue for this flow  */
+  private String queue ;
 
   /** Aggregated counters from all jobs in this flow */
   private CounterMap counters = new CounterMap();
@@ -270,12 +276,15 @@ public class Flow implements Comparable<Flow> {
     this.mapSlotMillis += job.getMapSlotMillis();
     this.reduceSlotMillis += job.getReduceSlotMillis();
     this.megabyteMillis += job.getMegabyteMillis();
+    this.cost += job.getCost();
 
     // set the submit time of the flow to the submit time of the first job
     if (( this.submitTime == 0L ) || (job.getSubmitTime() < this.submitTime)) {
       this.submitTime = job.getSubmitTime();
       // set the hadoop version once for this job
       this.hadoopVersion = job.getHadoopVersion();
+      // set the queue/pool once for this flow
+      this.queue = job.getQueue();
       if (this.hadoopVersion == null) {
         // set it to default so that we don't run into NPE during json serialization
         this.hadoopVersion = HadoopVersion.ONE;
@@ -413,6 +422,14 @@ public class Flow implements Comparable<Flow> {
     this.megabyteMillis = megabyteMillis;
   }
 
+  public double getCost() {
+    return cost;
+  }
+
+  public void setCost(double cost) {
+    this.cost = cost;
+  }
+
   public HadoopVersion getHadoopVersion() {
     return hadoopVersion;
   }
@@ -518,6 +535,14 @@ public class Flow implements Comparable<Flow> {
 
   public void setVersion(String version) {
     this.version = version;
+  }
+
+  public String getQueue() {
+    return queue;
+  }
+
+  public void setQueue(String queue) {
+    this.queue = queue;
   }
 
   public long getMapFileBytesRead() {

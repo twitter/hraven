@@ -28,34 +28,34 @@
 
 # Parameters
 ########## FILL IN APPROPRIATE VALUES BELOW ##########
-cluster="mycluster"
+cluster="mycluster" #Name of your cluster (arbitrary)
 mapredmaxsplitsize="204800"
-batchsize="100"
-schedulerpoolname="mypool"
+batchsize="100" #default is 1, which is bad for mapred job
+schedulerpoolname="mypool" #name of scheduler pool (arbitrary)
 threads="20"
+defaultrawfilesizelimit="524288000"
+machinetype="mymachine" #name of machine (arbitrary)
+costfile=/var/lib/hraven/conf/costFile
+#conf directories
 hadoopconfdir=${HADOOP_CONF_DIR:-$HADOOP_HOME/conf}
 hbaseconfdir=${HBASE_CONF_DIR:-$HBASE_HOME/conf}
 # HDFS directories for processing and loading job history data
-historyRawDir=/hadoop/mapred/history/done
-historyProcessingDir=/hadoop/mapred/history/processing/
+historyRawDir=/yarn/history/done/
+historyProcessingDir=/hraven/processing/
 #######################################################
 
-home=$(dirname $0)
+#If costfile is empty, fill it with default values
+if [[ -z `cat $costfile` ]]; then
+  echo "$machinetype.computecost=3.0" > $costfile
+  echo "$machinetype.machinememory=12000" >> $costfile
+fi
 
-# set the hraven-core jar as part of libjars and hadoop classpath
-# set this here because it only pertains to the etl logic
-export LIBJARS=$home/../../lib/hraven-core.jar
-export HADOOP_CLASSPATH=$HADOOP_CLASSPATH:$LIBJARS
-hravenEtlJar=$home/../../lib/hraven-etl.jar
+source $(dirname $0)/hraven-etl-env.sh
 
-source $home/../../conf/hraven-env.sh
-source $home/pidfiles.sh
-
-# Each job has 2 files: history and config
 batchsizejobs=$(($batchsize / 2))
-
 myscriptname=$(basename "$0" .sh)
 stopfile=$HRAVEN_PID_DIR/$myscriptname.stop
+
 if [ -f $stopfile ]; then
   echo "Error: not allowed to run. Remove $stopfile continue." 1>&2
   exit 1
@@ -65,10 +65,10 @@ create_pidfile $HRAVEN_PID_DIR
 trap 'cleanup_pidfile_and_exit $HRAVEN_PID_DIR' INT TERM EXIT
 
 # Pre-process
-$home/jobFilePreprocessor.sh $hadoopconfdir $historyRawDir $historyProcessingDir $cluster $batchsize
+$home/jobFilePreprocessor.sh $hadoopconfdir $historyRawDir $historyProcessingDir $cluster $batchsize $defaultrawfilesizelimit
 
 # Load
 $home/jobFileLoader.sh $hadoopconfdir $mapredmaxsplitsize $schedulerpoolname $cluster $historyProcessingDir
 
 # Process
-$home/jobFileProcessor.sh $hbaseconfdir $schedulerpoolname $historyProcessingDir $cluster $threads $batchsize
+$home/jobFileProcessor.sh $hbaseconfdir $schedulerpoolname $historyProcessingDir $cluster $threads $batchsize $machinetype $costfile

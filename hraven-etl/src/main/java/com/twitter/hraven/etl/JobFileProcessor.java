@@ -39,6 +39,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.filecache.DistributedCache;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.mapreduce.MultiTableOutputFormat;
@@ -149,6 +152,20 @@ public class JobFileProcessor extends Configured implements Tool {
     // Debugging
     options.addOption("d", "debug", false, "switch on DEBUG log level");
 
+    // Cost Properties File to be copied to distributed cache
+    o = new Option("z", "costFile", true,
+      "The cost properties file on local disk");
+    o.setArgName("costfile");
+    o.setRequired(true);
+    options.addOption(o);
+
+    // Machine type
+    o = new Option("m", "machineType", true,
+      "The type of machine this job ran on");
+    o.setArgName("machinetype");
+    o.setRequired(true);
+    options.addOption(o);
+
     CommandLineParser parser = new PosixParser();
     CommandLine commandLine = null;
     try {
@@ -167,6 +184,7 @@ public class JobFileProcessor extends Configured implements Tool {
     }
 
     return commandLine;
+
   }
 
   /*
@@ -229,6 +247,24 @@ public class JobFileProcessor extends Configured implements Tool {
     } else {
       batchSize = DEFAULT_BATCH_SIZE;
     }
+
+    // Grab the costfile argument
+    String costFile = commandLine.getOptionValue("z");
+    LOG.info("cost properties file=" + costFile);
+    FileSystem fs = FileSystem.get(hbaseConf);
+    Path hdfsPath = new Path(Constants.COST_PROPERTIES_HDFS_DIR
+      + Constants.COST_PROPERTIES_FILENAME);
+    // upload the file to hdfs. Overwrite any existing copy.
+    fs.copyFromLocalFile(false, true, new Path(costFile), hdfsPath);
+
+    // add to distributed cache
+    DistributedCache.addCacheFile(hdfsPath.toUri(), hbaseConf);
+    // Grab the machine type argument
+
+    String machineType = commandLine.getOptionValue("m");
+    // set it as part of conf so that the
+    // hRaven job can access it in the mapper
+    hbaseConf.set(Constants.HRAVEN_MACHINE_TYPE, machineType);
 
     String processFileSubstring = null;
     if (commandLine.hasOption("p")) {
@@ -596,17 +632,11 @@ public class JobFileProcessor extends Configured implements Tool {
 
   /**
    * DoIt.
-   * 
-   * @param args
-   *          the arguments to do it with
+   * @param args the arguments to do it with
+   * @throws Exception
    */
-  public static void main(String[] args) {
-    try {
-      ToolRunner.run(new JobFileProcessor(), args);
-    } catch (Exception e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+  public static void main(String[] args) throws Exception {
+    ToolRunner.run(new JobFileProcessor(), args);
   }
 
 }

@@ -15,11 +15,18 @@ limitations under the License.
 */
 package com.twitter.hraven.mapreduce;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+import java.util.Properties;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.filecache.DistributedCache;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -43,6 +50,7 @@ import com.twitter.hraven.datasource.MissingColumnInResultException;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.RowKeyParseException;
 import com.twitter.hraven.etl.JobHistoryFileParser;
+import com.twitter.hraven.etl.JobHistoryFileParserBase;
 import com.twitter.hraven.etl.JobHistoryFileParserFactory;
 import com.twitter.hraven.etl.ProcessRecordService;
 
@@ -128,8 +136,18 @@ public class JobFileTableMapper extends
       Configuration jobConf = rawService.createConfigurationFromResult(value);
       context.progress();
 
-      long submitTimeMillis = rawService.getSubmitTimeMillisFromResult(value);
+      byte[] jobhistoryraw = rawService.getJobHistoryRawFromResult(value);
+      long submitTimeMillis = JobHistoryFileParserBase.getSubmitTimeMillisFromJobHistory(
+            jobhistoryraw);
       context.progress();
+
+      if (submitTimeMillis == 0L) {
+        LOG.info("NOTE: Since submitTimeMillis from job history is 0, now attempting to "
+            + "approximate job start time based on last modification time from the raw table");
+        // get an approximate submit time based on job history file's last modification time
+        submitTimeMillis = rawService.getApproxSubmitTime(value);
+        context.progress();
+      }
 
       Put submitTimePut = rawService.getJobSubmitTimePut(value.getRow(),
           submitTimeMillis);
@@ -169,7 +187,7 @@ public class JobFileTableMapper extends
       jobHistoryByIdService.writeIndexes(jobKey);
       context.progress();
       appVersionService.addVersion(jobDesc.getCluster(), jobDesc.getUserName(),
-          jobDesc.getAppId(), jobDesc.getVersion(), submitTimeMillis);
+          jobDesc.getAppId(), jobDesc.getVersion(), jobDesc.getRunId());
       context.progress();
 
       KeyValue keyValue = value.getColumnLatest(Constants.RAW_FAM_BYTES,
@@ -183,7 +201,7 @@ public class JobFileTableMapper extends
         historyFileContents = keyValue.getValue();
       }
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-    		  .createJobHistoryFileParser(historyFileContents);
+    		  .createJobHistoryFileParser(historyFileContents, jobConf);
 
       historyFileParser.parse(historyFileContents, jobKey);
       context.progress();
@@ -220,7 +238,7 @@ public class JobFileTableMapper extends
       }
 
       /** post processing steps on job puts and job conf puts */
-      Long mbMillis = historyFileParser.getMegaByteMillis(jobConf);
+      Long mbMillis = historyFileParser.getMegaByteMillis();
       context.progress();
       if (mbMillis == null) {
         throw new ProcessingException(" Unable to get megabyte millis calculation for this record!"
@@ -230,6 +248,18 @@ public class JobFileTableMapper extends
       Put mbPut = getMegaByteMillisPut(mbMillis, jobKey);
       LOG.info("Writing mega byte millis  puts to " + Constants.HISTORY_TABLE);
       context.write(JOB_TABLE, mbPut);
+      context.progress();
+
+      /** post processing steps to get cost of the job */
+      Double jobCost = getJobCost(mbMillis, context.getConfiguration());
+      context.progress();
+      if (jobCost == null) {
+        throw new ProcessingException(" Unable to get job cost calculation for this record!"
+            + jobKey);
+      }
+      Put jobCostPut = getJobCostPut(jobCost, jobKey);
+      LOG.info("Writing jobCost puts to " + Constants.HISTORY_TABLE);
+      context.write(JOB_TABLE, jobCostPut);
       context.progress();
 
     } catch (RowKeyParseException rkpe) {
@@ -280,6 +310,105 @@ public class JobFileTableMapper extends
     Put pMb = new Put(jobKeyConv.toBytes(jobKey));
     pMb.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(mbMillis));
     return pMb;
+  }
+
+  /**
+   * looks for cost file in distributed cache
+   * @param cachePath of the cost properties file
+   * @param machineType of the node the job ran on
+   * @throws IOException
+   */
+  Properties loadCostProperties(Path cachePath, String machineType) {
+    Properties prop = new Properties();
+    InputStream inp = null;
+    try {
+      inp = new FileInputStream(cachePath.toString());
+      prop.load(inp);
+      return prop;
+    } catch (FileNotFoundException fnf) {
+      LOG.error("cost properties does not exist, using default values");
+      return null;
+    } catch (IOException e) {
+      LOG.error("error loading properties, using default values");
+      return null;
+    } finally {
+      if (inp != null) {
+        try {
+          inp.close();
+        } catch (IOException ignore) {
+          // do nothing
+        }
+      }
+    }
+  }
+
+  /**
+   * calculates the cost of this job based on mbMillis, machineType
+   * and cost details from the properties file
+   * @param mbMillis
+   * @param currentConf
+   * @return cost of the job
+   */
+  private Double getJobCost(Long mbMillis, Configuration currentConf) {
+    Double computeTco = 0.0;
+    Long machineMemory = 0L;
+    Properties prop = null;
+    String machineType = currentConf.get(Constants.HRAVEN_MACHINE_TYPE, "default");
+    LOG.debug(" machine type " + machineType);
+    try {
+      Path[] cacheFiles = DistributedCache.getLocalCacheFiles(currentConf);
+      if (null != cacheFiles && cacheFiles.length > 0) {
+        for (Path cachePath : cacheFiles) {
+          LOG.debug(" distributed cache path " + cachePath);
+          if (cachePath.getName().equals(Constants.COST_PROPERTIES_FILENAME)) {
+            prop = loadCostProperties(cachePath, machineType);
+            break;
+          }
+        }
+      } else {
+        LOG.error("Unable to find anything (" + Constants.COST_PROPERTIES_FILENAME
+            + ") in distributed cache, continuing with defaults");
+      }
+
+    } catch (IOException ioe) {
+      LOG.error("IOException reading from distributed cache for "
+          + Constants.COST_PROPERTIES_HDFS_DIR + ", continuing with defaults" + ioe.toString());
+    }
+    if (prop != null) {
+      String computeTcoStr = prop.getProperty(machineType + ".computecost");
+      try {
+        computeTco = Double.parseDouble(computeTcoStr);
+      } catch (NumberFormatException nfe) {
+        LOG.error("error in conversion to long for compute tco " + computeTcoStr
+            + " using default value of 0");
+      }
+      String machineMemStr = prop.getProperty(machineType + ".machinememory");
+      try {
+        machineMemory = Long.parseLong(machineMemStr);
+      } catch (NumberFormatException nfe) {
+        LOG.error("error in conversion to long for machine memory  " + machineMemStr
+            + " using default value of 0");
+      }
+    } else {
+      LOG.error("Could not load properties file, using defaults");
+    }
+
+    Double jobCost = JobHistoryFileParserBase.calculateJobCost(mbMillis, computeTco, machineMemory);
+    LOG.info("from cost properties file, jobCost is " + jobCost + " based on compute tco: "
+        + computeTco + " machine memory: " + machineMemory + " for machine type " + machineType);
+    return jobCost;
+  }
+
+  /**
+   * generates a put for the job cost
+   * @param jobCost
+   * @param jobKey
+   * @return the put with job cost
+   */
+  private Put getJobCostPut(Double jobCost, JobKey jobKey) {
+    Put pJobCost = new Put(jobKeyConv.toBytes(jobKey));
+    pJobCost.add(Constants.INFO_FAM_BYTES, Constants.JOBCOST_BYTES, Bytes.toBytes(jobCost));
+    return pJobCost;
   }
 
   @Override

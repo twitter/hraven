@@ -31,6 +31,7 @@ public class MRJobDescFactory extends JobDescFactoryBase {
    * com.twitter.hraven.JobKeyFactoryBase#create(com.twitter.corestorage
    * .rhaven.QualifiedJobId, long, org.apache.hadoop.conf.Configuration)
    */
+  @Override
   JobDesc create(QualifiedJobId qualifiedJobId, long submitTimeMillis,
       Configuration jobConf) {
     // TODO: Get the actual values appropriate for the plain Hadoop jobs.
@@ -51,6 +52,7 @@ public class MRJobDescFactory extends JobDescFactoryBase {
    * @see
    * com.twitter.hraven.JobDescFactoryBase#getAppIdFromJobName(java.lang.String)
    */
+  @Override
   String getAppIdFromJobName(String jobName) {
     int firstOpenBracketPos = jobName.indexOf("[");
     if (firstOpenBracketPos > -1) {

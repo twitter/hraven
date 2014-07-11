@@ -210,7 +210,7 @@ public class Constants {
       .toBytes(JOB_PROCESSED_SUCCESS_COL);
 
   /**
-   * The string preceding the job submit time in a job history file.
+   * The string preceding the job submit time in an hadoop1 job history file.
    */
   public static final String SUBMIT_TIME_PREFIX = "SUBMIT_TIME=\"";
 
@@ -219,6 +219,44 @@ public class Constants {
    */
   public static final byte[] SUBMIT_TIME_PREFIX_BYTES = Bytes
       .toBytes(SUBMIT_TIME_PREFIX);
+
+  /**
+   * The string representing the job submit event in a hadoop2 job history file.
+   */
+  public static final String JOB_SUBMIT_EVENT = "{\"type\":\"JOB_SUBMITTED";
+
+  /**
+   * Raw bytes representation of {@link #JOB_SUBMIT_EVENT};
+   */
+  public static final byte[] JOB_SUBMIT_EVENT_BYTES = Bytes
+      .toBytes(JOB_SUBMIT_EVENT);
+
+  /**
+   * The string representing the submit time in a hadoop2 job history file.
+   */
+  public static final String SUBMIT_TIME_PREFIX_HADOOP2 = "\"submitTime\":";
+
+  /**
+   * Raw bytes representation of {@link #SUBMIT_TIME_PREFIX_HADOOP2};
+   */
+  public static final byte[] SUBMIT_TIME_PREFIX_HADOOP2_BYTES = Bytes
+      .toBytes(SUBMIT_TIME_PREFIX_HADOOP2);
+
+  /**
+   * length of string that contains a unix timestamp in milliseconds
+   * this length will be correct till Sat, 20 Nov 2286 which is
+   * 9999999999999 in epoch time
+   */
+  public static final int EPOCH_TIMESTAMP_STRING_LENGTH = 13;
+
+  /**
+   * an approximation for job run time in milliseconds
+   *
+   * used in estimating job start time
+   * when the submit time for a job can't be figured out
+   * https://github.com/twitter/hraven/issues/67
+   */
+  public static final int AVERGAE_JOB_DURATION = 3600000;
 
   public static final String QUOTE = "\"";
   public static final byte[] QUOTE_BYTES = Bytes.toBytes(QUOTE);
@@ -262,6 +300,7 @@ public class Constants {
   public static final String DEFAULT_VALUE_QUEUENAME = "default";
 
   public static final String JOB_NAME_CONF_KEY = "mapred.job.name";
+  public static final String JOB_NAME_HADOOP2_CONF_KEY = "mapreduce.job.name";
 
   public static final String PIG_CONF_KEY = "pig.version"; // used to detect a
                                                            // pig job
@@ -288,8 +327,14 @@ public class Constants {
    * for map, reduce and AM containers
    */
   public static final String MAP_MEMORY_MB_CONF_KEY = "mapreduce.map.memory.mb";
+  public static final long DEFAULT_MAP_MEMORY_MB = 1024L; //Default hadoop value
   public static final String REDUCE_MEMORY_MB_CONF_KEY = "mapreduce.reduce.memory.mb";
+  public static final long DEFAULT_REDUCE_MEMORY_MB = 1024L; //Default hadoop value
   public static final String AM_MEMORY_MB_CONF_KEY = "yarn.app.mapreduce.am.resource.mb";
+
+  /** yarn scheduler min mb is 1G */
+  public static final String YARN_SCHEDULER_MIN_MB = "yarn.scheduler.minimum-allocation-mb";
+  public static final long DEFAULT_YARN_SCHEDULER_MIN_MB = 1024;
 
   /**
    * hadoop1 memory conf keys
@@ -356,4 +401,29 @@ public class Constants {
    * Used to pass boolean to mappers to indicate that items are to be reprocessed.
    */
   public static final String FORCE_REPROCESS_CONF_KEY = "force.reprocess";
+
+  /** milliseconds in 1 day */
+  public static final long MILLIS_ONE_DAY = 86400000L;
+
+  /**
+   * number of milli seconds in 30 days
+   */
+  public static final long THIRTY_DAYS_MILLIS = MILLIS_ONE_DAY * 30L;
+
+  /** used to indicate the cost of a job is in terms of currency units */
+  public static final String JOBCOST = "jobcost" ;
+
+  public static final byte[] JOBCOST_BYTES = Bytes.toBytes(JOBCOST);
+
+  /** hdfs location where the properties file is placed */
+  public static final String COST_PROPERTIES_HDFS_DIR = "/user/hadoop/hraven/conf/";
+
+  /** Cost properties file name */
+  public static final String COST_PROPERTIES_FILENAME = "hRavenCostDetails.properties";
+
+  /** name of the type of machine the job ran on */
+  public static final String HRAVEN_MACHINE_TYPE = "hraven.machinetype.name";
+
+  /** name of the properties file used for cluster to cluster identifier mapping */
+  public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
 }

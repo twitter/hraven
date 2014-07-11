@@ -68,6 +68,7 @@ public enum JobHistoryKeys {
 	JOB_QUEUE(String.class, "jobQueueName"),
 	// hadoop 2.0 related keys {@link JobHistoryParser}
   hadoopversion(String.class, null),
+  diagnostics(String.class, null),
   applicationAttemptId(String.class, null),
   containerId(String.class, null),
   successfulAttemptId(String.class, null),

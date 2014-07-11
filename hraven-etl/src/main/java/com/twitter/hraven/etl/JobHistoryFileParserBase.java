@@ -18,6 +18,7 @@ package com.twitter.hraven.etl;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -25,6 +26,7 @@ import com.twitter.hraven.Constants;
 import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.datasource.ProcessingException;
+import com.twitter.hraven.util.ByteUtil;
 
 /**
  *  Abstract class for job history file parsing 
@@ -38,6 +40,12 @@ import com.twitter.hraven.datasource.ProcessingException;
 public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 
   private static final Log LOG = LogFactory.getLog(JobHistoryFileParserBase.class);
+  protected final Configuration jobConf;
+
+  protected JobHistoryFileParserBase(Configuration conf) {
+    this.jobConf = conf;
+  }
+
 	/**
 	 * generates a put that sets the hadoop version for a record
 	 * 
@@ -144,5 +152,95 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    */
   public static Long getXmxTotal(final long xmx75) {
     return (xmx75 * 100 / 75);
+  }
+
+  /**
+   * fetches the submit time from a raw job history byte representation
+   * @param jobHistoryRaw from which to pull the SUBMIT_TIME
+   * @return the job submit time in milliseconds since January 1, 1970 UTC;
+   *         or 0 if no value can be found.
+   */
+  public static long getSubmitTimeMillisFromJobHistory(byte[] jobHistoryRaw) {
+
+    long submitTimeMillis = 0;
+    if (null == jobHistoryRaw) {
+      return submitTimeMillis;
+    }
+
+    HadoopVersion hv = JobHistoryFileParserFactory.getVersion(jobHistoryRaw);
+
+    switch (hv) {
+    case TWO:
+      // look for the job submitted event, since that has the job submit time
+      int startIndex = ByteUtil.indexOf(jobHistoryRaw, Constants.JOB_SUBMIT_EVENT_BYTES, 0);
+      if (startIndex != -1) {
+        // now look for the submit time in this event
+        int secondQuoteIndex =
+            ByteUtil.indexOf(jobHistoryRaw, Constants.SUBMIT_TIME_PREFIX_HADOOP2_BYTES, startIndex);
+        if (secondQuoteIndex != -1) {
+          // read the string that contains the unix timestamp
+          String submitTimeMillisString = Bytes.toString(jobHistoryRaw,
+                  secondQuoteIndex + Constants.EPOCH_TIMESTAMP_STRING_LENGTH,
+                  Constants.EPOCH_TIMESTAMP_STRING_LENGTH);
+          try {
+            submitTimeMillis = Long.parseLong(submitTimeMillisString);
+          } catch (NumberFormatException nfe) {
+            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString + " " + nfe.getMessage());
+            submitTimeMillis = 0;
+          }
+        }
+      }
+      break;
+
+    case ONE:
+    default:
+      // The start of the history file looks like this:
+      // Meta VERSION="1" .
+      // Job JOBID="job_20120101120000_12345" JOBNAME="..."
+      // USER="username" SUBMIT_TIME="1339063492288" JOBCONF="
+
+      // First we look for the first occurrence of SUBMIT_TIME="
+      // Then we find the place of the next close quote "
+      // Then our value is in between those two if valid at all.
+
+      startIndex = ByteUtil.indexOf(jobHistoryRaw, Constants.SUBMIT_TIME_PREFIX_BYTES, 0);
+      if (startIndex != -1) {
+        int prefixEndIndex = startIndex + Constants.SUBMIT_TIME_PREFIX_BYTES.length;
+
+        // Find close quote in the snippet, start looking where the prefix ends.
+        int secondQuoteIndex =
+            ByteUtil.indexOf(jobHistoryRaw, Constants.QUOTE_BYTES, prefixEndIndex);
+        if (secondQuoteIndex != -1) {
+          int numberLength = secondQuoteIndex - prefixEndIndex;
+          String submitTimeMillisString =
+              Bytes.toString(jobHistoryRaw, prefixEndIndex, numberLength);
+          try {
+            submitTimeMillis = Long.parseLong(submitTimeMillisString);
+          } catch (NumberFormatException nfe) {
+            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString
+                + " " + nfe.getMessage());
+           submitTimeMillis = 0;
+          }
+        }
+      }
+      break;
+    }
+
+    return submitTimeMillis;
+  }
+
+  /**
+   * calculates the cost of a job in current units
+   * jobCost = thisJobMbMillis * computeTco / mbMillisInOneday
+   * @param mb millis, compute tco, memory of the machine
+   */
+  public static Double calculateJobCost(Long mbMillis, Double computeTco, Long machineMemory) {
+    if ((machineMemory == 0L) || (computeTco == 0.0)) {
+      LOG.error("Unable to calculate job cost since machineMemory " + machineMemory
+          + " or computeTco " + computeTco + " is 0; returning jobCost as 0");
+      return 0.0;
+    }
+    Double jobCost = (mbMillis * computeTco) / (Constants.MILLIS_ONE_DAY * machineMemory);
+    return jobCost;
   }
 }

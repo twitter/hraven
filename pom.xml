@@ -16,7 +16,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven</artifactId>
-  <version>0.9.8-SNAPSHOT</version>
+  <version>0.9.16-SNAPSHOT</version>
   <name>hRaven Project</name>
   <url>https://github.com/twitter/hraven</url>
   <description>
@@ -97,6 +97,10 @@
         <enabled>true</enabled>
       </snapshots>
      </repository>
+     <repository>
+       <id>twitter-twttr</id>
+       <url>http://maven.twttr.com/</url>
+     </repository>
   </repositories>
 
   <issueManagement>
@@ -120,14 +124,14 @@
   <properties>
     <compileSource>1.6</compileSource>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <hbase.version>0.94.3</hbase.version>
+    <hbase.version>0.94.10</hbase.version>
     <hadoop.version>1.0.4</hadoop.version>
 
     <commons-logging.version>1.1.1</commons-logging.version>
     <junit.version>4.8.1</junit.version>
     <mockito-all.version>1.8.5</mockito-all.version>
     <log4j.version>1.2.15</log4j.version>
-    <guava.version>12.0</guava.version>
+    <guava.version>14.0</guava.version>
     <jersey.version>1.12</jersey.version>
     <jackson.version>1.9.6</jackson.version>
 
@@ -174,6 +178,21 @@
           <skipAssembly>true</skipAssembly>
           <attach>false</attach>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>cobertura-maven-plugin</artifactId>
+        <version>2.5.2</version>
+        <configuration>
+          <format>xml</format>
+          <maxmem>256m</maxmem>
+          <aggregate>true</aggregate>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.eluder.coveralls</groupId>
+        <artifactId>coveralls-maven-plugin</artifactId>
+        <version>2.2.0</version>
       </plugin>
     </plugins>
   </build>
