@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+<configuration>
+
+  <property>
+    <name>mapreduce.job.max.runtime.mins</name>
+    <value>1440</value>
+    <description>maximum expected runtime of apps in minutes</description>
+  </property>
+
+  <property>
+    <name>mapreduce.job.max.runtime.mins.enforce</name>
+    <value>false</value>
+    <description>If true vulture kills the violators</description>
+  </property>
+
+  <property>
+    <name>mapreduce.map.max.runtime.mins</name>
+    <value>300</value>
+    <description>maximum expected runtime of mappers in minutes</description>
+  </property>
+
+  <property>
+    <name>mapreduce.reduce.max.runtime.mins</name>
+    <value>300</value>
+    <description>maximum expected runtime of reducers in minutes</description>
+  </property>
+
+  <property>
+    <name>vulture.task.progress.threshold</name>
+    <value>0.5</value>
+    <description>the threshold for progress lagged behind</description>
+  </property>
+
+  <property>
+    <name>vulture.newAppChecker.interval.sec</name>
+    <value>300</value>
+    <description>The interval in seconds between each two invocation of vulture</description>
+  </property>
+
+  <property>
+    <name>vulture.confCache.max.size</name>
+    <value>10000</value>
+    <description>maximum size of the cache for app configurations</description>
+  </property>
+
+  <property>
+    <name>vulture.progressCache.max.size</name>
+    <value>30000</value>
+    <description>maximum size of the cache for tasks' progress</description>
+  </property>
+
+  <property>
+    <name>vulture.newAppChecker.concurrency</name>
+    <value>5</value>
+    <description>Number of concurrent threads checking on apps</description>
+  </property>
+
+  <!--
+  <property>
+    <name>vulture.app.policy</name>
+    <value>com.twitter.vulture.policy.DefaultPolicy</value>
+    <description>The java class the implements the policy for inspecting apps</description>
+  </property>
+
+  <property>
+    <name>vulture.task.policy</name>
+    <value>com.twitter.vulture.policy.DefaultPolicy</value>
+    <description>The java class the implements the policy for inspecting tasks</description>
+  </property>
+  -->
+
+  <property>
+    <name>vulture.dryRun</name>
+    <value>true</value>
+    <description>In dry-run mode no task/job is killed</description>
+  </property>
+
+  <property>
+    <name>vulture.admin.email</name>
+    <value>myabandeh</value>
+    <description>admin will be notified for each policy violation</description>
+  </property>
+
+  <property>
+    <name>vulture.user.emails</name>
+    <value>jack@company.com,george</value>
+    <description>list of comma separated users to be notified instead of the job submitter.</description>
+  </property>
+
+  <property>
+    <name>vulture.notify.user</name>
+    <value>false</value>
+    <description>if true, the job submitter will also receive a notification email after each policy violation</description>
+  </property>
+
+  <property>
+    <name>vulture.cc.email</name>
+    <value>ticket-email</value>
+    <description>list of comma separated email that will be copied in the sent notifications</description>
+  </property>
+
+  <property>
+    <name>vulture.web.port</name>
+    <value>12321</value>
+    <description>The web port to be used by the web service</description>
+  </property>
+
+  <!--
+  <property>
+    <name>vulture.whitelist.users</name>
+    <value>john</value>
+    <description>list of comma separated users that are not monitored by vulture.</description>
+  </property>
+
+  <property>
+    <name>vulture.whitelist.apps</name>
+    <value>app1</value>
+    <description>list of comma separated apps that are not monitored by vulture.</description>
+  </property>
+  -->
+
+</configuration>
+
