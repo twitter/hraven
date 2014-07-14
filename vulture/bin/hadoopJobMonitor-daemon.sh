@@ -19,10 +19,10 @@
 # Environment Variables
 #
 #   HADOOP_CLASSPATH   Where are the hadoop jar files. Empty string by default. Can also be defined in hadoopJobMonitor-env.sh
-#   VULTURE_LOG_DIR   Where log files are stored.  PWD by default. Can also be defined in hadoopJobMonitor-env.sh
-#   VULTURE_PID_DIR   The pid files are stored. /tmp by default. Can also be defined in hadoopJobMonitor-env.sh
-#   VULTURE_CONF_DIR   The conf directory, default ../src/main/resources. Can also be set via command line.
-#   VULTURE_IDENT_STRING   A string representing this instance of hadoopJobMonitor. $USER by default
+#   HADOOPJOBMONITOR_LOG_DIR   Where log files are stored.  PWD by default. Can also be defined in hadoopJobMonitor-env.sh
+#   HADOOPJOBMONITOR_PID_DIR   The pid files are stored. /tmp by default. Can also be defined in hadoopJobMonitor-env.sh
+#   HADOOPJOBMONITOR_CONF_DIR   The conf directory, default ../src/main/resources. Can also be set via command line.
+#   HADOOPJOBMONITOR_IDENT_STRING   A string representing this instance of hadoopJobMonitor. $USER by default
 ##
 
 app=hadoopJobMonitor
@@ -33,10 +33,10 @@ else
 fi
 SCRIPTFILE=`$READLINK -f $0`
 SCRIPTDIR=`dirname $SCRIPTFILE`
-export VULTURE_PREFIX=$SCRIPTDIR/..
+export HADOOPJOBMONITOR_PREFIX=$SCRIPTDIR/..
 cd $SCRIPTDIR;
 
-VULTURE_CONF_DIR=../src/main/resources
+HADOOPJOBMONITOR_CONF_DIR=../src/main/resources
 #check to see if the conf dir is given as an optional argument
 if [ $# -gt 1 ]
 then
@@ -45,15 +45,15 @@ then
         shift
         confdir=$1
         shift
-        VULTURE_CONF_DIR=$confdir
+        HADOOPJOBMONITOR_CONF_DIR=$confdir
     fi
 fi
 
-if [ -f "${VULTURE_CONF_DIR}/hadoopJobMonitor-env.sh" ]; then
-  . "${VULTURE_CONF_DIR}/hadoopJobMonitor-env.sh"
+if [ -f "${HADOOPJOBMONITOR_CONF_DIR}/hadoopJobMonitor-env.sh" ]; then
+  . "${HADOOPJOBMONITOR_CONF_DIR}/hadoopJobMonitor-env.sh"
 fi
 
-CLASSPATH=${VULTURE_CONF_DIR}:$HADOOP_CLASSPATH
+CLASSPATH=${HADOOPJOBMONITOR_CONF_DIR}:$HADOOP_CLASSPATH
 CLASSPATH=$CLASSPATH:../src/main/resources
 for j in ../target/hadoopJobMonitor*.jar; do
   CLASSPATH=$CLASSPATH:$j
@@ -62,28 +62,28 @@ for j in ../lib/*.jar; do
   CLASSPATH=$CLASSPATH:$j
 done
 
-if [ "$VULTURE_IDENT_STRING" = "" ]; then
-  export VULTURE_IDENT_STRING="$USER"
+if [ "$HADOOPJOBMONITOR_IDENT_STRING" = "" ]; then
+  export HADOOPJOBMONITOR_IDENT_STRING="$USER"
 fi
 # get log directory
-if [ "$VULTURE_LOG_DIR" = "" ]; then
-  export VULTURE_LOG_DIR="$VULTURE_PREFIX/logs"
+if [ "$HADOOPJOBMONITOR_LOG_DIR" = "" ]; then
+  export HADOOPJOBMONITOR_LOG_DIR="$HADOOPJOBMONITOR_PREFIX/logs"
 fi
-if [ ! -w "$VULTURE_LOG_DIR" ] ; then
-  mkdir -p "$VULTURE_LOG_DIR"
-  chown $VULTURE_IDENT_STRING $VULTURE_LOG_DIR
+if [ ! -w "$HADOOPJOBMONITOR_LOG_DIR" ] ; then
+  mkdir -p "$HADOOPJOBMONITOR_LOG_DIR"
+  chown $HADOOPJOBMONITOR_IDENT_STRING $HADOOPJOBMONITOR_LOG_DIR
 fi
-if [ "$VULTURE_PID_DIR" = "" ]; then
-  VULTURE_PID_DIR=/tmp
+if [ "$HADOOPJOBMONITOR_PID_DIR" = "" ]; then
+  HADOOPJOBMONITOR_PID_DIR=/tmp
 fi
-log=$VULTURE_LOG_DIR/hraven-$VULTURE_IDENT_STRING-$app-$HOSTNAME.out
-pid=$VULTURE_PID_DIR/$app.pid
-VULTURE_STOP_TIMEOUT=${VULTURE_STOP_TIMEOUT:-5}
+log=$HADOOPJOBMONITOR_LOG_DIR/hraven-$HADOOPJOBMONITOR_IDENT_STRING-$app-$HOSTNAME.out
+pid=$HADOOPJOBMONITOR_PID_DIR/$app.pid
+HADOOPJOBMONITOR_STOP_TIMEOUT=${HADOOPJOBMONITOR_STOP_TIMEOUT:-5}
 
-VULTURE_OPTIONS="-DhadoopJobMonitor.log.dir=$VULTURE_LOG_DIR"
+HADOOPJOBMONITOR_OPTIONS="-DhadoopJobMonitor.log.dir=$HADOOPJOBMONITOR_LOG_DIR"
 
 checkpid() {
-  [ -w "$VULTURE_PID_DIR" ] ||  mkdir -p "$VULTURE_PID_DIR"
+  [ -w "$HADOOPJOBMONITOR_PID_DIR" ] ||  mkdir -p "$HADOOPJOBMONITOR_PID_DIR"
 
   if [ -f $pid ]; then
     if kill -0 `cat $pid` > /dev/null 2>&1; then
@@ -98,12 +98,12 @@ start() {
   checkpid;
   echo starting $app $1, logging to $log
   echo starting $app $1 >> $log
-  nohup java -Xmx4096m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=$VULTURE_LOG_DIR/hadoopJobMonitor.heap.dump.hprof -cp $CLASSPATH $VULTURE_OPTIONS -Dlog4j.debug -Dlog4j.configuration=log4j.properties com.twitter.hraven.hadoopJobMonitor.VultureService $* >> "$log" 2>&1 < /dev/null &
+  nohup java -Xmx4096m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=$HADOOPJOBMONITOR_LOG_DIR/hadoopJobMonitor.heap.dump.hprof -cp $CLASSPATH $HADOOPJOBMONITOR_OPTIONS -Dlog4j.debug -Dlog4j.configuration=log4j.properties com.twitter.hraven.hadoopJobMonitor.HadoopJobMonitorService $* >> "$log" 2>&1 < /dev/null &
   echo $! > $pid
   sleep 1
   tail "$log"
   if ! ps -p $! > /dev/null ; then
-    echo "Error: The VultureService exited!"
+    echo "Error: The HadoopJobMonitorService exited!"
     exit 1
   fi
 }
@@ -116,9 +116,9 @@ stop() {
       kill $TARGET_PID
       sleep 1
       if kill -0 $TARGET_PID > /dev/null 2>&1; then
-        sleep $VULTURE_STOP_TIMEOUT
+        sleep $HADOOPJOBMONITOR_STOP_TIMEOUT
         if kill -0 $TARGET_PID > /dev/null 2>&1; then
-          echo "$app did not stop gracefully after $VULTURE_STOP_TIMEOUT seconds: killing with kill -9"
+          echo "$app did not stop gracefully after $HADOOPJOBMONITOR_STOP_TIMEOUT seconds: killing with kill -9"
           kill -9 $TARGET_PID
         fi
       fi

@@ -21,17 +21,17 @@ import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton;
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
-import com.twitter.hraven.hadoopJobMonitor.metrics.VultureMetrics;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorMetrics;
 
 public class Notifier {
   public static String DRYRUN_NOTE =
       "\n NOTE: THIS IS A DRY-RUN. NO TASK or JOB IS ACTUALLY KILLED.\n";
-  public static String SUBJECT = "Vulture Notification!";
+  public static String SUBJECT = "HadoopJobMonitor Notification!";
   public static boolean DRYRUN = true;
-  private static VultureMetrics metrics = VultureMetrics.getInstance();
+  private static HadoopJobMonitorMetrics metrics = HadoopJobMonitorMetrics.getInstance();
 
-  public static void init(VultureConfiguration vConf) {
+  public static void init(HadoopJobMonitorConfiguration vConf) {
     DRYRUN = vConf.isDryRun();
   }
 
@@ -124,7 +124,7 @@ public class Notifier {
   }
   
   public static String getUserEmail(AppConfiguraiton appConf, ApplicationReport appReport) {
-    String userEmails = appConf.get(VultureConfiguration.USER_EMAIL);
+    String userEmails = appConf.get(HadoopJobMonitorConfiguration.USER_EMAIL);
     if (userEmails != null)
       return userEmails;
     else

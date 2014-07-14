@@ -33,7 +33,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.jmx.WhiteList;
 import com.twitter.hraven.hadoopJobMonitor.rpc.ClientCache;
 
@@ -48,7 +48,7 @@ public class ClusterStatusChecker implements Runnable {
   public static final Log LOG = LogFactory.getLog(ClusterStatusChecker.class);
   private ExecutorService appCheckerExecutor;
   private ResourceMgrDelegate rmDelegate;
-  private VultureConfiguration vConf;
+  private HadoopJobMonitorConfiguration vConf;
   private Set<ApplicationId> runningAppCheckers = 
       Collections.newSetFromMap(new ConcurrentHashMap<ApplicationId, Boolean>());
   
@@ -57,7 +57,7 @@ public class ClusterStatusChecker implements Runnable {
    */
   private ClientCache clientCache;
 
-  public ClusterStatusChecker(VultureConfiguration conf,
+  public ClusterStatusChecker(HadoopJobMonitorConfiguration conf,
       ExecutorService appCheckerExecutor, ResourceMgrDelegate rmDelegate,
       ClientCache clientCache) {
     this.appCheckerExecutor = appCheckerExecutor;

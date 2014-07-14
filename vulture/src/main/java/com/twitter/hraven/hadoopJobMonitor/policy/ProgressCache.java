@@ -22,7 +22,7 @@ import java.util.Map;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.TaskID;
 
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 
 /**
  * A bounded cache for {@link ProgressCache.Progress}
@@ -37,12 +37,12 @@ public class ProgressCache<K> extends LinkedHashMap<K, ProgressCache.Progress> {
   private static volatile Map<TaskAttemptID, ProgressCache.Progress> ATTEMPT_INSTANCE =
       null;
 
-  synchronized public static void init(VultureConfiguration conf) {
+  synchronized public static void init(HadoopJobMonitorConfiguration conf) {
     if (TASK_INSTANCE != null)
       return;
     int cacheSize =
-        conf.getInt(VultureConfiguration.MAX_CACHED_TASK_PROGRESSES,
-            VultureConfiguration.DEFAULT_MAX_CACHED_TASK_PROGRESSES);
+        conf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_TASK_PROGRESSES,
+            HadoopJobMonitorConfiguration.DEFAULT_MAX_CACHED_TASK_PROGRESSES);
     TASK_INSTANCE =
         Collections.synchronizedMap(new ProgressCache<TaskID>(cacheSize));
     ATTEMPT_INSTANCE =

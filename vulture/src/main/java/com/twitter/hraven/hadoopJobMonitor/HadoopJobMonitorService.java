@@ -38,10 +38,10 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfCache;
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.jmx.WhiteList;
-import com.twitter.hraven.hadoopJobMonitor.metrics.VultureMetrics;
-import com.twitter.hraven.hadoopJobMonitor.metrics.VultureWebServer;
+import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorMetrics;
+import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorWebServer;
 import com.twitter.hraven.hadoopJobMonitor.notification.Mail;
 import com.twitter.hraven.hadoopJobMonitor.notification.Notifier;
 import com.twitter.hraven.hadoopJobMonitor.policy.ProgressCache;
@@ -49,7 +49,7 @@ import com.twitter.hraven.hadoopJobMonitor.rpc.ClientCache;
 import com.twitter.hraven.hadoopJobMonitor.rpc.RestClient;
 
 /**
- * Vulture Service
+ * HadoopJobMonitor Service
  * 
  * The idea is to have a daemon that kills the not well-behaving tasks/jobs.
  * 
@@ -66,26 +66,26 @@ import com.twitter.hraven.hadoopJobMonitor.rpc.RestClient;
  * normal behavior is defined by the history of the job
  * 
  */
-public class VultureService {
-  public static final Log LOG = LogFactory.getLog(VultureService.class);
+public class HadoopJobMonitorService {
+  public static final Log LOG = LogFactory.getLog(HadoopJobMonitorService.class);
 
   ScheduledExecutorService clusterCheckerExecutor;
   ExecutorService appCheckerExecutor;
-  VultureConfiguration conf = new VultureConfiguration();
+  HadoopJobMonitorConfiguration conf = new HadoopJobMonitorConfiguration();
   ClientCache clientCache;
   ResourceMgrDelegate rmDelegate;
-  VultureMetrics metrics;
+  HadoopJobMonitorMetrics metrics;
 
   public void init() {
     YarnConfiguration yConf = new YarnConfiguration();
-    DefaultMetricsSystem.initialize("Vulture");
+    DefaultMetricsSystem.initialize("HadoopJobMonitor");
     String logDir = System.getProperty("hadoopJobMonitor.log.dir");
     if (logDir == null)
       logDir = "/tmp";
     MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
     try {
       ObjectName name =
-          new ObjectName("com.twitter.vulture.jmx:type=" + WhiteList.class.getSimpleName());
+          new ObjectName("com.twitter.hadoopJobMonitor.jmx:type=" + WhiteList.class.getSimpleName());
       WhiteList.init(logDir);
       WhiteList mbean = WhiteList.getInstance();
       mbs.registerMBean(mbean, name);
@@ -94,7 +94,7 @@ public class VultureService {
       LOG.fatal("Error in retriving white list from dir " + logDir, e);
     }
     
-    metrics = VultureMetrics.initSingleton(conf);
+    metrics = HadoopJobMonitorMetrics.initSingleton(conf);
     
     rmDelegate = new ResourceMgrDelegate(yConf);
     clientCache = new ClientCache(conf, rmDelegate);
@@ -106,8 +106,8 @@ public class VultureService {
         Executors
             .newSingleThreadScheduledExecutor(new ClusterStatusChecker.SimpleThreadFactory());
     int concurrentAppCheckers =
-        conf.getInt(VultureConfiguration.NEW_APP_CHECKER_CONCURRENCY,
-            VultureConfiguration.DEFAULT_NEW_APP_CHECKER_CONCURRENCY);
+        conf.getInt(HadoopJobMonitorConfiguration.NEW_APP_CHECKER_CONCURRENCY,
+            HadoopJobMonitorConfiguration.DEFAULT_NEW_APP_CHECKER_CONCURRENCY);
     appCheckerExecutor =
         new BlockingExecutor(concurrentAppCheckers,
             new AppStatusChecker.SimpleThreadFactory());
@@ -118,16 +118,16 @@ public class VultureService {
       System.err.println("========== DRYRUN ===========");
       LOG.warn("========== DRYRUN ===========");
     } else
-      LOG.warn("Vulture started ...");
+      LOG.warn("HadoopJobMonitor started ...");
     long intervalSec =
-        conf.getLong(VultureConfiguration.NEW_APP_CHECKER_INTERVAL_SEC,
-            VultureConfiguration.DEFAULT_NEW_APP_CHECKER_INTERVAL_SEC);
+        conf.getLong(HadoopJobMonitorConfiguration.NEW_APP_CHECKER_INTERVAL_SEC,
+            HadoopJobMonitorConfiguration.DEFAULT_NEW_APP_CHECKER_INTERVAL_SEC);
     clusterCheckerExecutor.scheduleAtFixedRate(new ClusterStatusChecker(conf,
         appCheckerExecutor, rmDelegate, clientCache), 0, intervalSec,
         TimeUnit.SECONDS);
     
-    final VultureWebServer webServer = new VultureWebServer();
-    int port = conf.getInt(VultureConfiguration.WEB_PORT, VultureConfiguration.DEFAULT_WEB_PORT);
+    final HadoopJobMonitorWebServer webServer = new HadoopJobMonitorWebServer();
+    int port = conf.getInt(HadoopJobMonitorConfiguration.WEB_PORT, HadoopJobMonitorConfiguration.DEFAULT_WEB_PORT);
     try {
       webServer.start(port);
     } catch (IOException e) {
@@ -149,10 +149,10 @@ public class VultureService {
   }
 
   public static void main(String[] args) {
-    System.out.println("VultureService!");
-    VultureService vultureService = new VultureService();
-    vultureService.init();
-    vultureService.start();
+    System.out.println("HadoopJobMonitorService!");
+    HadoopJobMonitorService hadoopJobMonitorService = new HadoopJobMonitorService();
+    hadoopJobMonitorService.init();
+    hadoopJobMonitorService.start();
 
     // Other threads are daemon, so prevent the current thread from exiting
     while (true) {

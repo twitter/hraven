@@ -61,22 +61,22 @@ import org.apache.hadoop.metrics2.lib.MutableCounterLong;
 import com.twitter.hraven.hadoopJobMonitor.ClusterStatusChecker;
 
 /**
- * This class is for maintaining the various Vulture activity statistics and
+ * This class is for maintaining the various HadoopJobMonitor activity statistics and
  * publishing them through the metrics interfaces as well as the web interface.
  */
 @XmlRootElement(name = "cleanerMetrics")
 @XmlAccessorType(XmlAccessType.FIELD)
-@Metrics(name = "VultureActivity", about = "Vulture service metrics", context = "yarn")
-public class VultureMetrics {
-  public static final Log LOG = LogFactory.getLog(VultureMetrics.class);
+@Metrics(name = "HadoopJobMonitorActivity", about = "HadoopJobMonitor service metrics", context = "yarn")
+public class HadoopJobMonitorMetrics {
+  public static final Log LOG = LogFactory.getLog(HadoopJobMonitorMetrics.class);
   @XmlTransient
-  private final MetricsRegistry registry = new MetricsRegistry("Vulture");
+  private final MetricsRegistry registry = new MetricsRegistry("HadoopJobMonitor");
 
   enum Singleton {
     INSTANCE;
-    VultureMetrics impl;
+    HadoopJobMonitorMetrics impl;
 
-    synchronized VultureMetrics init(Configuration conf) {
+    synchronized HadoopJobMonitorMetrics init(Configuration conf) {
       if (impl == null) {
         impl = create(conf);
       }
@@ -84,21 +84,21 @@ public class VultureMetrics {
     }
   }
 
-  public static VultureMetrics initSingleton(Configuration conf) {
+  public static HadoopJobMonitorMetrics initSingleton(Configuration conf) {
     return Singleton.INSTANCE.init(conf);
   }
 
-  public static VultureMetrics getInstance() {
-    VultureMetrics vultureMetrics = Singleton.INSTANCE.impl;
-    if (vultureMetrics == null)
+  public static HadoopJobMonitorMetrics getInstance() {
+    HadoopJobMonitorMetrics hadoopJobMonitorMetrics = Singleton.INSTANCE.impl;
+    if (hadoopJobMonitorMetrics == null)
       throw new IllegalStateException(
-          "The VultureMetics singlton instance is not initialized."
+          "The HadoopJobMonitorMetics singlton instance is not initialized."
               + " Have you called init first?");
-    return vultureMetrics;
+    return hadoopJobMonitorMetrics;
   }
 
-  VultureMetrics() {
-    registry.tag(ProcessName, "VultureService");
+  HadoopJobMonitorMetrics() {
+    registry.tag(ProcessName, "HadoopJobMonitorService");
   }
   
   private class Heart implements Runnable {
@@ -107,17 +107,17 @@ public class VultureMetrics {
       beat();
     }
     private void beat() {
-      VultureMetrics.getInstance().minutesSinceStart.incr();
+      HadoopJobMonitorMetrics.getInstance().minutesSinceStart.incr();
     }
   }
 
-  static VultureMetrics create(Configuration conf) {
+  static HadoopJobMonitorMetrics create(Configuration conf) {
     MetricsSystem ms = DefaultMetricsSystem.instance();
 
-    VultureMetrics metricObject = new VultureMetrics();
+    HadoopJobMonitorMetrics metricObject = new HadoopJobMonitorMetrics();
     MetricsSourceBuilder sb = MetricsAnnotations.newSourceBuilder(metricObject);
     final MetricsSource s = sb.build();
-    ms.register("VultureMetrics", "The Metrics of Vulture service", s);
+    ms.register("HadoopJobMonitorMetrics", "The Metrics of HadoopJobMonitor service", s);
     
     ScheduledExecutorService heartbeatExecutor =
         Executors.newSingleThreadScheduledExecutor(new SimpleThreadFactory());
@@ -130,12 +130,12 @@ public class VultureMetrics {
    */
   static class SimpleThreadFactory implements ThreadFactory {
     ThreadGroup threadGroup = new ThreadGroup(
-        VultureMetrics.class.getSimpleName());
+        HadoopJobMonitorMetrics.class.getSimpleName());
 
     public Thread newThread(Runnable r) {
       Thread thread = new Thread(threadGroup, r);
       thread.setDaemon(true);
-      thread.setName(VultureMetrics.class.getSimpleName());
+      thread.setName(HadoopJobMonitorMetrics.class.getSimpleName());
       return thread;
     }
   }
@@ -145,7 +145,7 @@ public class VultureMetrics {
   }
 
   /**
-   * Number of actual killings performed by Vulture
+   * Number of actual killings performed by HadoopJobMonitor
    */
   @XmlJavaTypeAdapter(MutableCounterLongAdapter.class)
   @Metric("number of killed apps")
@@ -161,7 +161,7 @@ public class VultureMetrics {
   public MutableCounterLong killedReducers;
 
   /**
-   * Number of bad behaved entities discovered by Vulture
+   * Number of bad behaved entities discovered by HadoopJobMonitor
    */
   @XmlJavaTypeAdapter(MutableCounterLongAdapter.class)
   @Metric("number of badBehaved apps")
@@ -177,7 +177,7 @@ public class VultureMetrics {
   public MutableCounterLong badBehavedReducers;
 
   /**
-   * Number of entities that were inspected by Vulture
+   * Number of entities that were inspected by HadoopJobMonitor
    */
   @XmlJavaTypeAdapter(MutableCounterLongAdapter.class)
   @Metric("number of inspected apps")
@@ -193,7 +193,7 @@ public class VultureMetrics {
   public MutableCounterLong inspectedReducers;
 
   /**
-   * Number of inspected entities that that configured the Vulture-related
+   * Number of inspected entities that that configured the HadoopJobMonitor-related
    * params
    */
   @XmlJavaTypeAdapter(MutableCounterLongAdapter.class)
@@ -210,7 +210,7 @@ public class VultureMetrics {
   public MutableCounterLong configuredReducers;
 
   /**
-   * Number of inspected entities that requested enforcement from Vulture
+   * Number of inspected entities that requested enforcement from HadoopJobMonitor
    */
   @XmlJavaTypeAdapter(MutableCounterLongAdapter.class)
   @Metric("number of enforced apps")

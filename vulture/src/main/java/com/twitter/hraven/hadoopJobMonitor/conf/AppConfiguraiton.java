@@ -23,38 +23,38 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.TaskType;
 
-import com.twitter.hraven.hadoopJobMonitor.metrics.VultureMetrics;
+import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorMetrics;
 import com.twitter.hraven.hadoopJobMonitor.policy.AppPolicy;
 import com.twitter.hraven.hadoopJobMonitor.policy.DefaultPolicy;
 import com.twitter.hraven.hadoopJobMonitor.policy.TaskPolicy;
 
-import static com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration.*;
+import static com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration.*;
 
 /**
  * The conf objects can be quite big. Here we solicit the parts relevant to
- * Vulture.
+ * HadoopJobMonitor.
  */
 public class AppConfiguraiton extends Configuration {
   public static final Log LOG = LogFactory.getLog(AppConfiguraiton.class);
   private AppPolicy appPolicy;
   private TaskPolicy taskPolicy;
-  private Configuration vultureConf;
+  private Configuration hadoopJobMonitorConf;
 
   public AppConfiguraiton(Configuration origAppConf,
-      VultureConfiguration vultureConf) throws ConfigurationAccessException {
+      HadoopJobMonitorConfiguration hadoopJobMonitorConf) throws ConfigurationAccessException {
     super(false);// don't load default resources
-    init(new FilterableConfiguration(origAppConf), vultureConf);
+    init(new FilterableConfiguration(origAppConf), hadoopJobMonitorConf);
   }
 
   private void init(FilterableConfiguration origAppConf,
-      VultureConfiguration vultureConf) throws ConfigurationAccessException {
+      HadoopJobMonitorConfiguration hadoopJobMonitorConf) throws ConfigurationAccessException {
     try {
-      this.vultureConf = vultureConf;
-      origAppConf.loadPropsTo(this, VultureConfiguration.VULTURE_PREFIX);
-      origAppConf.loadPropsTo(this, VultureConfiguration.JOB_MAX_LEN_MIN);
-      origAppConf.loadPropsTo(this, VultureConfiguration.MAP_MAX_RUNTIME_MIN);
+      this.hadoopJobMonitorConf = hadoopJobMonitorConf;
+      origAppConf.loadPropsTo(this, HadoopJobMonitorConfiguration.HADOOPJOBMONITOR_PREFIX);
+      origAppConf.loadPropsTo(this, HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN);
+      origAppConf.loadPropsTo(this, HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN);
       origAppConf
-          .loadPropsTo(this, VultureConfiguration.REDUCE_MAX_RUNTIME_MIN);
+          .loadPropsTo(this, HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN);
       appPolicy = extractAppPolicy(origAppConf);
       taskPolicy = extractTaskPolicy(origAppConf);
       updateMetric();
@@ -64,34 +64,34 @@ public class AppConfiguraiton extends Configuration {
   }
 
   private void updateMetric() {
-    VultureMetrics metrics = VultureMetrics.getInstance();
-    if (super.get(VultureConfiguration.JOB_MAX_LEN_MIN) != null)
+    HadoopJobMonitorMetrics metrics = HadoopJobMonitorMetrics.getInstance();
+    if (super.get(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN) != null)
       metrics.configuredApps.incr();
-    if (super.get(VultureConfiguration.MAP_MAX_RUNTIME_MIN) != null)
+    if (super.get(HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN) != null)
       metrics.configuredMappers.incr();
-    if (super.get(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN) != null)
+    if (super.get(HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN) != null)
       metrics.configuredReducers.incr();
-    if (super.get(VultureConfiguration.MAP_MAX_RUNTIME_MIN) != null
-        || super.get(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN) != null)
+    if (super.get(HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN) != null
+        || super.get(HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN) != null)
       metrics.configuredTasks.incr();
 
-    if (super.getBoolean(enforced(VultureConfiguration.JOB_MAX_LEN_MIN), false))
+    if (super.getBoolean(enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), false))
       metrics.enforcedApps.incr();
-    if (super.getBoolean(enforced(VultureConfiguration.MAP_MAX_RUNTIME_MIN),
+    if (super.getBoolean(enforced(HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN),
         false))
       metrics.enforcedMappers.incr();
-    if (super.getBoolean(enforced(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN),
+    if (super.getBoolean(enforced(HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN),
         false))
       metrics.enforcedReducers.incr();
-    if (super.getBoolean(enforced(VultureConfiguration.MAP_MAX_RUNTIME_MIN),
+    if (super.getBoolean(enforced(HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN),
         false) || super.getBoolean(
-            enforced(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN), false))
+            enforced(HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN), false))
       metrics.enforcedTasks.incr();
   }
 
   private AppPolicy extractAppPolicy(FilterableConfiguration origAppConf) {
     String policyClassName =
-        origAppConf.get(VultureConfiguration.APP_POLICY_CLASS);
+        origAppConf.get(HadoopJobMonitorConfiguration.APP_POLICY_CLASS);
     if (policyClassName == null)
       return DefaultPolicy.getInstance();
     Object policyObj = getPolicyObject(policyClassName);
@@ -104,7 +104,7 @@ public class AppConfiguraiton extends Configuration {
 
   private TaskPolicy extractTaskPolicy(FilterableConfiguration origAppConf) {
     String policyClassName =
-        origAppConf.get(VultureConfiguration.TASK_POLICY_CLASS);
+        origAppConf.get(HadoopJobMonitorConfiguration.TASK_POLICY_CLASS);
     if (policyClassName == null)
       return DefaultPolicy.getInstance();
     Object policyObj = getPolicyObject(policyClassName);
@@ -136,26 +136,26 @@ public class AppConfiguraiton extends Configuration {
   }
 
   public int getInt(String param, int defaultValue) {
-    int vultureDefault = vultureConf.getInt(param, defaultValue);
-    int value = super.getInt(param, vultureDefault);
+    int hadoopJobMonitorDefault = hadoopJobMonitorConf.getInt(param, defaultValue);
+    int value = super.getInt(param, hadoopJobMonitorDefault);
     return value;
   }
 
   public float getFloat(String param, float defaultValue) {
-    float vultureDefault = vultureConf.getFloat(param, defaultValue);
-    float value = super.getFloat(param, vultureDefault);
+    float hadoopJobMonitorDefault = hadoopJobMonitorConf.getFloat(param, defaultValue);
+    float value = super.getFloat(param, hadoopJobMonitorDefault);
     return value;
   }
 
   public boolean getBoolean(String param, boolean defaultValue) {
-    boolean vultureDefault = vultureConf.getBoolean(param, defaultValue);
-    boolean value = super.getBoolean(param, vultureDefault);
+    boolean hadoopJobMonitorDefault = hadoopJobMonitorConf.getBoolean(param, defaultValue);
+    boolean value = super.getBoolean(param, hadoopJobMonitorDefault);
     return value;
   }
 
   public int getMaxJobLenMin() {
-    return getInt(VultureConfiguration.JOB_MAX_LEN_MIN,
-        VultureConfiguration.DEFAULT_JOB_MAX_LEN_MIN);
+    return getInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN,
+        HadoopJobMonitorConfiguration.DEFAULT_JOB_MAX_LEN_MIN);
   }
 
   public int getMaxTaskLenMin(TaskType taskType) {
@@ -171,23 +171,23 @@ public class AppConfiguraiton extends Configuration {
   }
 
   public int getMaxMapLenMin() {
-    return getInt(VultureConfiguration.MAP_MAX_RUNTIME_MIN,
-        VultureConfiguration.DEFAULT_MAP_MAX_RUNTIME_MIN);
+    return getInt(HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN,
+        HadoopJobMonitorConfiguration.DEFAULT_MAP_MAX_RUNTIME_MIN);
   }
 
   public int getMaxReduceLenMin() {
-    return getInt(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN,
-        VultureConfiguration.DEFAULT_REDUCE_MAX_RUNTIME_MIN);
+    return getInt(HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN,
+        HadoopJobMonitorConfiguration.DEFAULT_REDUCE_MAX_RUNTIME_MIN);
   }
 
   public boolean getNotifyUser() {
-    return getBoolean(VultureConfiguration.NOTIFY_USER,
-        VultureConfiguration.DEFAULT_NOTIFY_USER);
+    return getBoolean(HadoopJobMonitorConfiguration.NOTIFY_USER,
+        HadoopJobMonitorConfiguration.DEFAULT_NOTIFY_USER);
   }
   
   public float getProgressThreshold() {
-    return getFloat(VultureConfiguration.TASK_PROGRESS_THRESHOLD,
-        VultureConfiguration.DEFAULT_TASK_PROGRESS_THRESHOLD);
+    return getFloat(HadoopJobMonitorConfiguration.TASK_PROGRESS_THRESHOLD,
+        HadoopJobMonitorConfiguration.DEFAULT_TASK_PROGRESS_THRESHOLD);
   }
 
   public AppPolicy getAppPolicy() {
@@ -200,7 +200,7 @@ public class AppConfiguraiton extends Configuration {
 
   public boolean isEnforced(String param) {
     boolean enforced =
-        getBoolean(enforced(param), VultureConfiguration.DEFAULT_ENFORCE);
+        getBoolean(enforced(param), HadoopJobMonitorConfiguration.DEFAULT_ENFORCE);
     return enforced;
   }
 

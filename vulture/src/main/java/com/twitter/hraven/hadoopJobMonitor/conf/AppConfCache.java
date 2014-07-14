@@ -31,12 +31,12 @@ public class AppConfCache extends
 
   private static volatile AppConfCache INSTANCE = null;
 
-  synchronized public static void init(VultureConfiguration conf) {
+  synchronized public static void init(HadoopJobMonitorConfiguration conf) {
     if (INSTANCE != null)
       return;
     int cacheSize =
-        conf.getInt(VultureConfiguration.MAX_CACHED_APP_CONFS,
-            VultureConfiguration.DEFAULT_MAX_CACHED_APP_CONFS);
+        conf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_APP_CONFS,
+            HadoopJobMonitorConfiguration.DEFAULT_MAX_CACHED_APP_CONFS);
     INSTANCE = new AppConfCache(cacheSize);
   }
 

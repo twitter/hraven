@@ -17,8 +17,8 @@
 #
 # Environment Variables
 #
-#   VULTURE_PID_DIR   The pid files are stored. /tmp by default. Can also be defined in hadoopJobMonitor-env.sh
-#   VULTURE_CONF_DIR   The conf directory, default ../src/main/resources. Can also be set via command line.
+#   HADOOPJOBMONITOR_PID_DIR   The pid files are stored. /tmp by default. Can also be defined in hadoopJobMonitor-env.sh
+#   HADOOPJOBMONITOR_CONF_DIR   The conf directory, default ../src/main/resources. Can also be set via command line.
 ##
 
 # Example: ./hadoopJobMonitor-admin.sh whitelist set application_234234_234 120  
@@ -31,9 +31,9 @@ fi
 SCRIPTFILE=`$READLINK -f $0`
 SCRIPTDIR=`dirname $SCRIPTFILE`
 
-vpid=`jps | grep VultureService`
+vpid=`jps | grep HadoopJobMonitorService`
 if [ $? -ne 0 ]; then
-  echo "VultureService is not found!"
+  echo "HadoopJobMonitorService is not found!"
   exit 1
 fi
 vpid=`echo $vpid | awk '{print $1}'`

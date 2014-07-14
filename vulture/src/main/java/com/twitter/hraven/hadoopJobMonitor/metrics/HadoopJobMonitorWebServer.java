@@ -53,10 +53,10 @@ import com.google.inject.Singleton;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 
 /**
- * A very simple web interface for the metric reported by {@link VultureMetrics}
+ * A very simple web interface for the metric reported by {@link HadoopJobMonitorMetrics}
  */
-public class VultureWebServer {
-  private static final Log LOG = LogFactory.getLog(VultureWebServer.class);
+public class HadoopJobMonitorWebServer {
+  private static final Log LOG = LogFactory.getLog(HadoopJobMonitorWebServer.class);
 
   private WebApp webApp;
   private int port;
@@ -76,16 +76,16 @@ public class VultureWebServer {
   }
 
   public void start(int port) throws IOException {
-    LOG.info("Instantiating " + VultureWebApp.class.getName());
+    LOG.info("Instantiating " + HadoopJobMonitorWebApp.class.getName());
     try {
-      VultureWebApp vultureWebApp = new VultureWebApp();
-      this.webApp = WebApps.$for("node").at(port).start(vultureWebApp);
+      HadoopJobMonitorWebApp hadoopJobMonitorWebApp = new HadoopJobMonitorWebApp();
+      this.webApp = WebApps.$for("node").at(port).start(hadoopJobMonitorWebApp);
       this.port = this.webApp.httpServer().getPort();
       this.host = InetAddress.getLocalHost().getHostName();
       this.webAddress = this.host + ":" + port;
-      LOG.info(VultureWebApp.class.getName() + " started: " + this.webAddress);
+      LOG.info(HadoopJobMonitorWebApp.class.getName() + " started: " + this.webAddress);
     } catch (Exception e) {
-      String msg = VultureWebApp.class.getName() + " failed to start.";
+      String msg = HadoopJobMonitorWebApp.class.getName() + " failed to start.";
       LOG.error(msg, e);
       throw new IOException(msg);
     }
@@ -97,21 +97,21 @@ public class VultureWebServer {
     }
   }
 
-  private static class VultureWebApp extends WebApp {
+  private static class HadoopJobMonitorWebApp extends WebApp {
     @Override
     public void setup() {
-      bind(VultureWebService.class);
+      bind(HadoopJobMonitorWebService.class);
       serve("/xml/metrics").with(GuiceContainer.class);
     }
   }
 
   @Singleton
   @Path("/xml")
-  public static class VultureWebService {
+  public static class HadoopJobMonitorWebService {
     private @Context
     HttpServletResponse response;
 
-    public VultureWebService() {
+    public HadoopJobMonitorWebService() {
     }
 
     private void init() {
@@ -122,9 +122,9 @@ public class VultureWebServer {
     @GET
     @Path("/metrics")
     @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
-    public VultureMetrics getVultureMetricsInfo() {
+    public HadoopJobMonitorMetrics getHadoopJobMonitorMetricsInfo() {
       init();
-      return VultureMetrics.getInstance();
+      return HadoopJobMonitorMetrics.getInstance();
     }
 
   }

@@ -62,9 +62,9 @@ import com.twitter.hraven.hadoopJobMonitor.AppCheckerProgress;
 import com.twitter.hraven.hadoopJobMonitor.AppStatusChecker;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfCache;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton;
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton.ConfigurationAccessException;
-import com.twitter.hraven.hadoopJobMonitor.metrics.VultureMetrics;
+import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorMetrics;
 import com.twitter.hraven.hadoopJobMonitor.policy.ProgressCache;
 import com.twitter.hraven.hadoopJobMonitor.policy.ProgressCache.Progress;
 import com.twitter.hraven.hadoopJobMonitor.rpc.ClientCache;
@@ -97,7 +97,7 @@ public class AppStatusCheckerTest {
   private MyApplicationId appId;
   private TaskID taskId;
   private TaskAttemptID taskAttemptId;
-  VultureConfiguration vConf = new VultureConfiguration();
+  HadoopJobMonitorConfiguration vConf = new HadoopJobMonitorConfiguration();
   ClientCache clientCache = mock(ClientCache.class);
   ClientServiceDelegate clientService = mock(ClientServiceDelegate.class);
   ApplicationReport appReport;
@@ -116,10 +116,10 @@ public class AppStatusCheckerTest {
     taskId = new TaskID(oldJobId, TaskType.MAP, 0);
     taskAttemptId = new TaskAttemptID(taskId, 0);
     
-    vConf.setFloat(VultureConfiguration.TASK_PROGRESS_THRESHOLD, 0.2f);
+    vConf.setFloat(HadoopJobMonitorConfiguration.TASK_PROGRESS_THRESHOLD, 0.2f);
     AppConfCache.init(vConf);
     ProgressCache.init(vConf);
-    VultureMetrics.initSingleton(vConf);
+    HadoopJobMonitorMetrics.initSingleton(vConf);
     taskProgressCache = ProgressCache.getTaskProgressCache();
     attemptProgressCache = ProgressCache.getAttemptProgressCache();
     
@@ -152,7 +152,7 @@ public class AppStatusCheckerTest {
   @Test
   public void testMapTasks() throws Exception {
     killCounter = 0;
-    final String pName = VultureConfiguration.MAP_MAX_RUNTIME_MIN;
+    final String pName = HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN;
     final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
     testTask(TaskType.MAP, pName, 5, 10, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
     testTask(TaskType.MAP, pName, 15, 10, enforce, !dryRun, TIPStatus.FAILED, passCheck, !killed);
@@ -165,7 +165,7 @@ public class AppStatusCheckerTest {
   @Test
   public void testReduceTasks() throws Exception {
     killCounter = 0;
-    final String pName = VultureConfiguration.REDUCE_MAX_RUNTIME_MIN;
+    final String pName = HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN;
     final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
     testTask(TaskType.REDUCE, pName, 5, 10, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
     testTask(TaskType.REDUCE, pName, 5, 10, 0.01f, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
@@ -178,12 +178,12 @@ public class AppStatusCheckerTest {
 
   @Test
   public void testReduceProgress() throws Exception {
-    testProgress(TaskType.REDUCE, VultureConfiguration.REDUCE_MAX_RUNTIME_MIN);
+    testProgress(TaskType.REDUCE, HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN);
   }
   
   @Test
   public void testMapProgress() throws Exception {
-    testProgress(TaskType.MAP, VultureConfiguration.MAP_MAX_RUNTIME_MIN);
+    testProgress(TaskType.MAP, HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN);
   }
   
   public void testProgress(TaskType taskType, String pName) throws Exception {
@@ -229,10 +229,10 @@ public class AppStatusCheckerTest {
     when(taskReport.getTaskID()).thenReturn(org.apache.hadoop.mapred.TaskID.downgrade(taskId));
     when(taskReport.getProgress()).thenReturn(progress);
 
-    vConf.setBoolean(VultureConfiguration.DRY_RUN, dryRun);
+    vConf.setBoolean(HadoopJobMonitorConfiguration.DRY_RUN, dryRun);
     Configuration remoteAppConf = new Configuration();
     remoteAppConf.setInt(confParamName, MAX_RUN);
-    remoteAppConf.setBoolean(VultureConfiguration.enforced(confParamName), enforce);
+    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(confParamName), enforce);
     when(taskReport.getStartTime()).thenReturn(now - durationMin * MIN);
     AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
     AppConfCache.getInstance().put(appId, appConf);
@@ -256,8 +256,8 @@ public class AppStatusCheckerTest {
   @Test
   public void testUnsetEnforce() throws IOException, ConfigurationAccessException {
     Configuration remoteAppConf = new Configuration();
-    remoteAppConf.setInt(VultureConfiguration.JOB_MAX_LEN_MIN, 10);
-    //remoteAppConf.setBoolean(VultureConfiguration.enforced(VultureConfiguration.JOB_MAX_LEN_MIN), true);
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    //remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
     when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
 
     AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
@@ -271,8 +271,8 @@ public class AppStatusCheckerTest {
   @Test
   public void testLongJobDryRun() throws IOException, ConfigurationAccessException, YarnException {
     Configuration remoteAppConf = new Configuration();
-    remoteAppConf.setInt(VultureConfiguration.JOB_MAX_LEN_MIN, 10);
-    remoteAppConf.setBoolean(VultureConfiguration.enforced(VultureConfiguration.JOB_MAX_LEN_MIN), true);
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
     when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
 
     AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
@@ -287,10 +287,10 @@ public class AppStatusCheckerTest {
   @Test
   public void testLongJob() throws IOException, ConfigurationAccessException, YarnException {
     Configuration remoteAppConf = new Configuration();
-    remoteAppConf.setInt(VultureConfiguration.JOB_MAX_LEN_MIN, 10);
-    remoteAppConf.setBoolean(VultureConfiguration.enforced(VultureConfiguration.JOB_MAX_LEN_MIN), true);
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
     when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
-    vConf.setBoolean(VultureConfiguration.DRY_RUN, false);
+    vConf.setBoolean(HadoopJobMonitorConfiguration.DRY_RUN, false);
 
     AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
     AppConfCache.getInstance().put(appId, appConf);
@@ -304,8 +304,8 @@ public class AppStatusCheckerTest {
   @Test
   public void testShortJob() throws IOException, ConfigurationAccessException {
     Configuration remoteAppConf = new Configuration();
-    remoteAppConf.setInt(VultureConfiguration.JOB_MAX_LEN_MIN, 10);
-    remoteAppConf.setBoolean(VultureConfiguration.enforced(VultureConfiguration.JOB_MAX_LEN_MIN), true);
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
     when(appReport.getStartTime()).thenReturn(now - 5 * MIN);
 
     AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);

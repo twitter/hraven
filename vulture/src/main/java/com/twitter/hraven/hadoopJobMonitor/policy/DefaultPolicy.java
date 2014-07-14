@@ -29,7 +29,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton;
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.notification.Notifier;
 import com.twitter.hraven.hadoopJobMonitor.policy.ProgressCache.Progress;
 
@@ -58,7 +58,7 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
     final long maxJobLenMs = appConf.getMaxJobLenMin() * 60 * 1000;
     if (duration > maxJobLenMs) {
       String errMsg = Notifier.tooLongApp(appConf, appReport, duration, maxJobLenMs);
-      if (appConf.isEnforced(VultureConfiguration.JOB_MAX_LEN_MIN))
+      if (appConf.isEnforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN))
         return errMsg;
     }
     return null;
@@ -123,11 +123,11 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
             String msg = Notifier.tooLongTaskAttempt(appConf, appReport, taskReport,
                 taskType, taskAttemptId, timeMs, maxRunTimeMs);
             if (taskType == TaskType.MAP
-                && appConf.isEnforced(VultureConfiguration.MAP_MAX_RUNTIME_MIN))
+                && appConf.isEnforced(HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN))
               return msg;
             if (taskType == TaskType.REDUCE
                 && appConf
-                    .isEnforced(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN))
+                    .isEnforced(HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN))
               return msg;
           }
           if (checkedNodes >= maxRequiredNodes)
@@ -147,11 +147,11 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
                 taskType, taskAttemptId, progress,
                 appConf.getProgressThreshold(), maxRunTimeMs);
             if (taskType == TaskType.MAP
-                && appConf.isEnforced(VultureConfiguration.MAP_MAX_RUNTIME_MIN))
+                && appConf.isEnforced(HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN))
               return msg;
             if (taskType == TaskType.REDUCE
                 && appConf
-                    .isEnforced(VultureConfiguration.REDUCE_MAX_RUNTIME_MIN))
+                    .isEnforced(HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN))
               return msg;
           }
           if (checkedNodes >= maxRequiredNodes)

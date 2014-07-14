@@ -41,10 +41,10 @@ import org.w3c.dom.Document;
 
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfCache;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton;
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton.ConfigurationAccessException;
 import com.twitter.hraven.hadoopJobMonitor.jmx.WhiteList;
-import com.twitter.hraven.hadoopJobMonitor.metrics.VultureMetrics;
+import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorMetrics;
 import com.twitter.hraven.hadoopJobMonitor.rpc.ClientCache;
 import com.twitter.hraven.hadoopJobMonitor.rpc.RestClient;
 import com.twitter.hraven.hadoopJobMonitor.rpc.RestClient.RestException;
@@ -70,11 +70,11 @@ public class AppStatusChecker implements Runnable {
   private ClientServiceDelegate clientService;
   private ClientCache clientCache;
   private AppConfCache appConfCache = AppConfCache.getInstance();
-  private VultureMetrics metrics = VultureMetrics.getInstance();
+  private HadoopJobMonitorMetrics metrics = HadoopJobMonitorMetrics.getInstance();
 
-  private VultureConfiguration vConf;
+  private HadoopJobMonitorConfiguration vConf;
 
-  public AppStatusChecker(VultureConfiguration conf,
+  public AppStatusChecker(HadoopJobMonitorConfiguration conf,
       ApplicationReport appReport, ClientCache clientCache,
       ResourceMgrDelegate rmDelegate, AppCheckerProgress appCheckerProgress) {
     this.appReport = appReport;
@@ -187,7 +187,7 @@ public class AppStatusChecker implements Runnable {
     try {
       metrics.killedApps.incr();
       //leave it for when the new API make it to a release of hadoop
-//      rmDelegate.killApplication(appReport.getApplicationId(), "killed by vulture: "+errMsg);
+//      rmDelegate.killApplication(appReport.getApplicationId(), "killed by hadoopJobMonitor: "+errMsg);
       rmDelegate.killApplication(appReport.getApplicationId());
     } catch (YarnRuntimeException e) {
       LOG.error("Error in killing job " + appReport.getApplicationId(), e);
@@ -208,8 +208,8 @@ public class AppStatusChecker implements Runnable {
   private void checkTasks(TaskType taskType) {
     try {
       int maxBadTasks = this.appConf.getInt(
-          VultureConfiguration.MAX_BAD_TASKS_CHECKED, 
-          VultureConfiguration.DEFAULT_MAX_BAD_TASKS_CHECKED);
+          HadoopJobMonitorConfiguration.MAX_BAD_TASKS_CHECKED, 
+          HadoopJobMonitorConfiguration.DEFAULT_MAX_BAD_TASKS_CHECKED);
       // 1. get the list of running tasks
       TaskReport[] taskReports = clientService.getTaskReports(jobId, taskType);
       LOG.debug("taskType= " + taskType + " taskReport.size = "
@@ -322,7 +322,7 @@ public class AppStatusChecker implements Runnable {
       default:
       }
       //leave it for when the new API make it to a hadoop release
-//      clientService.killTask(taskAttemptId, false, "killed by vulture: " + errMsg);
+//      clientService.killTask(taskAttemptId, false, "killed by hadoopJobMonitor: " + errMsg);
       clientService.killTask(taskAttemptId, false);
     } catch (IOException e) {
       LOG.warn("Error in killing task " + taskAttemptId, e);

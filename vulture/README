@@ -1,2 +1,4 @@
-https://jira.twitter.biz/browse/HADOOPDEV-453
-Vulture: automatically kill slow/dead jobs or tasks
+HadoopJobMonitor:
+Monitors jobs/tasks in Hadoop 2
+Send notification if jobs/tasks do not make the expected progress
+Optionally kill slow/dead tasks/jobs

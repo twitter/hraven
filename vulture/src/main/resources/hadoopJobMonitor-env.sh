@@ -14,5 +14,5 @@
 
 export HADOOP_CLASSPATH=`hadoop classpath`
 
-#export VULTURE_LOG_DIR=/tmp/vulture/log
-#export VULTURE_PID_DIR=/tmp/vulture/
+#export HADOOPJOBMONITOR_LOG_DIR=/tmp/hadoopJobMonitor/log
+#export HADOOPJOBMONITOR_PID_DIR=/tmp/hadoopJobMonitor/

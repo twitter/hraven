@@ -17,24 +17,24 @@ package com.twitter.hraven.hadoopJobMonitor.conf;
 
 import org.apache.hadoop.conf.Configuration;
 
-public class VultureConfiguration extends Configuration {
-  private static final String VULTURE_DEFAULT_XML_FILE = "hadoopJobMonitor-default.xml";
-  private static final String VULTURE_SITE_XML_FILE = "hadoopJobMonitor-site.xml";
+public class HadoopJobMonitorConfiguration extends Configuration {
+  private static final String HADOOPJOBMONITOR_DEFAULT_XML_FILE = "hadoopJobMonitor-default.xml";
+  private static final String HADOOPJOBMONITOR_SITE_XML_FILE = "hadoopJobMonitor-site.xml";
 
   static {
-    Configuration.addDefaultResource(VULTURE_DEFAULT_XML_FILE);
-    Configuration.addDefaultResource(VULTURE_SITE_XML_FILE);
+    Configuration.addDefaultResource(HADOOPJOBMONITOR_DEFAULT_XML_FILE);
+    Configuration.addDefaultResource(HADOOPJOBMONITOR_SITE_XML_FILE);
   }
 
   private volatile String[] whitelistedUsers = null;
 
-  public static final String VULTURE_PREFIX = "vulture.";
+  public static final String HADOOPJOBMONITOR_PREFIX = "hadoopJobMonitor.";
 
-  public static final String NEW_APP_CHECKER_INTERVAL_SEC = VULTURE_PREFIX
+  public static final String NEW_APP_CHECKER_INTERVAL_SEC = HADOOPJOBMONITOR_PREFIX
       + "newAppChecker.interval.sec";
   public static final int DEFAULT_NEW_APP_CHECKER_INTERVAL_SEC = 5 * 60;
 
-  public static final String NEW_APP_CHECKER_CONCURRENCY = VULTURE_PREFIX
+  public static final String NEW_APP_CHECKER_CONCURRENCY = HADOOPJOBMONITOR_PREFIX
       + "newAppChecker.concurrency";
   public static final int DEFAULT_NEW_APP_CHECKER_CONCURRENCY = 5;
 
@@ -48,40 +48,40 @@ public class VultureConfiguration extends Configuration {
       "mapreduce.reduce.max.runtime.mins";
   public static final int DEFAULT_REDUCE_MAX_RUNTIME_MIN = 5 * 60;
 
-  public static final String TASK_PROGRESS_THRESHOLD = VULTURE_PREFIX
+  public static final String TASK_PROGRESS_THRESHOLD = HADOOPJOBMONITOR_PREFIX
       + "task.progress.threshold";
   public static final float DEFAULT_TASK_PROGRESS_THRESHOLD = 0.5f;
 
-  public static final String MAX_CACHED_APP_CONFS = VULTURE_PREFIX
+  public static final String MAX_CACHED_APP_CONFS = HADOOPJOBMONITOR_PREFIX
       + "confCache.max.size";
   public static final int DEFAULT_MAX_CACHED_APP_CONFS = 10000;
 
-  public static final String MAX_CACHED_TASK_PROGRESSES = VULTURE_PREFIX
+  public static final String MAX_CACHED_TASK_PROGRESSES = HADOOPJOBMONITOR_PREFIX
       + "progressCache.max.size";
   public static final int DEFAULT_MAX_CACHED_TASK_PROGRESSES = 30000;
 
-  public static final String APP_POLICY_CLASS = VULTURE_PREFIX + "app.policy";
-  public static final String TASK_POLICY_CLASS = VULTURE_PREFIX + "task.policy";
+  public static final String APP_POLICY_CLASS = HADOOPJOBMONITOR_PREFIX + "app.policy";
+  public static final String TASK_POLICY_CLASS = HADOOPJOBMONITOR_PREFIX + "task.policy";
 
-  public static final String DRY_RUN = VULTURE_PREFIX + "dryRun";
+  public static final String DRY_RUN = HADOOPJOBMONITOR_PREFIX + "dryRun";
   public static final boolean DEFAULT_DRY_RUN = true;
 
-  public static final String ADMIN_EMAIL = VULTURE_PREFIX + "admin.email";
+  public static final String ADMIN_EMAIL = HADOOPJOBMONITOR_PREFIX + "admin.email";
   public static final String DEFAULT_ADMIN_EMAIL = "myabandeh";
 
-  public static final String NOTIFY_USER = VULTURE_PREFIX + "notify.user";
+  public static final String NOTIFY_USER = HADOOPJOBMONITOR_PREFIX + "notify.user";
   public static final boolean DEFAULT_NOTIFY_USER = false;
 
-  public static final String CC_EMAIL = VULTURE_PREFIX + "cc.email";
-  public static final String USER_EMAIL = VULTURE_PREFIX + "user.emails";
+  public static final String CC_EMAIL = HADOOPJOBMONITOR_PREFIX + "cc.email";
+  public static final String USER_EMAIL = HADOOPJOBMONITOR_PREFIX + "user.emails";
 
-  public static final String WHITELIST_USERS = VULTURE_PREFIX
+  public static final String WHITELIST_USERS = HADOOPJOBMONITOR_PREFIX
       + "whitelist.users";
   
-  public static final String WEB_PORT = VULTURE_PREFIX + "web.port";
+  public static final String WEB_PORT = HADOOPJOBMONITOR_PREFIX + "web.port";
   public static final int DEFAULT_WEB_PORT = 12321;
   
-  public static final String MAX_BAD_TASKS_CHECKED = VULTURE_PREFIX + 
+  public static final String MAX_BAD_TASKS_CHECKED = HADOOPJOBMONITOR_PREFIX + 
       "bad.tasks.inspected.max";
   public static final int DEFAULT_MAX_BAD_TASKS_CHECKED = 5;
 

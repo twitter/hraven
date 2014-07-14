@@ -23,7 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.util.ExitUtil;
 
-import com.twitter.hraven.hadoopJobMonitor.conf.VultureConfiguration;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 
 public class Mail {
   public static final Log LOG = LogFactory.getLog(Mail.class);
@@ -31,11 +31,11 @@ public class Mail {
   static String ADMIN;
   static String CC;
 
-  public static void init(VultureConfiguration vConf) {
+  public static void init(HadoopJobMonitorConfiguration vConf) {
     ADMIN =
-        vConf.get(VultureConfiguration.ADMIN_EMAIL,
-            VultureConfiguration.DEFAULT_ADMIN_EMAIL);
-    CC = vConf.get(VultureConfiguration.CC_EMAIL, ADMIN);
+        vConf.get(HadoopJobMonitorConfiguration.ADMIN_EMAIL,
+            HadoopJobMonitorConfiguration.DEFAULT_ADMIN_EMAIL);
+    CC = vConf.get(HadoopJobMonitorConfiguration.CC_EMAIL, ADMIN);
   }
 
   public static void send(String subject, String msg) {
@@ -71,12 +71,12 @@ public class Mail {
   }
 
   public static void main(String[] args) {
-    init(new VultureConfiguration());
+    init(new HadoopJobMonitorConfiguration());
     if (args.length > 0) {
       ADMIN=args[0];
       CC = ADMIN;
     }
-    Mail.send("Vulture Notification Test!", "nobody", ADMIN);
+    Mail.send("HadoopJobMonitor Notification Test!", "nobody", ADMIN);
   }
 
 }

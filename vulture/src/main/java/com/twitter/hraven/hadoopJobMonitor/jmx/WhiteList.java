@@ -36,7 +36,7 @@ import org.apache.commons.logging.LogFactory;
 
 public class WhiteList implements WhiteListMBean {
   public static final Log LOG = LogFactory.getLog(WhiteList.class);
-  static final String WHITELIST_FILENAME = "vulture.whitelist.txt";
+  static final String WHITELIST_FILENAME = "hadoopJobMonitor.whitelist.txt";
   private Map<String, Date> expirationMap = new TreeMap<String, Date>();
   private String whiteListDir;
   private volatile static WhiteList INSTANCE;
@@ -148,7 +148,7 @@ public class WhiteList implements WhiteListMBean {
 
   public static void main(String[] args) throws Exception {
     MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-    ObjectName name = new ObjectName("com.twitter.vulture.jmx:type=WhiteList");
+    ObjectName name = new ObjectName("com.twitter.hadoopJobMonitor.jmx:type=WhiteList");
     WhiteList.init("/tmp");
     WhiteList mbean = WhiteList.getInstance();
     mbs.registerMBean(mbean, name);

@@ -24,7 +24,7 @@
   <property>
     <name>mapreduce.job.max.runtime.mins.enforce</name>
     <value>false</value>
-    <description>If true vulture kills the violators</description>
+    <description>If true hadoopJobMonitor kills the violators</description>
   </property>
 
   <property>
@@ -40,96 +40,96 @@
   </property>
 
   <property>
-    <name>vulture.task.progress.threshold</name>
+    <name>hadoopJobMonitor.task.progress.threshold</name>
     <value>0.5</value>
     <description>the threshold for progress lagged behind</description>
   </property>
 
   <property>
-    <name>vulture.newAppChecker.interval.sec</name>
+    <name>hadoopJobMonitor.newAppChecker.interval.sec</name>
     <value>300</value>
-    <description>The interval in seconds between each two invocation of vulture</description>
+    <description>The interval in seconds between each two invocation of hadoopJobMonitor</description>
   </property>
 
   <property>
-    <name>vulture.confCache.max.size</name>
+    <name>hadoopJobMonitor.confCache.max.size</name>
     <value>10000</value>
     <description>maximum size of the cache for app configurations</description>
   </property>
 
   <property>
-    <name>vulture.progressCache.max.size</name>
+    <name>hadoopJobMonitor.progressCache.max.size</name>
     <value>30000</value>
     <description>maximum size of the cache for tasks' progress</description>
   </property>
 
   <property>
-    <name>vulture.newAppChecker.concurrency</name>
+    <name>hadoopJobMonitor.newAppChecker.concurrency</name>
     <value>5</value>
     <description>Number of concurrent threads checking on apps</description>
   </property>
 
   <!--
   <property>
-    <name>vulture.app.policy</name>
-    <value>com.twitter.vulture.policy.DefaultPolicy</value>
+    <name>hadoopJobMonitor.app.policy</name>
+    <value>com.twitter.hadoopJobMonitor.policy.DefaultPolicy</value>
     <description>The java class the implements the policy for inspecting apps</description>
   </property>
 
   <property>
-    <name>vulture.task.policy</name>
-    <value>com.twitter.vulture.policy.DefaultPolicy</value>
+    <name>hadoopJobMonitor.task.policy</name>
+    <value>com.twitter.hadoopJobMonitor.policy.DefaultPolicy</value>
     <description>The java class the implements the policy for inspecting tasks</description>
   </property>
   -->
 
   <property>
-    <name>vulture.dryRun</name>
+    <name>hadoopJobMonitor.dryRun</name>
     <value>true</value>
     <description>In dry-run mode no task/job is killed</description>
   </property>
 
   <property>
-    <name>vulture.admin.email</name>
+    <name>hadoopJobMonitor.admin.email</name>
     <value>myabandeh</value>
     <description>admin will be notified for each policy violation</description>
   </property>
 
   <property>
-    <name>vulture.user.emails</name>
+    <name>hadoopJobMonitor.user.emails</name>
     <value>jack@company.com,george</value>
     <description>list of comma separated users to be notified instead of the job submitter.</description>
   </property>
 
   <property>
-    <name>vulture.notify.user</name>
+    <name>hadoopJobMonitor.notify.user</name>
     <value>false</value>
     <description>if true, the job submitter will also receive a notification email after each policy violation</description>
   </property>
 
   <property>
-    <name>vulture.cc.email</name>
+    <name>hadoopJobMonitor.cc.email</name>
     <value>ticket-email</value>
     <description>list of comma separated email that will be copied in the sent notifications</description>
   </property>
 
   <property>
-    <name>vulture.web.port</name>
+    <name>hadoopJobMonitor.web.port</name>
     <value>12321</value>
     <description>The web port to be used by the web service</description>
   </property>
 
   <!--
   <property>
-    <name>vulture.whitelist.users</name>
+    <name>hadoopJobMonitor.whitelist.users</name>
     <value>john</value>
-    <description>list of comma separated users that are not monitored by vulture.</description>
+    <description>list of comma separated users that are not monitored by hadoopJobMonitor.</description>
   </property>
 
   <property>
-    <name>vulture.whitelist.apps</name>
+    <name>hadoopJobMonitor.whitelist.apps</name>
     <value>app1</value>
-    <description>list of comma separated apps that are not monitored by vulture.</description>
+    <description>list of comma separated apps that are not monitored by hadoopJobMonitor.</description>
   </property>
   -->
 
