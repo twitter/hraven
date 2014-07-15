@@ -133,6 +133,8 @@ public class AppStatusCheckerTest {
     taskAttemptId = new TaskAttemptID(taskId, 0);
     
     vConf.setFloat(HadoopJobMonitorConfiguration.TASK_PROGRESS_THRESHOLD, 0.2f);
+    vConf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_TASK_PROGRESSES,10);
+    vConf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_APP_CONFS,10);
     AppConfCache.init(vConf);
     ProgressCache.init(vConf);
     HadoopJobMonitorMetrics.initSingleton(vConf);
