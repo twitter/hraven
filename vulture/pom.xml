@@ -23,6 +23,11 @@
   <url>http://www.twitter.com</url>
 
   <properties>
+    <!-- if your internal version of Hadoop has different counters, then the remote call that pulls task 
+         stats will fail to work properly due to counters not translating to enums correctly. 
+         This will be fixed after this jira gets committed: 
+         https://issues.apache.org/jira/browse/MAPREDUCE-595 
+         -->
     <hadoop.version>2.4.0</hadoop.version>
     <powermock.version>1.5.4</powermock.version>
   </properties>
