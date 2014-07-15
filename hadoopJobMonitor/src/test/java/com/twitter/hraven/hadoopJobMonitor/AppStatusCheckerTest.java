@@ -81,15 +81,31 @@ public class AppStatusCheckerTest {
     recordFactory = RecordFactoryProvider.getRecordFactory(null);
   }
   
-  class MyApplicationId extends ApplicationIdPBImpl {
+  class MyApplicationId extends ApplicationId {
+    int id;
+    long clusterTimestamp;
     @Override
     public void setId(int id) {
-      super.setId(id);
+      this.id = id;
     }
 
     @Override
     public void setClusterTimestamp(long clusterTimestamp) {
-      super.setClusterTimestamp(clusterTimestamp);
+      this.clusterTimestamp = clusterTimestamp;
+    }
+
+    @Override
+    public int getId() {
+      return id;
+    }
+
+    @Override
+    public long getClusterTimestamp() {
+      return clusterTimestamp;
+    }
+
+    @Override
+    protected void build() {
     }
   }
   
@@ -105,7 +121,7 @@ public class AppStatusCheckerTest {
   long now = System.currentTimeMillis();
   ResourceMgrDelegate rm = mock(ResourceMgrDelegate.class); 
   AppStatusChecker appStatusChecker;
-  Map<TaskID, Progress>  taskProgressCache;
+  Map<org.apache.hadoop.mapred.TaskID, Progress>  taskProgressCache;
   Map<TaskAttemptID, Progress>  attemptProgressCache;
 
   public AppStatusCheckerTest() throws ConfigurationAccessException, RestException, SAXException, IOException, ParserConfigurationException, YarnException {
@@ -191,18 +207,18 @@ public class AppStatusCheckerTest {
     final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
 
     float prevProgress = 0.2f;
-    taskProgressCache.put(taskId, new Progress(prevProgress, now - 4 * MIN));
+    taskProgressCache.put(org.apache.hadoop.mapred.TaskID.downgrade(taskId), new Progress(prevProgress, now - 4 * MIN));
     attemptProgressCache.put(taskAttemptId, new Progress(prevProgress, now - 4 * MIN));
     //from now -4 until now expected progress is 0.4f, and threshold is set to 0.2f
     testTask(taskType, pName, 5, 10, prevProgress + 0.01f, enforce, !dryRun, TIPStatus.RUNNING, !passCheck, killed);
     taskProgressCache.clear();
     attemptProgressCache.clear();
-    taskProgressCache.put(taskId, new Progress(prevProgress, now - 4 * MIN));
+    taskProgressCache.put(org.apache.hadoop.mapred.TaskID.downgrade(taskId), new Progress(prevProgress, now - 4 * MIN));
     attemptProgressCache.put(taskAttemptId, new Progress(prevProgress, now - 4 * MIN));
     testTask(taskType, pName, 5, 10, prevProgress + 0.01f, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
     taskProgressCache.clear();
     attemptProgressCache.clear();
-    taskProgressCache.put(taskId, new Progress(prevProgress, now - 4 * MIN));
+    taskProgressCache.put(org.apache.hadoop.mapred.TaskID.downgrade(taskId), new Progress(prevProgress, now - 4 * MIN));
     attemptProgressCache.put(taskAttemptId, new Progress(prevProgress, now - 4 * MIN));
     testTask(taskType, pName, 5, 10, prevProgress + 0.21f, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
   }
@@ -228,7 +244,7 @@ public class AppStatusCheckerTest {
     when(taskReport.getRunningTaskAttemptIds()).thenReturn(attempts);
     when(taskReport.getTaskID()).thenReturn(org.apache.hadoop.mapred.TaskID.downgrade(taskId));
     when(taskReport.getProgress()).thenReturn(progress);
-
+    
     vConf.setBoolean(HadoopJobMonitorConfiguration.DRY_RUN, dryRun);
     Configuration remoteAppConf = new Configuration();
     remoteAppConf.setInt(confParamName, MAX_RUN);

@@ -20,7 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskID;
+import org.apache.hadoop.mapred.TaskID;
 
 import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 

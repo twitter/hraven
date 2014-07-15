@@ -167,7 +167,8 @@ public class DefaultPolicy implements AppPolicy, TaskPolicy {
       long expectedRuntime, TaskID taskId, long currTime) {
     Progress lastProgress = ProgressCache.getTaskProgressCache().get(taskId);
     if (lastProgress == null) {
-      ProgressCache.getTaskProgressCache().put(taskId,
+      ProgressCache.getTaskProgressCache().put(
+          org.apache.hadoop.mapred.TaskID.downgrade(taskId),
           new Progress(progress, currTime));
       return true; // nothing to compare with
     }

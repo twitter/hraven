@@ -45,6 +45,7 @@ import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton.ConfigurationAccessException;
 import com.twitter.hraven.hadoopJobMonitor.jmx.WhiteList;
 import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorMetrics;
+import com.twitter.hraven.hadoopJobMonitor.policy.TaskPolicy;
 import com.twitter.hraven.hadoopJobMonitor.rpc.ClientCache;
 import com.twitter.hraven.hadoopJobMonitor.rpc.RestClient;
 import com.twitter.hraven.hadoopJobMonitor.rpc.RestClient.RestException;
