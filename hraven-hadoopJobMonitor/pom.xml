@@ -22,10 +22,10 @@
     <relativePath>../</relativePath>
   </parent>
   <groupId>com.twitter.hraven.hadoopJobMonitor</groupId>
-  <artifactId>hadoopJobMonitor</artifactId>
+  <artifactId>hraven-hadoopJobMonitor</artifactId>
   <packaging>jar</packaging>
   <version>0.9.16-SNAPSHOT</version>
-  <name>hadoopJobMonitor</name>
+  <name>hraven-hadoopJobMonitor</name>
   <url>http://www.twitter.com</url>
 
   <properties>

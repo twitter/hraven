@@ -33,7 +33,7 @@
     <module>hraven-core</module>
     <module>hraven-etl</module>
     <module>hraven-assembly</module>
-    <module>hadoopJobMonitor</module>
+    <module>hraven-hadoopJobMonitor</module>
   </modules>
 
   <organization>
