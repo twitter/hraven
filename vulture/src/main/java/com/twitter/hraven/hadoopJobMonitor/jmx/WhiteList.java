@@ -148,7 +148,7 @@ public class WhiteList implements WhiteListMBean {
 
   public static void main(String[] args) throws Exception {
     MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-    ObjectName name = new ObjectName("com.twitter.hadoopJobMonitor.jmx:type=WhiteList");
+    ObjectName name = new ObjectName("com.twitter.hraven.hadoopJobMonitor.jmx:type=WhiteList");
     WhiteList.init("/tmp");
     WhiteList mbean = WhiteList.getInstance();
     mbs.registerMBean(mbean, name);

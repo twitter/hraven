@@ -39,7 +39,7 @@ fi
 vpid=`echo $vpid | awk '{print $1}'`
 
 run() {
-  java -jar $SCRIPTDIR/jmxterm-1.0-SNAPSHOT-uber.jar --noninter << EOF
+  java -jar $SCRIPTDIR/jmxterm-1.0-uber.jar --noninter << EOF
   open $vpid
   bean com.twitter.hraven.hadoopJobMonitor.jmx:type=WhiteList
   run $*
@@ -47,7 +47,7 @@ EOF
 }
 
 list() {
-  java -jar $SCRIPTDIR/jmxterm-1.0-SNAPSHOT-uber.jar --noninter << EOF
+  java -jar $SCRIPTDIR/jmxterm-1.0-uber.jar --noninter << EOF
   open $vpid
   bean com.twitter.hraven.hadoopJobMonitor.jmx:type=WhiteList
   get Expirations
@@ -57,7 +57,7 @@ EOF
 setExpiration() {
   appId=$1
   minutes=$2
-  java -jar $SCRIPTDIR/jmxterm-1.0-SNAPSHOT-uber.jar --noninter << EOF
+  java -jar $SCRIPTDIR/jmxterm-1.0-uber.jar --noninter << EOF
   open $vpid
   bean com.twitter.hraven.hadoopJobMonitor.jmx:type=WhiteList
   run expireAfterMinutes $appId $minutes

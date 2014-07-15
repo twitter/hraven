@@ -85,7 +85,7 @@ public class HadoopJobMonitorService {
     MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
     try {
       ObjectName name =
-          new ObjectName("com.twitter.hadoopJobMonitor.jmx:type=" + WhiteList.class.getSimpleName());
+          new ObjectName("com.twitter.hraven.hadoopJobMonitor.jmx:type=" + WhiteList.class.getSimpleName());
       WhiteList.init(logDir);
       WhiteList mbean = WhiteList.getInstance();
       mbs.registerMBean(mbean, name);
