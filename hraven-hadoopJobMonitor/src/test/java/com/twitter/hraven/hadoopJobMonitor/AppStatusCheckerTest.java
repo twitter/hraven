@@ -125,35 +125,35 @@ public class AppStatusCheckerTest {
   Map<TaskAttemptID, Progress>  attemptProgressCache;
 
   public AppStatusCheckerTest() throws ConfigurationAccessException, RestException, SAXException, IOException, ParserConfigurationException, YarnException {
-//    appId = new MyApplicationId();
-//    appId.setId(oldJobId.getId());
-//    appId.setClusterTimestamp(Long.parseLong(oldJobId.getJtIdentifier()));  
-//    
-//    taskId = new TaskID(oldJobId, TaskType.MAP, 0);
-//    taskAttemptId = new TaskAttemptID(taskId, 0);
-//    
-//    vConf.setFloat(HadoopJobMonitorConfiguration.TASK_PROGRESS_THRESHOLD, 0.2f);
-//    vConf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_TASK_PROGRESSES,10);
-//    vConf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_APP_CONFS,10);
-//    AppConfCache.init(vConf);
-//    ProgressCache.init(vConf);
-//    HadoopJobMonitorMetrics.initSingleton(vConf);
-//    taskProgressCache = ProgressCache.getTaskProgressCache();
-//    attemptProgressCache = ProgressCache.getAttemptProgressCache();
-//    
-//    when(clientCache.getClient(any(JobID.class))).thenReturn(clientService);
-//    appReport = mock(ApplicationReport.class);
-//    when(appReport.getApplicationId()).thenReturn(appId);
-//    appStatusChecker = new AppStatusChecker(vConf, appReport, clientCache, rm,
-//        new AppCheckerProgress() {
-//          @Override
-//          public void finished() {
-//          }
-//    });
-//    
-//    mockStatic(RestClient.class);
-//    restClient = mock(RestClient.class);
-//    when(RestClient.getInstance()).thenReturn(restClient);
+    appId = new MyApplicationId();
+    appId.setId(oldJobId.getId());
+    appId.setClusterTimestamp(Long.parseLong(oldJobId.getJtIdentifier()));  
+    
+    taskId = new TaskID(oldJobId, TaskType.MAP, 0);
+    taskAttemptId = new TaskAttemptID(taskId, 0);
+    
+    vConf.setFloat(HadoopJobMonitorConfiguration.TASK_PROGRESS_THRESHOLD, 0.2f);
+    vConf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_TASK_PROGRESSES,10);
+    vConf.getInt(HadoopJobMonitorConfiguration.MAX_CACHED_APP_CONFS,10);
+    AppConfCache.init(vConf);
+    ProgressCache.init(vConf);
+    HadoopJobMonitorMetrics.initSingleton(vConf);
+    taskProgressCache = ProgressCache.getTaskProgressCache();
+    attemptProgressCache = ProgressCache.getAttemptProgressCache();
+    
+    when(clientCache.getClient(any(JobID.class))).thenReturn(clientService);
+    appReport = mock(ApplicationReport.class);
+    when(appReport.getApplicationId()).thenReturn(appId);
+    appStatusChecker = new AppStatusChecker(vConf, appReport, clientCache, rm,
+        new AppCheckerProgress() {
+          @Override
+          public void finished() {
+          }
+    });
+    
+    mockStatic(RestClient.class);
+    restClient = mock(RestClient.class);
+    when(RestClient.getInstance()).thenReturn(restClient);
   }
   
   void setTaskAttemptXML(long elapsedTime, float progress) throws Exception {
