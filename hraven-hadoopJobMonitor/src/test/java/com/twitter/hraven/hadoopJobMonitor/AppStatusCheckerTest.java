@@ -174,10 +174,24 @@ public class AppStatusCheckerTest {
     final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
     testTask(TaskType.MAP, pName, 5, 10, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
     testTask(TaskType.MAP, pName, 15, 10, enforce, !dryRun, TIPStatus.FAILED, passCheck, !killed);
-//    testTask(TaskType.MAP, pName, 15, 10, enforce, !dryRun, TIPStatus.RUNNING, !passCheck, killed);
-//    testTask(TaskType.MAP, pName, 15, 10, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
-//    testTask(TaskType.MAP, pName, 15, 10, !enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
-//    testTask(TaskType.MAP, pName, 15, 10, enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+  }
+
+  @Test (timeout=30000)
+  public void testMapTasks2() throws Exception {
+    killCounter = 0;
+    final String pName = HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN;
+    final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
+    testTask(TaskType.MAP, pName, 15, 10, enforce, !dryRun, TIPStatus.RUNNING, !passCheck, killed);
+    testTask(TaskType.MAP, pName, 15, 10, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+  }
+
+  @Test (timeout=30000)
+  public void testMapTasks3() throws Exception {
+    killCounter = 0;
+    final String pName = HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN;
+    final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
+    testTask(TaskType.MAP, pName, 15, 10, !enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+    testTask(TaskType.MAP, pName, 15, 10, enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
   }
 
 //  @Test
