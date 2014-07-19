@@ -182,7 +182,7 @@ public class AppStatusCheckerTest {
     final String pName = HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN;
     final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
 //    testTask(TaskType.MAP, pName, 15, 10, enforce, !dryRun, TIPStatus.RUNNING, !passCheck, killed);
-    testTask(TaskType.MAP, pName, 15, 10, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+//    testTask(TaskType.MAP, pName, 15, 10, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
   }
 
 //  @Test (timeout=30000)
