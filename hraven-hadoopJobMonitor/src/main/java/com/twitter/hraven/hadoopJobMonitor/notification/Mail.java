@@ -64,8 +64,8 @@ public class Mail {
     } finally {
       if (exitValue != 0) {
         LOG.fatal(commands);
-        ExitUtil.terminate(1, "Could not send mail: " + "exitValue was "
-            + exitValue);
+//        ExitUtil.terminate(1, "Could not send mail: " + "exitValue was "
+//            + exitValue);
       }
     }
   }
