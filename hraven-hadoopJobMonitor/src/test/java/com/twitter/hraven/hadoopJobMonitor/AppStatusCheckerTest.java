@@ -45,7 +45,6 @@ import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.impl.pb.ApplicationIdPBImpl;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.factories.RecordFactory;
 import org.apache.hadoop.yarn.factory.providers.RecordFactoryProvider;
@@ -58,12 +57,10 @@ import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import com.twitter.hraven.hadoopJobMonitor.AppCheckerProgress;
-import com.twitter.hraven.hadoopJobMonitor.AppStatusChecker;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfCache;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton;
-import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.conf.AppConfiguraiton.ConfigurationAccessException;
+import com.twitter.hraven.hadoopJobMonitor.conf.HadoopJobMonitorConfiguration;
 import com.twitter.hraven.hadoopJobMonitor.metrics.HadoopJobMonitorMetrics;
 import com.twitter.hraven.hadoopJobMonitor.policy.ProgressCache;
 import com.twitter.hraven.hadoopJobMonitor.policy.ProgressCache.Progress;
@@ -174,49 +171,35 @@ public class AppStatusCheckerTest {
     final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
     testTask(TaskType.MAP, pName, 5, 10, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
     testTask(TaskType.MAP, pName, 15, 10, enforce, !dryRun, TIPStatus.FAILED, passCheck, !killed);
-  }
-
-  @Test (timeout=30000)
-  public void testMapTasks2() throws Exception {
-    killCounter = 0;
-    final String pName = HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN;
-    final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
     testTask(TaskType.MAP, pName, 15, 10, enforce, !dryRun, TIPStatus.RUNNING, !passCheck, killed);
     testTask(TaskType.MAP, pName, 15, 10, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+    testTask(TaskType.MAP, pName, 15, 10, !enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+    testTask(TaskType.MAP, pName, 15, 10, enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
   }
 
-//  @Test (timeout=30000)
-//  public void testMapTasks3() throws Exception {
-//    killCounter = 0;
-//    final String pName = HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN;
-//    final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
-//    testTask(TaskType.MAP, pName, 15, 10, !enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
-//    testTask(TaskType.MAP, pName, 15, 10, enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
-//  }
+  @Test
+  public void testReduceTasks() throws Exception {
+    killCounter = 0;
+    final String pName = HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN;
+    final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
+    testTask(TaskType.REDUCE, pName, 5, 10, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
+    testTask(TaskType.REDUCE, pName, 5, 10, 0.01f, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
+    testTask(TaskType.REDUCE, pName, 15, 10, enforce, !dryRun, TIPStatus.FAILED, passCheck, !killed);
+    testTask(TaskType.REDUCE, pName, 15, 10, enforce, !dryRun, TIPStatus.RUNNING, !passCheck, killed);
+    testTask(TaskType.REDUCE, pName, 15, 10, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+    testTask(TaskType.REDUCE, pName, 15, 10, !enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+    testTask(TaskType.REDUCE, pName, 15, 10, enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
+  }
 
-//  @Test
-//  public void testReduceTasks() throws Exception {
-//    killCounter = 0;
-//    final String pName = HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN;
-//    final boolean passCheck = true, killed = true, dryRun = true, enforce = true;
-//    testTask(TaskType.REDUCE, pName, 5, 10, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
-//    testTask(TaskType.REDUCE, pName, 5, 10, 0.01f, enforce, !dryRun, TIPStatus.RUNNING, passCheck, !killed);
-//    testTask(TaskType.REDUCE, pName, 15, 10, enforce, !dryRun, TIPStatus.FAILED, passCheck, !killed);
-//    testTask(TaskType.REDUCE, pName, 15, 10, enforce, !dryRun, TIPStatus.RUNNING, !passCheck, killed);
-//    testTask(TaskType.REDUCE, pName, 15, 10, !enforce, !dryRun, TIPStatus.RUNNING, !passCheck, !killed);
-//    testTask(TaskType.REDUCE, pName, 15, 10, !enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
-//    testTask(TaskType.REDUCE, pName, 15, 10, enforce, dryRun, TIPStatus.RUNNING, !passCheck, !killed);
-//  }
-
-//  @Test
-//  public void testReduceProgress() throws Exception {
-//    testProgress(TaskType.REDUCE, HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN);
-//  }
-//  
-//  @Test
-//  public void testMapProgress() throws Exception {
-//    testProgress(TaskType.MAP, HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN);
-//  }
+  @Test
+  public void testReduceProgress() throws Exception {
+    testProgress(TaskType.REDUCE, HadoopJobMonitorConfiguration.REDUCE_MAX_RUNTIME_MIN);
+  }
+  
+  @Test
+  public void testMapProgress() throws Exception {
+    testProgress(TaskType.MAP, HadoopJobMonitorConfiguration.MAP_MAX_RUNTIME_MIN);
+  }
   
   public void testProgress(TaskType taskType, String pName) throws Exception {
     killCounter = 0;
@@ -285,67 +268,67 @@ public class AppStatusCheckerTest {
     return res;
 }
 
-//  @Test
-//  public void testUnsetEnforce() throws IOException, ConfigurationAccessException {
-//    Configuration remoteAppConf = new Configuration();
-//    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
-//    //remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
-//    when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
-//
-//    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
-//    AppConfCache.getInstance().put(appId, appConf);
-//    appStatusChecker.init();
-//    
-//    boolean res = appStatusChecker.checkApp();
-//    Assert.assertTrue("fails job duration check even though enforce is not set", res);
-//  }
-//  
-//  @Test
-//  public void testLongJobDryRun() throws IOException, ConfigurationAccessException, YarnException {
-//    Configuration remoteAppConf = new Configuration();
-//    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
-//    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
-//    when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
-//
-//    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
-//    AppConfCache.getInstance().put(appId, appConf);
-//    appStatusChecker.init();
-//    
-//    boolean res = appStatusChecker.checkApp();
-//    Assert.assertFalse("does not fail job duration check even though enforce is set", res);
-//    verify(rm, times(0)).killApplication(appId);
-//  }
-//  
-//  @Test
-//  public void testLongJob() throws IOException, ConfigurationAccessException, YarnException {
-//    Configuration remoteAppConf = new Configuration();
-//    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
-//    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
-//    when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
-//    vConf.setBoolean(HadoopJobMonitorConfiguration.DRY_RUN, false);
-//
-//    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
-//    AppConfCache.getInstance().put(appId, appConf);
-//    appStatusChecker.init();
-//    
-//    boolean res = appStatusChecker.checkApp();
-//    Assert.assertFalse("does not fail job duration check even though enforce is set", res);
-//    verify(rm, times(1)).killApplication(appId);
-//  }
+  @Test
+  public void testUnsetEnforce() throws IOException, ConfigurationAccessException {
+    Configuration remoteAppConf = new Configuration();
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    //remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
+    when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
+
+    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
+    AppConfCache.getInstance().put(appId, appConf);
+    appStatusChecker.init();
+    
+    boolean res = appStatusChecker.checkApp();
+    Assert.assertTrue("fails job duration check even though enforce is not set", res);
+  }
   
-//  @Test
-//  public void testShortJob() throws IOException, ConfigurationAccessException {
-//    Configuration remoteAppConf = new Configuration();
-//    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
-//    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
-//    when(appReport.getStartTime()).thenReturn(now - 5 * MIN);
-//
-//    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
-//    AppConfCache.getInstance().put(appId, appConf);
-//    appStatusChecker.init();
-//    
-//    boolean res = appStatusChecker.checkApp();
-//    Assert.assertTrue("fails job duration check even though the job is not too long", res);
-//  }
+  @Test
+  public void testLongJobDryRun() throws IOException, ConfigurationAccessException, YarnException {
+    Configuration remoteAppConf = new Configuration();
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
+    when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
+
+    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
+    AppConfCache.getInstance().put(appId, appConf);
+    appStatusChecker.init();
+    
+    boolean res = appStatusChecker.checkApp();
+    Assert.assertFalse("does not fail job duration check even though enforce is set", res);
+    verify(rm, times(0)).killApplication(appId);
+  }
+  
+  @Test
+  public void testLongJob() throws IOException, ConfigurationAccessException, YarnException {
+    Configuration remoteAppConf = new Configuration();
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
+    when(appReport.getStartTime()).thenReturn(now - 15 * MIN);
+    vConf.setBoolean(HadoopJobMonitorConfiguration.DRY_RUN, false);
+
+    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
+    AppConfCache.getInstance().put(appId, appConf);
+    appStatusChecker.init();
+    
+    boolean res = appStatusChecker.checkApp();
+    Assert.assertFalse("does not fail job duration check even though enforce is set", res);
+    verify(rm, times(1)).killApplication(appId);
+  }
+  
+  @Test
+  public void testShortJob() throws IOException, ConfigurationAccessException {
+    Configuration remoteAppConf = new Configuration();
+    remoteAppConf.setInt(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN, 10);
+    remoteAppConf.setBoolean(HadoopJobMonitorConfiguration.enforced(HadoopJobMonitorConfiguration.JOB_MAX_LEN_MIN), true);
+    when(appReport.getStartTime()).thenReturn(now - 5 * MIN);
+
+    AppConfiguraiton appConf = new AppConfiguraiton(remoteAppConf, vConf);
+    AppConfCache.getInstance().put(appId, appConf);
+    appStatusChecker.init();
+    
+    boolean res = appStatusChecker.checkApp();
+    Assert.assertTrue("fails job duration check even though the job is not too long", res);
+  }
   
 }
