@@ -17,6 +17,7 @@ package com.twitter.hraven.hadoopJobMonitor;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,7 +79,8 @@ public class ClusterStatusChecker implements Runnable {
       LOG.info(yConf.get(YarnConfiguration.RM_ADDRESS));
       LOG.info("Getting appList ...");
       // TODO: in future hadoop API we will be able to filter the app list
-      List<ApplicationReport> appList = rmDelegate.getApplications();
+      EnumSet<YarnApplicationState> states = EnumSet.of(YarnApplicationState.RUNNING);
+      List<ApplicationReport> appList = rmDelegate.getApplications(states);
       LOG.info("appList received. size is: " + appList.size());
       for (ApplicationReport appReport : appList)
         checkAppStatus(appReport);
