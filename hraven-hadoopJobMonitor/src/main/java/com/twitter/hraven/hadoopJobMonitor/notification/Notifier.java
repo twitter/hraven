@@ -30,9 +30,11 @@ public class Notifier {
   public static String SUBJECT = "HadoopJobMonitor Notification!";
   public static boolean DRYRUN = true;
   private static HadoopJobMonitorMetrics metrics = HadoopJobMonitorMetrics.getInstance();
+  public static String CLUSTER = null;
 
   public static void init(HadoopJobMonitorConfiguration vConf) {
     DRYRUN = vConf.isDryRun();
+    CLUSTER = vConf.get("yarn.resourcemanager.webapp.address");
   }
 
   public static String tooLongApp(AppConfiguraiton appConf, ApplicationReport appReport, long duration,
@@ -93,7 +95,7 @@ public class Notifier {
       float progressThreshold, long max) {
     String msg =
         "The task attempt " + taskAttemptId + " of  " + appReport.getName()
-            + " run by " + appReport.getUser()
+            + " run by " + appReport.getUser() + " on " + CLUSTER
             + " did not have enough progress: total progress is " + progress
             + ", lagged progress threshold is " + progressThreshold
             + " and max run time is " + durationStr(max) + " hours\n";
@@ -106,7 +108,7 @@ public class Notifier {
       long max) {
     String msg =
         "The task attempt " + taskAttemptId + " of  " + appReport.getName()
-            + " run by " + appReport.getUser() + " did not finish after "
+            + " run by " + appReport.getUser() + " on " + CLUSTER + " did not finish after "
             + durationStr(duration) + " hours (Max is " + durationStr(max) + ")\n";
     msg += "Tracking url is " + appReport.getTrackingUrl() + "\n";
     return msg;
@@ -116,7 +118,7 @@ public class Notifier {
       long max) {
     String msg =
         "The app " + appReport.getApplicationId() + " of  "
-            + appReport.getName() + " run by " + appReport.getUser()
+            + appReport.getName() + " run by " + appReport.getUser() + " on " + CLUSTER
             + " did not finish after " + durationStr(duration) + " hours (Max is "
             + durationStr(max) + ")\n";
     msg += "Tracking url is " + appReport.getTrackingUrl() + "\n";
