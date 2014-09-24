@@ -93,6 +93,7 @@ public enum JobHistoryKeys {
   physMemKbytes(String.class, null),
   vMemKbytes(String.class, null),
   status(String.class, null),
+  workflowTags(String.class, null),
   TOTAL_COUNTERS(String.class, null),
   TASK_COUNTERS(String.class, null),
   TASK_ATTEMPT_COUNTERS(String.class, null);
