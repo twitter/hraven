@@ -152,10 +152,8 @@ public class JobFileProcessor extends Configured implements Tool {
     // Debugging
     options.addOption("d", "debug", false, "switch on DEBUG log level");
 
-    // Cost Properties File to be copied to distributed cache
-    o = new Option("z", "costFile", true,
-      "The cost properties file on local disk");
-    o.setArgName("costfile");
+    o = new Option("zf", "costFile", true, "The cost properties file location on HDFS");
+    o.setArgName("costfile_loc");
     o.setRequired(true);
     options.addOption(o);
 
@@ -249,18 +247,15 @@ public class JobFileProcessor extends Configured implements Tool {
     }
 
     // Grab the costfile argument
-    String costFile = commandLine.getOptionValue("z");
-    LOG.info("cost properties file=" + costFile);
-    FileSystem fs = FileSystem.get(hbaseConf);
-    Path hdfsPath = new Path(Constants.COST_PROPERTIES_HDFS_DIR
-      + Constants.COST_PROPERTIES_FILENAME);
-    // upload the file to hdfs. Overwrite any existing copy.
-    fs.copyFromLocalFile(false, true, new Path(costFile), hdfsPath);
 
+    String costFilePath = commandLine.getOptionValue("zf");
+    LOG.info("cost properties file on hdfs=" + costFilePath);
+    if (costFilePath == null) costFilePath = Constants.COST_PROPERTIES_HDFS_DIR;
+    Path hdfsPath = new Path(costFilePath + Constants.COST_PROPERTIES_FILENAME);
     // add to distributed cache
     DistributedCache.addCacheFile(hdfsPath.toUri(), hbaseConf);
+    
     // Grab the machine type argument
-
     String machineType = commandLine.getOptionValue("m");
     // set it as part of conf so that the
     // hRaven job can access it in the mapper
