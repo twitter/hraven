@@ -140,6 +140,8 @@ public class JobFileTableMapper extends
       long submitTimeMillis = JobHistoryFileParserBase.getSubmitTimeMillisFromJobHistory(
             jobhistoryraw);
       context.progress();
+      // explicitly setting the byte array to null to free up memory
+      jobhistoryraw = null;
 
       if (submitTimeMillis == 0L) {
         LOG.info("NOTE: Since submitTimeMillis from job history is 0, now attempting to "
@@ -205,6 +207,8 @@ public class JobFileTableMapper extends
 
       historyFileParser.parse(historyFileContents, jobKey);
       context.progress();
+      // set the byte array to null to help free up memory sooner
+      historyFileContents = null;
 
       puts = historyFileParser.getJobPuts();
       if (puts == null) {
