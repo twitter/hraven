@@ -144,6 +144,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     AMStarted("AM_STARTED"),
     JobPriorityChange("JOB_PRIORITY_CHANGED"),
     JobStatusChanged("JOB_STATUS_CHANGED"),
+    JobQueueChange("JOB_QUEUE_CHANGED"),
     JobSubmitted("JOB_SUBMITTED"),
     JobUnsuccessfulCompletion("JOB_KILLED","JOB_FAILED"),
     MapAttemptFinished("MAP_ATTEMPT_FINISHED"),
@@ -490,6 +491,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     case JobInited:
     case JobPriorityChange:
     case JobStatusChanged:
+    case JobQueueChange:
     case JobSubmitted:
     case JobUnsuccessfulCompletion:
       Put pJob = new Put(this.jobKeyBytes);

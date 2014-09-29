@@ -256,4 +256,55 @@ public class TestJobHistoryFileParserHadoop2 {
       assertEquals(Bytes.toInt(byteValue), intValue10);
      }
   }
+
+  @Test
+  public void testVersion2_4() throws IOException {
+    final String JOB_HISTORY_FILE_NAME = "src/test/resources/" +
+        "job_1410289045532_259974-1411647985641-user35-SomeJobName-1411647999554-1-0-SUCCEEDED-root.someQueueName-1411647995323.jhist";
+    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
+    byte[] contents = Files.toByteArray(jobHistoryfile);
+    final String JOB_CONF_FILE_NAME =
+        "src/test/resources/job_1329348432655_0001_conf.xml";
+    Configuration jobConf = new Configuration();
+    jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
+
+    JobHistoryFileParser historyFileParser =
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
+    assertNotNull(historyFileParser);
+
+    // confirm that we get back an object that can parse hadoop 2.x files
+    assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
+    JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
+    historyFileParser.parse(contents, jobKey);
+
+    List<Put> jobPuts = historyFileParser.getJobPuts();
+
+    // now confirm that 2.4 constructs have been parsed
+    // check that queue name is found, since
+    // it's part of the JobQueueChange object in the history file
+    boolean foundQueue = false;
+    for (Put p : jobPuts) {
+      List<KeyValue> kv2 =
+          p.get(Constants.INFO_FAM_BYTES,
+            Bytes.toBytes(JobHistoryKeys.JOB_QUEUE.toString().toLowerCase()));
+      if (kv2.size() == 0) {
+        // we are interested in queue put only
+        // hence continue
+        continue;
+      } else {
+        for (KeyValue kv : kv2) {
+          // ensure we have a hadoop2 version as the value
+          assertEquals(Bytes.toString(kv.getValue()), "root.someQueueName");
+          // ensure we don't see the same put twice
+          assertFalse(foundQueue);
+          // now set this to true
+          foundQueue = true;
+        }
+        break;
+      }
+
+    }
+    // ensure that we got the hadoop2 version put
+    assertTrue(foundQueue);
+  }
 }
