@@ -18,13 +18,14 @@ package com.twitter.hraven;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonToken;
-import org.codehaus.jackson.map.DeserializationContext;
-import org.codehaus.jackson.map.JsonDeserializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.deser.CustomDeserializerFactory;
-import org.codehaus.jackson.map.deser.StdDeserializerProvider;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+
 
 /**
  * Custom Jackson ObjectMapper factory that knows how to deserialize json back into objects. This
@@ -38,12 +39,11 @@ public class ClientObjectMapper {
 
   public static ObjectMapper createCustomMapper() {
     ObjectMapper result = new ObjectMapper();
-    CustomDeserializerFactory deserializerFactory = new CustomDeserializerFactory();
-
-    deserializerFactory.addSpecificMapping(Configuration.class, new ConfigurationDeserializer());
-    deserializerFactory.addSpecificMapping(CounterMap.class, new CounterDeserializer());
-
-    result.setDeserializerProvider(new StdDeserializerProvider(deserializerFactory));
+    SimpleModule module = new SimpleModule("Custom JsonDeserializer", new Version(1, 0, 0,
+        "FINAL", null, null));
+    module.addDeserializer(Configuration.class, new ConfigurationDeserializer());
+    module.addDeserializer(CounterMap.class, new CounterDeserializer());
+    result.registerModule(module);
     return result;
   } 
 

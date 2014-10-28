@@ -26,7 +26,6 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.commons.configuration.ConversionException;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -35,9 +34,9 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.mapred.JobHistoryCopy.RecordTypes;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.google.common.collect.Maps;
 import com.twitter.hraven.Constants;
@@ -123,11 +122,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private static final String TYPE_LONG = "long";
   private static final String TYPE_STRING = "String";
   /** only acls in the job history file seem to be of this type: map of strings */
-  private static final String TYPE_MAP_STRINGS = "{\"type\":\"map\",\"values\":\"string\"}";
+  private static final String TYPE_MAP_STRINGS = "{\"values\":\"string\",\"type\":\"map\"}";
   /**
    * vMemKbytes, clockSplit, physMemKbytes, cpuUsages are arrays of ints See MAPREDUCE-5432
    */
-  private static final String TYPE_ARRAY_INTS = "{\"type\":\"array\",\"items\":\"int\"}";
+  private static final String TYPE_ARRAY_INTS = "{\"items\":\"int\",\"type\":\"array\"}";
   /** this is part of {@link org.apache.hadoop.mapreduce.jobhistory.TaskFailedEvent.java} */
   private static final String NULL_STRING = "[\"null\",\"string\"]";
 

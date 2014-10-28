@@ -15,10 +15,12 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.twitter.hraven.Flow;
-import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.datasource.HRavenTestUtil;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobHistoryService;
@@ -32,10 +34,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.client.HTable;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.DeserializationConfig;
-import org.codehaus.jackson.map.SerializationConfig;
-import org.codehaus.jackson.type.TypeReference;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -87,9 +85,9 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
 
     // serialize flows into json
     ObjectMapper om = ObjectMapperProvider.createCustomMapper();
-    om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
-    om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    om.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    om.configure(SerializationFeature.INDENT_OUTPUT, true);
+    om.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     ByteArrayOutputStream f = new ByteArrayOutputStream();
     om.writeValue(f, actualFlows);
      ByteArrayInputStream is = new ByteArrayInputStream(f.toByteArray());
@@ -132,9 +130,9 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
         new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
             new SerializationContext.ConfigurationFilter(serializedKeys)));
     ObjectMapper om = ObjectMapperProvider.createCustomMapper();
-    om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
-    om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    om.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    om.configure(SerializationFeature.INDENT_OUTPUT, true);
+    om.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     ByteArrayOutputStream f = new ByteArrayOutputStream();
     om.writeValue(f, actualFlow);
     ByteArrayInputStream is = new ByteArrayInputStream(f.toByteArray());
@@ -153,9 +151,9 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
         new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
             new SerializationContext.RegexConfigurationFilter(patterns)));
     om = ObjectMapperProvider.createCustomMapper();
-    om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
-    om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
-    om.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    om.configure(SerializationFeature.INDENT_OUTPUT, true);
+    om.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     f = new ByteArrayOutputStream();
     om.writeValue(f, actualFlow);
     is = new ByteArrayInputStream(f.toByteArray());

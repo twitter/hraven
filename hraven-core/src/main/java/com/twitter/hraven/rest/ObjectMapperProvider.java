@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven.rest;
 
+
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -23,17 +24,17 @@ import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
 
 import org.apache.hadoop.conf.Configuration;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.Version;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializationConfig.Feature;
-import org.codehaus.jackson.map.SerializerProvider;
-import org.codehaus.jackson.map.module.SimpleModule;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Predicate;
 import com.twitter.hraven.AppSummary;
 import com.twitter.hraven.Constants;
@@ -65,7 +66,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
 
   public static ObjectMapper createCustomMapper() {
     ObjectMapper result = new ObjectMapper();
-    result.configure(Feature.INDENT_OUTPUT, true);
+    result.configure(SerializationFeature.INDENT_OUTPUT, true);
     SimpleModule module = new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
     addJobMappings(module);
     module.addSerializer(Flow.class, new FlowSerializer());
