@@ -23,7 +23,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.util.ByteUtil;
@@ -32,7 +32,7 @@ import com.twitter.hraven.util.ByteUtil;
  *  Abstract class for job history file parsing 
  *  
  *  Implements the interface for history file parsing
- *  Adds the implementation for a getHadoopVersionPut function
+ *  Adds the implementation for a getHistoryFileTypePut function
  *  Other methods to be implemented for parsing by sub classes
  * 
  */
@@ -54,7 +54,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 	 * 
 	 * @return Put
 	 */
-	public Put getHadoopVersionPut(HadoopVersion historyFileVersion, byte[] jobKeyBytes) {
+	public Put getHistoryFileTypePut(HistoryFileType historyFileVersion, byte[] jobKeyBytes) {
 	  Put pVersion = new Put(jobKeyBytes);
 	  byte[] valueBytes = null;
 	  valueBytes = Bytes.toBytes(historyFileVersion.toString());
@@ -167,7 +167,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
       return submitTimeMillis;
     }
 
-    HadoopVersion hv = JobHistoryFileParserFactory.getVersion(jobHistoryRaw);
+    HistoryFileType hv = JobHistoryFileParserFactory.getVersion(jobHistoryRaw);
 
     switch (hv) {
     case TWO:

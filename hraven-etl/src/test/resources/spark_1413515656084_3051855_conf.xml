@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"default?><configuration>
+<property><name>mapreduce.job.name</name><value>Sleep job</value></property>
+<property><name>batch.desc</name><value>Any descriptive string that identifies this batch of jobs- hraven will group individual MR jobs by this name</value></property>
+<property><name>mapreduce.framework.name</name><value>spark</value></property>
+<property><name>mapreduce.job.user.name</name><value>SomeUserName</value></property>
+<property><name>mapreduce.job.queuename</name><value>someQueueName</value></property>
+<property><name>yarn.resourcemanager.address</name><value>0.0.0.0:8030</value></property>
+<property><name>yarn.app.mapreduce.am.command-opts</name><value>-Xmx500m</value></property>
+<property><name>yarn.nodemanager.process-kill-wait.ms</name><value>2000</value></property>
+<property><name>yarn.nodemanager.log-aggregation.compression-type</name><value>gz</value></property>
+<property><name>mapreduce.map.memory.mb</name><value>512</value></property>
+<property><name>mapreduce.reduce.memory.mb</name><value>512</value></property>
+<property><name>yarn.nodemanager.resource.memory-mb</name><value>8192</value></property>
+</configuration>

@@ -265,7 +265,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
            *  will throw NPE since Flow class always sets
            *  default hadoop version in Flow#addJob
            */
-          jsonGenerator.writeString(aFlow.getHadoopVersion().toString());
+          jsonGenerator.writeString(aFlow.getHistoryFileType().toString());
           jsonGenerator.writeFieldName(Constants.HRAVEN_QUEUE);
           jsonGenerator.writeString(aFlow.getQueue());
           jsonGenerator.writeFieldName("counters");

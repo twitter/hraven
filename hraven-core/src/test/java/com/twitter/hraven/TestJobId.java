@@ -39,6 +39,8 @@ public class TestJobId {
     String job2 = "job_"+epoch+"_1111";
     String job3 = "job_"+epoch+"_2222";
     String job4 = "job_"+epoch+"_11111";
+    String job5 = "spark_"+epoch+"_11112";
+    String job6 = "spark_"+epoch+"_11113";
 
     JobId jobId1 = new JobId(job1);
     assertEquals(epoch, jobId1.getJobEpoch());
@@ -66,6 +68,18 @@ public class TestJobId {
     // check Comparable implementation
     assertTrue(jobId3.compareTo(jobId4) < 0);
 
+    JobId jobId5 = new JobId(job5);
+    assertEquals(epoch, jobId5.getJobEpoch());
+    assertEquals(11112L, jobId5.getJobSequence());
+    assertEquals(job5, jobId5.getJobIdString());
+
+    JobId jobId6 = new JobId(job6);
+    assertEquals(epoch, jobId6.getJobEpoch());
+    assertEquals(11113L, jobId6.getJobSequence());
+    assertEquals(job6, jobId6.getJobIdString());
+    // check Comparable implementation
+    assertTrue(jobId5.compareTo(jobId6) < 0);
+
     JobIdConverter conv = new JobIdConverter();
     JobId tmp = conv.fromBytes( conv.toBytes(jobId1) );
     assertEquals(jobId1, tmp);
@@ -80,6 +94,12 @@ public class TestJobId {
     tmp = conv.fromBytes( conv.toBytes(jobId4) );
     assertEquals(jobId4, tmp);
     assertEquals(jobId4.hashCode(), tmp.hashCode());
+    tmp = conv.fromBytes( conv.toBytes(jobId5) );
+    assertEquals(jobId5, tmp);
+    assertEquals(jobId5.hashCode(), tmp.hashCode());
+    tmp = conv.fromBytes( conv.toBytes(jobId6) );
+    assertEquals(jobId6, tmp);
+    assertEquals(jobId6.hashCode(), tmp.hashCode());
   }
 
   /**
@@ -93,12 +113,16 @@ public class TestJobId {
     String job3 = "job_20120101000000_2222";
     String job4 = "job_20120101000000_11111";
     String job5 = "job_20120201000000_0001";
+    String job6 = "spark_20120101000000_11111";
+    String job7 = "spark_20120201000000_0001";
 
     JobId jobId1 = new JobId(job1);
     JobId jobId2 = new JobId(job2);
     JobId jobId3 = new JobId(job3);
     JobId jobId4 = new JobId(job4);
     JobId jobId5 = new JobId(job5);
+    JobId jobId6 = new JobId(job6);
+    JobId jobId7 = new JobId(job7);
 
     JobIdConverter conv = new JobIdConverter();
     byte[] job1Bytes = conv.toBytes(jobId1);
@@ -106,10 +130,13 @@ public class TestJobId {
     byte[] job3Bytes = conv.toBytes(jobId3);
     byte[] job4Bytes = conv.toBytes(jobId4);
     byte[] job5Bytes = conv.toBytes(jobId5);
+    byte[] job6Bytes = conv.toBytes(jobId6);
+    byte[] job7Bytes = conv.toBytes(jobId7);
 
     assertTrue(Bytes.compareTo(job1Bytes, job2Bytes) < 0);
     assertTrue(Bytes.compareTo(job2Bytes, job3Bytes) < 0);
     assertTrue(Bytes.compareTo(job3Bytes, job4Bytes) < 0);
     assertTrue(Bytes.compareTo(job4Bytes, job5Bytes) < 0);
+    assertTrue(Bytes.compareTo(job6Bytes, job7Bytes) < 0);
   }
 }

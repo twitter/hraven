@@ -18,6 +18,7 @@ package com.twitter.hraven;
 import static com.twitter.hraven.Framework.NONE;
 import static com.twitter.hraven.Framework.PIG;
 import static com.twitter.hraven.Framework.SCALDING;
+import static com.twitter.hraven.Framework.SPARK;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotNull;
 import static junit.framework.Assert.assertTrue;
@@ -39,6 +40,7 @@ public class TestFramework {
     assertEquals(PIG, Framework.get(PIG.getCode()));
     assertEquals(SCALDING, Framework.get(SCALDING.getCode()));
     assertEquals(NONE, Framework.get(NONE.getCode()));
+    assertEquals(SPARK,Framework.get(SPARK.getCode()));
   }
 
   /**
@@ -49,10 +51,11 @@ public class TestFramework {
     assertNotNull(PIG.getDescription());
     assertNotNull(SCALDING.getDescription());
     assertNotNull(NONE.getDescription());
-    
+    assertNotNull(SPARK.getDescription());
     assertTrue("Description is not expected to be empty", PIG.getDescription().length() > 0);
     assertTrue("Description is not expected to be empty", SCALDING.getDescription().length() > 0);
     assertTrue("Description is not expected to be empty", NONE.getDescription().length() > 0);
+    assertTrue("Description is not expected to be empty", SPARK.getDescription().length() > 0);
   }
   
   

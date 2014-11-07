@@ -19,6 +19,6 @@ package com.twitter.hraven;
 /**
  * hadoop versions
  */
-public enum HadoopVersion {
-  ONE, TWO
+public enum HistoryFileType {
+  ONE, TWO, SPARK
 };

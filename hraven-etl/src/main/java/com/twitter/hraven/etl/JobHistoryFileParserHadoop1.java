@@ -56,9 +56,9 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
 			jobHistoryListener = new JobHistoryListener(jobKey);
 			JobHistoryCopy.parseHistoryFromIS(new ByteArrayInputStream(historyFile), jobHistoryListener);
 			// set the hadoop version for this record
-			Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion1(), 
+			Put versionPut = getHistoryFileTypePut(JobHistoryFileParserFactory.getHistoryFileVersion1(), 
 			  jobHistoryListener.getJobKeyBytes());
-			jobHistoryListener.includeHadoopVersionPut(versionPut);
+			jobHistoryListener.includeHistoryFileTypePut(versionPut);
 		} catch (IOException ioe) {
 			LOG.error(" Exception during parsing hadoop 1.0 file ", ioe);
 			throw new ProcessingException(

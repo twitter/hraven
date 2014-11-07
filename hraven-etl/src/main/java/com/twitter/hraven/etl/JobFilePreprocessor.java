@@ -276,14 +276,16 @@ public class JobFilePreprocessor extends Configured implements Tool {
      * Reference:
      * {@link https://github.com/twitter/hraven/issues/59}
      */
-    String maxFileSizeStr = commandLine.getOptionValue("s");
-    LOG.info("maxFileSize=" + maxFileSizeStr);
     long maxFileSize = DEFAULT_RAW_FILE_SIZE_LIMIT;
-    try {
-      maxFileSize = Long.parseLong(maxFileSizeStr);
-    } catch (NumberFormatException nfe) {
-      throw new ProcessingException("Caught NumberFormatException during conversion "
+    if (commandLine.hasOption("s")) {
+      String maxFileSizeStr = commandLine.getOptionValue("s");
+      LOG.info("maxFileSize=" + maxFileSizeStr);
+      try {
+        maxFileSize = Long.parseLong(maxFileSizeStr);
+      } catch (NumberFormatException nfe) {
+        throw new ProcessingException("Caught NumberFormatException during conversion "
             + " of maxFileSize to long", nfe);
+      }
     }
 
     ProcessRecordService processRecordService = new ProcessRecordService(

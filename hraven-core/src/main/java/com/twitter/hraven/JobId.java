@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -27,6 +28,14 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class JobId implements Comparable<JobId> {
   protected static final String JOB_ID_SEP = "_";
+  public static final String JOB_PREFIX = "job";
+  /**
+   * The prefix of the job id which could be
+   * "" for a mapreduce job:
+   *        - to maintain backward compatibility with existing data
+   * "spark" for a spark job
+   */
+  protected String jobPrefix;
   /**
    * The jobtracker start time from the job ID, obtained from parsing the
    * center component of the job ID.
@@ -43,25 +52,56 @@ public class JobId implements Comparable<JobId> {
     if (jobId != null) {
       String[] elts = jobId.trim().split(JOB_ID_SEP);
       try {
+        this.jobPrefix = elts[0];
+        if(JOB_PREFIX.equalsIgnoreCase(this.jobPrefix)) {
+          // set it to blank since existing data
+          // is being stored without the "job" prefix
+          this.jobPrefix = "";
+        }
         this.jobEpoch = Long.parseLong(elts[1]);
         this.jobSequence = Long.parseLong(elts[2]);
       } catch (Exception e) {
         throw new IllegalArgumentException("Invalid job ID '"+jobId+
-            "', must be in the format 'job_[0-9]+_[0-9]+'");
+            "', must be in the format '(job|spark)_[0-9]+_[0-9]+'");
       }
+    } else {
+      this.jobPrefix = "";
+      this.jobEpoch = 0L;
+      this.jobSequence = 0L;
     }
   }
 
   public JobId(long epoch, long seq) {
     this.jobEpoch = epoch;
     this.jobSequence = seq;
+    // set default prefix of job to be blank
+    this.jobPrefix = "";
+  }
+
+  public JobId(String jobPrefix, long epoch, long seq) {
+    if(JOB_PREFIX.equalsIgnoreCase(jobPrefix)) {
+      // set it to blank since existing data
+      // is being stored without the "job" prefix
+      this.jobPrefix = "";
+    }
+    this.jobPrefix = jobPrefix;
+    this.jobEpoch = epoch;
+    this.jobSequence = seq;
   }
 
   public JobId(JobId idToCopy) {
     if (idToCopy != null) {
+      this.jobPrefix = idToCopy.getJobPrefix();
       this.jobEpoch = idToCopy.getJobEpoch();
       this.jobSequence = idToCopy.getJobSequence();
     }
+  }
+
+  /**
+   * Returns the prefix part of the job id
+   */
+  public String getJobPrefix() {
+    return this.jobPrefix;
   }
 
   /**
@@ -86,7 +126,11 @@ public class JobId implements Comparable<JobId> {
   }
 
   public String getJobIdString() {
-    return String.format("job_%d_%04d", this.jobEpoch, this.jobSequence);
+    String prefix = this.jobPrefix;
+    if(StringUtils.isBlank(prefix)) {
+      prefix = JOB_PREFIX;
+    }
+    return String.format("%s_%d_%04d", prefix, this.jobEpoch, this.jobSequence);
   }
 
   public String toString() {

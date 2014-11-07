@@ -38,7 +38,7 @@ import org.junit.Test;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.GenerateFlowTestData;
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
@@ -217,7 +217,7 @@ public class TestJobHistoryService {
   }
 
   @SuppressWarnings("deprecation")
-  private void checkSomeFlowStats(String version, HadoopVersion hv, int numJobs, long baseStats, List<Flow> flowSeries) {
+  private void checkSomeFlowStats(String version, HistoryFileType hv, int numJobs, long baseStats, List<Flow> flowSeries) {
     assertNotNull(flowSeries);
     for ( Flow f : flowSeries ){
       assertEquals( numJobs, f.getJobCount());
@@ -232,7 +232,7 @@ public class TestJobHistoryService {
       assertEquals( numJobs * baseStats , f.getReduceShuffleBytes());
       assertEquals( numJobs * baseStats , f.getReduceSlotMillis());
       assertEquals( version , f.getVersion());
-      assertEquals( hv, f.getHadoopVersion());
+      assertEquals( hv, f.getHistoryFileType());
       assertEquals( numJobs * baseStats , f.getMegabyteMillis());
       assertEquals( numJobs * 1000, f.getDuration());
       assertEquals( f.getDuration() + GenerateFlowTestData.SUBMIT_LAUCH_DIFF, f.getWallClockTime());
@@ -258,10 +258,10 @@ public class TestJobHistoryService {
     try {
       // fetch back the entire flow stats
       List<Flow> flowSeries = service.getFlowTimeSeriesStats("c1@local", "buser", "AppOne", "", 0L, 0L, 1000, null);
-      checkSomeFlowStats("a", HadoopVersion.ONE, numJobsAppOne, baseStats, flowSeries);
+      checkSomeFlowStats("a", HistoryFileType.ONE, numJobsAppOne, baseStats, flowSeries);
 
       flowSeries = service.getFlowTimeSeriesStats("c1@local", "buser", "AppTwo", "", 0L, 0L, 1000, null);
-      checkSomeFlowStats("b", HadoopVersion.ONE, numJobsAppTwo, baseStats, flowSeries);
+      checkSomeFlowStats("b", HistoryFileType.ONE, numJobsAppTwo, baseStats, flowSeries);
 
     } finally {
       service.close();

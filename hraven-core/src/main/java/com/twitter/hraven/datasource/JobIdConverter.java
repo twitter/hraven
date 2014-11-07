@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.JobId;
@@ -24,8 +25,17 @@ import com.twitter.hraven.JobId;
 public class JobIdConverter implements ByteConverter<JobId> {
   @Override
   public byte[] toBytes(JobId jobId) {
-    return Bytes.add(Bytes.toBytes(jobId.getJobEpoch()),
-        Bytes.toBytes(jobId.getJobSequence()));
+    String prefix = jobId.getJobPrefix();
+    if ((StringUtils.isNotBlank(prefix) && (JobId.JOB_PREFIX.equalsIgnoreCase(prefix)))
+        || (StringUtils.isBlank(prefix))) {
+      // do not include "job" prefix in conversion
+      return Bytes.add(Bytes.toBytes(jobId.getJobEpoch()),
+                       Bytes.toBytes(jobId.getJobSequence()));
+    } else {
+      return Bytes.add(Bytes.toBytes(jobId.getJobPrefix()),
+                       Bytes.toBytes(jobId.getJobEpoch()),
+                       Bytes.toBytes(jobId.getJobSequence()));
+    }
   }
 
   @Override
@@ -34,9 +44,17 @@ public class JobIdConverter implements ByteConverter<JobId> {
       return null;
     }
 
-    // expect a packed bytes encoding of [8 bytes epoch][8 bytes seq]
-    long epoch = Bytes.toLong(bytes, 0);
-    long seq = Bytes.toLong(bytes, 8);
-    return new JobId(epoch, seq);
+    if( bytes.length <= 16) {
+      // expect a packed bytes encoding of [8 bytes epoch][8 bytes seq]
+      long epoch = Bytes.toLong(bytes, 0);
+      long seq = Bytes.toLong(bytes, 8);
+      return new JobId(epoch, seq);
+    } else {
+   // expect a packed bytes encoding of [prefix][8 bytes epoch][8 bytes seq]
+      String prefix = Bytes.toString(bytes, 0, bytes.length-16);
+      long epoch = Bytes.toLong(bytes, bytes.length-16);
+      long seq = Bytes.toLong(bytes, bytes.length-8);
+      return new JobId(prefix, epoch, seq);
+    }
   }
 }

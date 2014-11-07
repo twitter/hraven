@@ -21,7 +21,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import com.google.common.io.Files;
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
@@ -87,7 +87,7 @@ public class TestJobHistoryFileParserHadoop2 {
     	  for (KeyValue kv : lkv) {
     		// ensure we have a hadoop2 version as the value
     		assertEquals(Bytes.toString(kv.getValue()), 
-    				HadoopVersion.TWO.toString()); 
+    				HistoryFileType.TWO.toString()); 
 
     	    // ensure we don't see the same put twice
     	    assertFalse(foundVersion2);

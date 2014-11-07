@@ -17,7 +17,7 @@ package com.twitter.hraven.etl;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 
 /**
  * Deal with {@link JobHistoryFileParser} implementations.
@@ -49,18 +49,18 @@ public class JobHistoryFileParserFactory {
    * 
    * @throws IllegalArgumentException if neither match
    */
-  public static HadoopVersion getVersion(byte[] historyFileContents) {
+  public static HistoryFileType getVersion(byte[] historyFileContents) {
     if(historyFileContents.length > HADOOP2_VERSION_LENGTH) {
       // the first 10 bytes in a hadoop2.0 history file contain Avro-Json
       String version2Part =  new String(historyFileContents, 0, HADOOP2_VERSION_LENGTH);
       if (StringUtils.equalsIgnoreCase(version2Part, HADOOP2_VERSION_STRING)) {
-        return HadoopVersion.TWO;
+        return HistoryFileType.TWO;
       } else {
         if(historyFileContents.length > HADOOP1_VERSION_LENGTH) {
           // the first 18 bytes in a hadoop1.0 history file contain Meta VERSION="1" .
           String version1Part =  new String(historyFileContents, 0, HADOOP1_VERSION_LENGTH);
           if (StringUtils.equalsIgnoreCase(version1Part, HADOOP1_VERSION_STRING)) {
-            return HadoopVersion.ONE;
+            return HistoryFileType.ONE;
           }
         }
       }
@@ -87,7 +87,7 @@ public class JobHistoryFileParserFactory {
           "Job history contents should not be null");
     }
 
-    HadoopVersion version = getVersion(historyFileContents);
+    HistoryFileType version = getVersion(historyFileContents);
 
     switch (version) {
     case ONE:
@@ -105,14 +105,14 @@ public class JobHistoryFileParserFactory {
   /**
    * @return HISTORY_FILE_VERSION1
    */
-  public static HadoopVersion getHistoryFileVersion1() {
-    return HadoopVersion.ONE;
+  public static HistoryFileType getHistoryFileVersion1() {
+    return HistoryFileType.ONE;
   }
 
   /**
    * @return HISTORY_FILE_VERSION2
    */
-  public static HadoopVersion getHistoryFileVersion2() {
-    return HadoopVersion.TWO;
+  public static HistoryFileType getHistoryFileVersion2() {
+    return HistoryFileType.TWO;
   }
 }

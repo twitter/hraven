@@ -1,0 +1,23 @@
+{
+  "appname": "Hello world spark job name",
+  "appid" : "spark_1413515656084_3051855",
+  "username" : "user_name_here",
+  "submit_time" : 1413570150,
+  "start_time": 1413570350,
+  "finish_time": 1423970350,
+  "queue" : "some queue name ",
+  "megabytemillis" : 288282570350,
+  "job_status": "successful",
+  "batch.desc" : "could be part of conf file as well",
+  "nested object": {
+	"abc": "ddb",
+	"another nested object": {
+  	"ab" : "bab",
+  	"cd" : "nm",
+  	"types" : "strings only"
+	},
+	"efg": "fgh"
+  },
+  "another string": "World"
+}
+

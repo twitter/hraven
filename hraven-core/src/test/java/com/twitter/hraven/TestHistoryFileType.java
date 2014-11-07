@@ -25,22 +25,22 @@ import org.junit.Test;
 /**
  * test class for hadoop versions
  */
-public class TestHadoopVersion {
+public class TestHistoryFileType {
 
-  private enum ExpVersions {
-    ONE, TWO
+  private enum ExpHistoryFileType {
+    ONE, TWO, SPARK
   }
 
   @Test
   public void checkVersions() {
-    assertEquals(ExpVersions.values().length, HadoopVersion.values().length);
-    for (HadoopVersion hv : HadoopVersion.values()) {
-      assertTrue(ExpVersions.valueOf(hv.toString()) != null);
+    assertEquals(ExpHistoryFileType.values().length, HistoryFileType.values().length);
+    for (HistoryFileType hv : HistoryFileType.values()) {
+      assertTrue(ExpHistoryFileType.valueOf(hv.toString()) != null);
     }
   }
 
   @Test(expected=IllegalArgumentException.class)
   public void testNonExistentVersion() {
-    assertNull(HadoopVersion.valueOf("DOES NOT EXIST"));
+    assertNull(HistoryFileType.valueOf("DOES NOT EXIST"));
   }
 };

@@ -358,7 +358,9 @@ public class Constants {
   }
 
   /**
-   * Regex to parse a job file name. First back-ref is JT name, second one if
+   * Regex to parse a job file name.
+   * It could be a job history file from a mapreduce job or a spark job
+   * First back-ref is JT name, second one if
    * job-id
    * <p>
    * For example,
@@ -372,8 +374,12 @@ public class Constants {
    * job_201306192120_0003_1371677828795_hadoop_conf.xml
    * in hadoop 2.0, job history file names are named as
    * job_1374258111572_0003-1374260622449-userName1-TeraGen-1374260635219-2-0-SUCCEEDED-default.jhist
+   * in spark, the file name looks like:
+   * spark_1413515656084_3051855
+   * and the spark conf file name:
+   * spark_1413515656084_3051855_conf.xml
    */
-  public static final String JOB_FILENAME_PATTERN_REGEX = ".*(job_[0-9]*_[0-9]*)(-|_)([0-9]*[aA-zZ]*)*(.*)$";
+  public static final String JOB_FILENAME_PATTERN_REGEX = ".*?((job|spark)_[0-9]*_[0-9]*)(-|_)*([0-9]*[aA-zZ]*)*(.*)$";
 
   // JobHistory file name parsing related
   public static final String JOB_CONF_FILE_END = "(.*)(conf.xml)$";
