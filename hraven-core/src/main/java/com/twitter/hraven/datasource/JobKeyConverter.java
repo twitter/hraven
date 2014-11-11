@@ -164,37 +164,28 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
         splitRunIdJobIdExtra[0].length : 0);
     return lengthJobId;
   }
+
   /**
-   * extracts the job id from the packged byte array
-   * array looks like encodedRunid!jobid!otherstuff
+   * extracts the job id from the packged byte array array looks like encodedRunid!jobid!otherstuff
    * @param remainder
    * @return
    */
   private static byte[] extractJobId(int offset, byte[] remainder) {
     // since remainder contains runid ! jobid ! possibly other stuff
     // the offset for reading job is:
-    //          8 bytes for run id
-    //           +
-    //          bytes for separator field
+    //      8 bytes for run id
+    //       +
+    //      bytes for separator field
     int lengthJobId = getLengthJobIdPackedBytes(offset, remainder);
 
-//    if (remainder.length >= (offset + length_jobId)) {
-      return ByteUtil.safeCopy(remainder, offset, lengthJobId);
-//    } else {
-//      return Constants.EMPTY_BYTES;
-//    }
+    return ByteUtil.safeCopy(remainder, offset, lengthJobId);
   }
 
   /**
-   * extracts a long number representation of encoded run id
-   * it reads 8 bytes
+   * extracts a long number representation of encoded run id it reads 8 bytes
    * @param remainder
    */
   private static byte[] extractRunId(byte[] remainder, int lengthToRead) {
-//    if (remainder.length >= lengthToRead) {
-      return ByteUtil.safeCopy(remainder, 0, lengthToRead);
-//    } else {
-//      return Constants.EMPTY_BYTES;
-//    }
+    return ByteUtil.safeCopy(remainder, 0, lengthToRead);
   }
 }
