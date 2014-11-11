@@ -149,7 +149,7 @@ public class Flow implements Comparable<Flow> {
   /**  app Version for this flow  */
   private String version ;
 
-  /**  hadoop Version for this flow  */
+  /**  hadoop history file type for this flow  */
   private HistoryFileType historyFileType ;
 
   /**  hadoop pool/queue for this flow  */
@@ -281,7 +281,7 @@ public class Flow implements Comparable<Flow> {
     // set the submit time of the flow to the submit time of the first job
     if (( this.submitTime == 0L ) || (job.getSubmitTime() < this.submitTime)) {
       this.submitTime = job.getSubmitTime();
-      // set the hadoop version once for this job
+      // set the hadoop history file type once for this job
       this.historyFileType = job.getHistoryFileType();
       // set the queue/pool once for this flow
       this.queue = job.getQueue();

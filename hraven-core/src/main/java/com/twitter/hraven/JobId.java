@@ -53,7 +53,7 @@ public class JobId implements Comparable<JobId> {
       String[] elts = jobId.trim().split(JOB_ID_SEP);
       try {
         this.jobPrefix = elts[0];
-        if(JOB_PREFIX.equalsIgnoreCase(this.jobPrefix)) {
+        if (JOB_PREFIX.equalsIgnoreCase(this.jobPrefix)) {
           // set it to blank since existing data
           // is being stored without the "job" prefix
           this.jobPrefix = "";
@@ -61,8 +61,8 @@ public class JobId implements Comparable<JobId> {
         this.jobEpoch = Long.parseLong(elts[1]);
         this.jobSequence = Long.parseLong(elts[2]);
       } catch (Exception e) {
-        throw new IllegalArgumentException("Invalid job ID '"+jobId+
-            "', must be in the format '(job|spark)_[0-9]+_[0-9]+'");
+        throw new IllegalArgumentException("Invalid job ID '" + jobId
+            + "', must be in the format '(job|spark)_[0-9]+_[0-9]+'");
       }
     } else {
       this.jobPrefix = "";
@@ -83,8 +83,9 @@ public class JobId implements Comparable<JobId> {
       // set it to blank since existing data
       // is being stored without the "job" prefix
       this.jobPrefix = "";
+    } else {
+      this.jobPrefix = jobPrefix;
     }
-    this.jobPrefix = jobPrefix;
     this.jobEpoch = epoch;
     this.jobSequence = seq;
   }
@@ -139,17 +140,18 @@ public class JobId implements Comparable<JobId> {
 
   /**
    * Compares two JobId objects on the basis of their
+   * jobPrefix (either blank or "spark")
    * jobEpoch (jobtracker start time from the job ID)
    * and
    * jobSequence( jobtracker assigned sequence number for the job,)
    *
    * @param other
-   * @return 0 if this jobEpoch and jobSequence are equal to
-   * 						other jobEpoch and jobSequence,
-   *         1 if this jobEpoch and jobSequence are greater than
-   *         				other jobEpoch and jobSequence,
-   *         -1 if this jobEpoch and jobSequence less than
-   *         				other jobEpoch and jobSequence
+   * @return 0 if this jobPrefix, jobEpoch and jobSequence are equal to
+   * 						other jobPrefix, jobEpoch and jobSequence,
+   *         1 if this jobPrefix, jobEpoch and jobSequence are greater than
+   *         				other jobPrefix, jobEpoch and jobSequence,
+   *         -1 if this jobPrefix, jobEpoch and jobSequence less than
+   *         				other jobPrefix, jobEpoch and jobSequence
    *
    */
   @Override
@@ -158,8 +160,8 @@ public class JobId implements Comparable<JobId> {
       // nulls sort last
       return -1;
     }
-
     return new CompareToBuilder()
+        .append(this.jobPrefix, o.getJobPrefix())
         .append(this.jobEpoch, o.getJobEpoch())
         .append(this.jobSequence, o.getJobSequence())
         .toComparison();
@@ -176,6 +178,7 @@ public class JobId implements Comparable<JobId> {
   @Override
   public int hashCode(){
       return new HashCodeBuilder()
+          .append(this.jobPrefix)
           .append(this.jobEpoch)
           .append(this.jobSequence)
           .toHashCode();

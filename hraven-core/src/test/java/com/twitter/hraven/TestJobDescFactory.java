@@ -52,4 +52,26 @@ public class TestJobDescFactory {
     result = JobDescFactory.getCluster(c);
     assertNull(result);  
   }
+
+  @Test
+  public void testGetFramework() {
+    Configuration c = new Configuration();
+    Framework f = JobDescFactory.getFramework(c);
+    assertEquals(Framework.NONE, f);
+
+    // test spark
+    c.set(Constants.FRAMEWORK_CONF_KEY, Constants.FRAMEWORK_CONF_SPARK_VALUE);
+    f = JobDescFactory.getFramework(c);
+    assertEquals(Framework.SPARK, f);
+
+    // test scalding
+    c.set(Constants.CASCADING_FLOW_ID_CONF_KEY, "some value");
+    f = JobDescFactory.getFramework(c);
+    assertEquals(Framework.SCALDING, f);
+
+    // test pig
+    c.set(Constants.PIG_CONF_KEY," some random value");
+    f = JobDescFactory.getFramework(c);
+    assertEquals(Framework.PIG, f);
+  }
 }

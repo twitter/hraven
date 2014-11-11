@@ -107,15 +107,16 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
 
       // now extract components (runId!jobId!additional)
       // run id occurs at the start and is of 8 bytes in length
-      int runIdBytesLength = 8;
-      extraComponents[0] = extractRunId(remainder, runIdBytesLength);
+      extraComponents[0] = extractRunId(remainder, Constants.RUN_ID_LENGTH_JOBKEY);
       // job id occurs after run id and seperator
-      int offset = runIdBytesLength + Constants.SEP_BYTES.length;
+      int offset = Constants.RUN_ID_LENGTH_JOBKEY + Constants.SEP_BYTES.length;
       extraComponents[1] = extractJobId(offset, remainder);
 
       // now extract any additional stuff after the job id
-      offset += getLengthJobIdPackedBytes(offset, remainder)
-          + Constants.SEP_BYTES.length;
+      if (extraComponents[1] != null) {
+        offset += extraComponents[1].length;
+      }
+      offset += Constants.SEP_BYTES.length;
       extraComponents[2] = extractRemainder(offset, remainder);
 
       int extraSize = 0;
@@ -149,19 +150,19 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
   }
 
   private static int getLengthJobIdPackedBytes(int offset, byte[] remainder) {
-    int length_rest = remainder.length - offset ;
-    byte[] jobid_otherstuff = null;
-    if (length_rest > offset) {
-      jobid_otherstuff = ByteUtil.safeCopy(remainder, offset,
+    int lengthRest = remainder.length - offset ;
+    byte[] jobIdOtherStuff = null;
+    if (lengthRest > offset) {
+      jobIdOtherStuff = ByteUtil.safeCopy(remainder, offset,
         remainder.length-offset);
     } else {
-      jobid_otherstuff = new byte[0];
+      jobIdOtherStuff = new byte[0];
     }
-    byte[][] split_runid_jobid_extra = ByteUtil.split(jobid_otherstuff,
+    byte[][] splitRunIdJobIdExtra = ByteUtil.split(jobIdOtherStuff,
         Constants.SEP_BYTES);
-    int length_jobId = (split_runid_jobid_extra.length >= 1 ?
-        split_runid_jobid_extra[0].length : 0);
-    return length_jobId;
+    int lengthJobId = (splitRunIdJobIdExtra.length >= 1 ?
+        splitRunIdJobIdExtra[0].length : 0);
+    return lengthJobId;
   }
   /**
    * extracts the job id from the packged byte array
@@ -175,13 +176,13 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
     //          8 bytes for run id
     //           +
     //          bytes for separator field
-    int length_jobId = getLengthJobIdPackedBytes(offset, remainder);
+    int lengthJobId = getLengthJobIdPackedBytes(offset, remainder);
 
-    if (remainder.length >= (offset + length_jobId)) {
-      return ByteUtil.safeCopy(remainder, offset, length_jobId);
-    } else {
-      return Constants.EMPTY_BYTES;
-    }
+//    if (remainder.length >= (offset + length_jobId)) {
+      return ByteUtil.safeCopy(remainder, offset, lengthJobId);
+//    } else {
+//      return Constants.EMPTY_BYTES;
+//    }
   }
 
   /**
@@ -190,10 +191,10 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
    * @param remainder
    */
   private static byte[] extractRunId(byte[] remainder, int lengthToRead) {
-    if (remainder.length >= lengthToRead) {
+//    if (remainder.length >= lengthToRead) {
       return ByteUtil.safeCopy(remainder, 0, lengthToRead);
-    } else {
-      return Constants.EMPTY_BYTES;
-    }
+//    } else {
+//      return Constants.EMPTY_BYTES;
+//    }
   }
 }

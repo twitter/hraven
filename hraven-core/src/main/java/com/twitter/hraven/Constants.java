@@ -267,6 +267,16 @@ public class Constants {
   public static final int MAX_LONG_LENGTH = Long.toString(Long.MAX_VALUE)
       .length();
 
+  /**
+   * length of run id in bytes in the job key
+   */
+  public static final int RUN_ID_LENGTH_JOBKEY = 8;
+
+  /**
+   * length of sequence number in bytes in the job key
+   */
+  public static final int SEQUENCE_NUM_LENGTH_JOBKEY = 8;
+
   public static final String USER_CONF_KEY = "user.name";
   public static final String USER_CONF_KEY_HADOOP2 = "mapreduce.job.user.name";
 
@@ -322,6 +332,9 @@ public class Constants {
   
   public static final String MR_RUN_CONF_KEY = "mapred.app.submitted.timestamp";
 
+  public static final String FRAMEWORK_CONF_KEY = "mapreduce.framework.name";
+  public static final String FRAMEWORK_CONF_SPARK_VALUE = "spark";
+  public static final String SPARK_VERSION_CONF_KEY = "spark.signature";
   /**
    * hadoop2 memory mb for container size
    * for map, reduce and AM containers

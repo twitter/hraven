@@ -17,7 +17,10 @@ limitations under the License.
 package com.twitter.hraven;
 
 /**
- * hadoop versions
+ * hadoop file type being processed in hRaven
+ * ONE: hadoop v1 file
+ * TWO: hadoop v2 file
+ * SPARK: spark history file
  */
 public enum HistoryFileType {
   ONE, TWO, SPARK
