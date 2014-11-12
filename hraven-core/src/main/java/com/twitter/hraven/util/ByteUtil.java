@@ -252,12 +252,12 @@ public class ByteUtil {
   /**
    * return a value from the NavigableMap as a Long
    * @param key
-   * @param infoValues
+   * @param taskValues
    * @return value as Long or 0L
    */
   public static Long getValueAsLong(final byte[] key,
-      final NavigableMap<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(key);
+      final Map<byte[], byte[]> taskValues) {
+    byte[] value = taskValues.get(key);
     if (value != null) {
       try {
       long retValue = Bytes.toLong(value);
@@ -281,12 +281,12 @@ public class ByteUtil {
   /**
    * return a value from the NavigableMap as a String
    * @param key
-   * @param infoValues
+   * @param taskValues
    * @return value as a String or ""
    */
   public static String getValueAsString(final byte[] key,
-      final NavigableMap<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(key);
+      final Map<byte[], byte[]> taskValues) {
+    byte[] value = taskValues.get(key);
     if (value != null) {
       return Bytes.toString(value);
     } else {
@@ -316,7 +316,7 @@ public class ByteUtil {
    * @param infoValues
    * @return int
    */
-  static int getValueAsInt(byte[] key, Map<byte[], byte[]> infoValues) {
+  public static int getValueAsInt(byte[] key, Map<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(key);
     if (value != null) {
       try {

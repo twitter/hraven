@@ -122,13 +122,13 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       QualifiedPathKey qpk = hk.getQualifiedPathKey();
       jsonGenerator.writeStartObject();
       jsonGenerator.writeFieldName("cluster");
-      jsonGenerator.writeNumber(qpk.getCluster());
+      jsonGenerator.writeString(qpk.getCluster());
       if (StringUtils.isNotBlank(qpk.getNamespace())) {
         jsonGenerator.writeFieldName("namespace");
-        jsonGenerator.writeNumber(qpk.getNamespace());
+        jsonGenerator.writeString(qpk.getNamespace());
       }
       jsonGenerator.writeFieldName("path");
-      jsonGenerator.writeNumber(qpk.getPath());
+      jsonGenerator.writeString(qpk.getPath());
       jsonGenerator.writeFieldName("runId");
       jsonGenerator.writeNumber(hk.getRunId());
       jsonGenerator.writeEndObject();
