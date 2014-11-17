@@ -28,7 +28,7 @@ public class TestJobHistoryKeys {
       workflowAdjacencies, locality, avataar, diagnostics,
       hadoopversion, nodeManagerPort, nodeManagerHttpPort,
       acls, uberized, shufflePort, mapFinishTime,
-      port, rackname, clockSplits, cpuUsages,
+      port, rackname, clockSplits, cpuUsages, workflowTags,
       physMemKbytes, vMemKbytes, status, TOTAL_COUNTERS,
       TASK_COUNTERS, TASK_ATTEMPT_COUNTERS;
   }

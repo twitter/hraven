@@ -292,7 +292,7 @@ public class JobFileProcessor extends Configured implements Tool {
     // check if re-aggregate option is forced on
     // if yes, we need to aggregate for this job inspite of
     // job having aggregation done status in raw table
-    boolean reAggregateFlagValue = Boolean.FALSE;
+    boolean reAggregateFlagValue = false;
     if (commandLine.hasOption("ra")) {
       String reaggregateFlag = commandLine.getOptionValue("ra");
       // set it as part of conf so that the
@@ -300,7 +300,7 @@ public class JobFileProcessor extends Configured implements Tool {
       if (StringUtils.isNotBlank(reaggregateFlag)) {
         LOG.info(" reaggregateFlag is: " + reaggregateFlag);
         if (StringUtils.equalsIgnoreCase(reaggregateFlag, Boolean.TRUE.toString())) {
-          reAggregateFlagValue = Boolean.TRUE;
+          reAggregateFlagValue = true;
         }
       }
     }
@@ -308,7 +308,7 @@ public class JobFileProcessor extends Configured implements Tool {
     hbaseConf.setBoolean(AggregationConstants.RE_AGGREGATION_FLAG_NAME, reAggregateFlagValue);
 
     // set aggregation to off by default
-    Boolean aggFlagValue = Boolean.FALSE;
+    boolean aggFlagValue = false;
     if (commandLine.hasOption("a")) {
       String aggregateFlag = commandLine.getOptionValue("a");
       // set it as part of conf so that the
@@ -316,7 +316,7 @@ public class JobFileProcessor extends Configured implements Tool {
       if (StringUtils.isNotBlank(aggregateFlag)) {
         LOG.info(" aggregateFlag is: " + aggregateFlag);
         if (StringUtils.equalsIgnoreCase(aggregateFlag, Boolean.TRUE.toString())) {
-          aggFlagValue = Boolean.TRUE;
+          aggFlagValue = true;
         } 
       }
     }
@@ -324,7 +324,7 @@ public class JobFileProcessor extends Configured implements Tool {
       // turn off aggregation if reprocessing is true
       // we don't want to inadvertently aggregate again while re-processing
       // re-aggregation needs to be a conscious setting
-      aggFlagValue = Boolean.FALSE;
+      aggFlagValue = false;
     }
     LOG.info(AggregationConstants.AGGREGATION_FLAG_NAME +"=" + aggFlagValue);
     hbaseConf.setBoolean(AggregationConstants.AGGREGATION_FLAG_NAME, aggFlagValue);

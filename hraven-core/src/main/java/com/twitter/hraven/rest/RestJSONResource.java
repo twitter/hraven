@@ -695,9 +695,9 @@ public class RestJSONResource {
           endTime,
           limit);
     timer.stop();
-    LOG.info("For summary/apps/{cluster}/{user}/{appId}/ with input query " + "newJobs/" + cluster
-        + SLASH + user + "?limit=" + limit + "&startTime=" + startTime + "&endTime=" + endTime
-        + " fetched " + newApps.size() + " apps in " + timer);
+    LOG.info("For summary/apps/{cluster}/{user}/{appId}/ with input query " + "summary/apps/"
+        + cluster + SLASH + user + "?limit=" + limit + "&startTime=" + startTime + "&endTime="
+        + endTime + " fetched " + newApps.size() + " apps in " + timer);
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.APP_SUMMARY_STATS_ALL_APPS));
     return newApps;

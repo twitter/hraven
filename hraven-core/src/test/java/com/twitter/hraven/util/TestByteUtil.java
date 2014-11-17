@@ -283,7 +283,7 @@ public class TestByteUtil {
     NavigableMap<byte[], byte[]> infoValues = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
     infoValues.put(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_MAPS),
       Bytes.toBytes(JobDetailsValues.totalMaps));
-    Long expVal = JobDetailsValues.totalMaps;
+    long expVal = JobDetailsValues.totalMaps;
     assertEquals(expVal, ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
       .get(JobHistoryKeys.TOTAL_MAPS), infoValues));
 

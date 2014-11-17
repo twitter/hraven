@@ -107,12 +107,12 @@ public class JobFileTableMapper extends
   /**
    * determines whether or not to store aggregate stats
    */
-  private boolean aggregationFlag = Boolean.FALSE;
+  private boolean aggregationFlag = false;
 
   /**
    * determines whether or not to re-aggregate stats
    */
-  private boolean reAggregationFlag = Boolean.FALSE;
+  private boolean reAggregationFlag = false;
 
   /**
    * @return the key class for the job output data.
@@ -138,12 +138,12 @@ public class JobFileTableMapper extends
     rawService = new JobHistoryRawService(myConf);
     // set aggregation to false by default
     aggregationFlag = myConf.getBoolean(AggregationConstants.AGGREGATION_FLAG_NAME,
-      Boolean.FALSE);
+      false);
     if (!aggregationFlag) {
       LOG.info("Aggregation is turned off ");
     }
     reAggregationFlag = myConf.getBoolean(AggregationConstants.RE_AGGREGATION_FLAG_NAME,
-      Boolean.FALSE);
+      false);
     if (reAggregationFlag) {
       LOG.info("Re-aggregation is turned ON, will be aggregating stats again "
         + " for jobs even if already aggregated status is true in raw table ");
@@ -163,6 +163,7 @@ public class JobFileTableMapper extends
     keyCount++;
     boolean success = true;
     QualifiedJobId qualifiedJobId = null;
+    JobDetails jobDetails = null;
     try {
       qualifiedJobId = rawService.getQualifiedJobIdFromResult(value);
       context.progress();
@@ -296,17 +297,13 @@ public class JobFileTableMapper extends
       context.write(JOB_TABLE, jobCostPut);
       context.progress();
 
-      JobDetails jobDetails = historyFileParser.getJobDetails();
+      jobDetails = historyFileParser.getJobDetails();
       if (jobDetails != null) {
         jobDetails.setCost(jobCost);
         jobDetails.setMegabyteMillis(mbMillis);
         jobDetails.setSubmitTime(jobKey.getRunId());
         jobDetails.setQueue(HadoopConfUtil.getQueueName(jobConf));
       }
-      aggreagteJobStats(jobDetails, value.getRow(), context,
-        AggregationConstants.AGGREGATION_TYPE.DAILY);
-      aggreagteJobStats(jobDetails, value.getRow(), context,
-        AggregationConstants.AGGREGATION_TYPE.WEEKLY);
 
     } catch (RowKeyParseException rkpe) {
       LOG.error("Failed to process record "
@@ -344,6 +341,20 @@ public class JobFileTableMapper extends
     // any case with multiple simultaneous runs with different outcome).
     context.write(RAW_TABLE, successPut);
 
+    // consider aggregating job details
+    if (jobDetails != null ) {
+      byte[] rowKey = value.getRow();
+      if ((reAggregationFlag)
+          || ((aggregationFlag) && (!rawService.getStatusAgg(rowKey,
+            AggregationConstants.JOB_DAILY_AGGREGATION_STATUS_COL_BYTES)))) {
+      aggreagteJobStats(jobDetails, rowKey, context,
+        AggregationConstants.AGGREGATION_TYPE.DAILY);
+      aggreagteJobStats(jobDetails, rowKey, context,
+        AggregationConstants.AGGREGATION_TYPE.WEEKLY);
+      } else {
+        LOG.info("Not aggregating job info for " + jobDetails.getJobId());
+      }
+    }
   }
 
   /**
@@ -370,9 +381,8 @@ public class JobFileTableMapper extends
       LOG.error("Unknown aggregation type " + aggType);
       return;
     }
-    if ((reAggregationFlag == true)
-        || ((aggregationFlag == Boolean.TRUE) && (!rawService.getStatusAgg(rowKey, aggStatusCol)))) {
-      Boolean aggStatus = appSummaryService.aggregateJobDetails(jobDetails, aggType);
+
+      boolean aggStatus = appSummaryService.aggregateJobDetails(jobDetails, aggType);
       context.progress();
       LOG.debug("Status of aggreagting stats for " + aggType + "=" + aggStatus);
       if (aggStatus) {
@@ -389,7 +399,6 @@ public class JobFileTableMapper extends
         // any case with multiple simultaneous runs with different outcome).
         context.write(RAW_TABLE, aggStatusPut);
       }
-    }
   }
 
   /**

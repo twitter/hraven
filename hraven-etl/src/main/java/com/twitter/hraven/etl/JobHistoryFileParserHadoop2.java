@@ -140,6 +140,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     AMStarted("AM_STARTED"),
     JobPriorityChange("JOB_PRIORITY_CHANGED"),
     JobStatusChanged("JOB_STATUS_CHANGED"),
+    JobQueueChange("JOB_QUEUE_CHANGED"),
     JobSubmitted("JOB_SUBMITTED"),
     JobUnsuccessfulCompletion("JOB_KILLED","JOB_FAILED"),
     MapAttemptFinished("MAP_ATTEMPT_FINISHED"),
@@ -507,6 +508,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     case JobInited:
     case JobPriorityChange:
     case JobStatusChanged:
+    case JobQueueChange:
     case JobSubmitted:
     case JobUnsuccessfulCompletion:
       Put pJob = new Put(this.jobKeyBytes);
@@ -868,7 +870,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       mapMb = jobConf.getLong(Constants.MAP_MEMORY_MB_CONF_KEY,  Constants.NOTFOUND_VALUE);
       reduceMb = jobConf.getLong(Constants.REDUCE_MEMORY_MB_CONF_KEY,  Constants.NOTFOUND_VALUE);
     } catch (ConversionException ce) {
-      LOG.error(" Could not convert to long " + ce.getMessage());
+      LOG.error(" Could not convert to long ", ce);
       throw new ProcessingException(
           " Can't calculate megabytemillis since conversion to long failed", ce);
     }

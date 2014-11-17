@@ -228,7 +228,7 @@ public class JobHistoryListener implements Listener {
         }
       } else if (Long.class.equals(clazz)) {
         try {
-          Long valueLong = (value != null && value.trim().length() > 0) ?
+          long valueLong = (value != null && value.trim().length() > 0) ?
               Long.parseLong(value) : 0L;
           valueBytes = Bytes.toBytes(valueLong);
           if (key == JobHistoryKeys.TOTAL_MAPS) {

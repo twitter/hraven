@@ -24,10 +24,12 @@ import org.apache.hadoop.hbase.util.Bytes;
  */
 public class AggregationConstants {
 
-  public static final String AGG_DAILY_TABLE = "hraven_agg_daily";
+  // name the table as job_history_agg_daily
+  public static final String AGG_DAILY_TABLE = Constants.HISTORY_TABLE + "_agg_daily";
   public static final byte[] AGG_DAILY_TABLE_BYTES = Bytes.toBytes(AGG_DAILY_TABLE);
 
-  public static final String AGG_WEEKLY_TABLE = "hraven_agg_weekly";
+//name the table as job_history_agg_weekly
+  public static final String AGG_WEEKLY_TABLE = Constants.HISTORY_TABLE + "_agg_weekly";
   public static final byte[] AGG_WEEKLY_TABLE_BYTES = Bytes.toBytes(AGG_WEEKLY_TABLE);
 
   public static final String INFO_FAM = "i";
@@ -119,7 +121,7 @@ public class AggregationConstants {
   /**
    * number of retries for check and put
    */
-  public static final int RETRY_COUNT = 2;
+  public static final int RETRY_COUNT = 100;
 
   /**
    * type of aggregation : daily, weekly

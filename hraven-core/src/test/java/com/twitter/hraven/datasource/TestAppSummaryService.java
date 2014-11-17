@@ -144,7 +144,7 @@ public class TestAppSummaryService {
       AggregationConstants.AGGREGATION_TYPE.WEEKLY));
   }
 
-  @Test
+  @Test(expected=ProcessingException.class)
   public void testGetNumberRuns() throws IOException {
     Map<byte[], byte[]> r = new HashMap<byte[], byte[]>();
     AppSummaryService as = new AppSummaryService(UTIL.getConfiguration());

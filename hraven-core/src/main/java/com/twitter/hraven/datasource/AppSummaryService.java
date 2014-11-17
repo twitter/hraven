@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -137,7 +138,7 @@ public class AppSummaryService {
    * @return list of flow keys
    * @throws IOException
    */
-  public List<AppKey> createNewAppKeysFromResults(Scan scan, Long startTime, Long endTime, int maxCount)
+  public List<AppKey> createNewAppKeysFromResults(Scan scan, long startTime, long endTime, int maxCount)
           throws IOException {
     ResultScanner scanner = null;
     List<AppKey> newAppsKeys = new ArrayList<AppKey>();
@@ -183,7 +184,7 @@ public class AppSummaryService {
    * @return flow key
    * @throws IOException
    */
-  private AppKey getNewAppKeyFromResult(Result result, Long startTime, Long endTime)
+  private AppKey getNewAppKeyFromResult(Result result, long startTime, long endTime)
       throws IOException {
 
     byte[] rowKey = result.getRow();
@@ -193,9 +194,9 @@ public class AppSummaryService {
     String appId = Bytes.toString(keyComponents[2]);
 
     NavigableMap<byte[],byte[]> valueMap = result.getFamilyMap(Constants.INFO_FAM_BYTES);
-    Long runId = Long.MAX_VALUE;
+    long runId = Long.MAX_VALUE;
     for (Map.Entry<byte[],byte[]> entry : valueMap.entrySet()) {
-      Long tsl = Bytes.toLong(entry.getValue()) ;
+      long tsl = Bytes.toLong(entry.getValue()) ;
       // get the earliest runid, which indicates the first time this app ran
       if (tsl < runId) {
         runId = tsl;
@@ -213,7 +214,7 @@ public class AppSummaryService {
    * in daily or weekly aggregation table
    * @param {@link JobDetails}
    */
-  public Boolean aggregateJobDetails(JobDetails jobDetails,
+  public boolean aggregateJobDetails(JobDetails jobDetails,
       AggregationConstants.AGGREGATION_TYPE aggType) {
     HTable aggTable = aggDailyTable;
     switch (aggType) {
@@ -247,9 +248,8 @@ public class AppSummaryService {
      */
     catch (Exception e) {
       LOG.error("Caught exception while attempting to aggregate for "
-          + aggType + " table " + e);
-      e.printStackTrace();
-      return Boolean.FALSE;
+          + aggType + " table ", e);
+      return false;
     }
   }
 
@@ -266,8 +266,8 @@ public class AppSummaryService {
     if(numberRuns == 0L) {
       LOG.error("Number of runs in scratch column family can't be 0,"
         +" if processing within TTL");
+      throw new ProcessingException("Number of runs is 0");
     }
-    LOG.trace("number of runs in getNumberRunsScratch " + numberRuns);
     return numberRuns;
   }
 
@@ -329,7 +329,7 @@ public class AppSummaryService {
    * @param runId
    * @return top of the day/week timestamp
    */
-  Long getTimestamp(long runId, AggregationConstants.AGGREGATION_TYPE aggType) {
+  long getTimestamp(long runId, AggregationConstants.AGGREGATION_TYPE aggType) {
     if (AggregationConstants.AGGREGATION_TYPE.DAILY.equals(aggType)) {
       // get top of the hour
       long dayTimestamp = runId - (runId % Constants.MILLIS_ONE_DAY);
@@ -369,7 +369,7 @@ public class AppSummaryService {
     // update queue
     attempts = 0;
     status = false;
-    while ((status != true) && (attempts < AggregationConstants.RETRY_COUNT)) {
+    while ((!status) && (attempts < AggregationConstants.RETRY_COUNT)) {
       status = updateQueue(appAggKey, aggTable, jobDetails);
       attempts++;
     }
@@ -377,7 +377,7 @@ public class AppSummaryService {
     // update cost
     attempts = 0;
     status = false;
-    while ((status != Boolean.TRUE) && (attempts < AggregationConstants.RETRY_COUNT)) {
+    while ((!status) && (attempts < AggregationConstants.RETRY_COUNT)) {
       status = updateCost(appAggKey, aggTable, jobDetails);
       attempts++;
     }
@@ -401,7 +401,7 @@ public class AppSummaryService {
     g.addColumn(AggregationConstants.INFO_FAM_BYTES,
         AggregationConstants.JOBCOST_BYTES);
     Result r = aggTable.get(g);
-    Double existingCost = 0.0;
+    double existingCost = 0.0;
     byte[] existingCostBytes = null;
     KeyValue columnLatest = r.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
           AggregationConstants.JOBCOST_BYTES);
@@ -411,7 +411,7 @@ public class AppSummaryService {
       existingCostBytes = Bytes.toBytes(existingCost);
     }
 
-    Double newCost = existingCost + jobDetails.getCost();
+    double newCost = existingCost + jobDetails.getCost();
     LOG.trace(" total app aggregated cost  " + newCost);
 
     // now insert cost
@@ -537,7 +537,7 @@ public class AppSummaryService {
      * there will no existing column/value for number of run in info col family
      * null signifies non existence of the column for {@link HTable.checkAndPut}
      */
-    Long expectedValueBeforePut = null;
+    long expectedValueBeforePut = 0L;
     if (column.size() > 0) {
       try {
         expectedValueBeforePut = Bytes.toLong(column.get(0).getValue());
@@ -552,7 +552,7 @@ public class AppSummaryService {
 
     long insertValue = 1L;
     byte[] expectedValueBeforePutBytes = null;
-    if (expectedValueBeforePut != null) {
+    if (expectedValueBeforePut != 0L) {
       insertValue = 1 + expectedValueBeforePut;
       expectedValueBeforePutBytes = Bytes.toBytes(expectedValueBeforePut);
     }
@@ -653,10 +653,10 @@ public class AppSummaryService {
       LOG.info(" Fetched from hbase " + rowCount + " rows, " + colCount + " columns, "
           + resultSize + " bytes ( " + resultSize / (1024 * 1024)
           + ") MB, in \n total timer of " + timer + " elapsedMillis:"
-          + timer.elapsedMillis() + " that includes \n appSummary population timer of "
-          + apptimer + " elapsedMillis" + apptimer.elapsedMillis()
+          + timer.elapsed(TimeUnit.MILLISECONDS) + " that includes \n appSummary population timer of "
+          + apptimer + " elapsedMillis" + apptimer.elapsed(TimeUnit.MILLISECONDS)
           + " \n hbase scan time is "
-          + (timer.elapsedMillis() - apptimer.elapsedMillis()));
+          + (timer.elapsed(TimeUnit.MILLISECONDS) - apptimer.elapsed(TimeUnit.MILLISECONDS)));
     } finally {
       if (scanner != null) {
         scanner.close();

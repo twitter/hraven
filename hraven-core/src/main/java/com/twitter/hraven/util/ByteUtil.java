@@ -25,13 +25,12 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.JobHistoryKeys;
 
 /**
  */
 public class ByteUtil {
 
-  private static Log LOG = LogFactory.getLog(ByteUtil.class);
+  private static final Log LOG = LogFactory.getLog(ByteUtil.class);
 
   public static class Range {
     private int startIdx;
@@ -250,12 +249,12 @@ public class ByteUtil {
   }
 
   /**
-   * return a value from the NavigableMap as a Long
+   * return a value from the NavigableMap as a long
    * @param key
    * @param taskValues
    * @return value as Long or 0L
    */
-  public static Long getValueAsLong(final byte[] key,
+  public static long getValueAsLong(final byte[] key,
       final Map<byte[], byte[]> taskValues) {
     byte[] value = taskValues.get(key);
     if (value != null) {
@@ -263,14 +262,12 @@ public class ByteUtil {
       long retValue = Bytes.toLong(value);
       return retValue;
       } catch (NumberFormatException nfe) {
-        LOG.error("Caught NFE while converting to long " + nfe.getMessage());
-        nfe.printStackTrace();
+        LOG.error("Caught NFE while converting to long ", nfe);
         return 0L;
       } catch (IllegalArgumentException iae ) {
         // for exceptions like java.lang.IllegalArgumentException:
         // offset (0) + length (8) exceed the capacity of the array: 7
-        LOG.error("Caught IAE while converting to long " +  iae.getMessage());
-        iae.printStackTrace();
+        LOG.error("Caught IAE while converting to long ", iae);
         return 0L;
       }
     } else {
@@ -323,14 +320,12 @@ public class ByteUtil {
         int retValue = Bytes.toInt(value);
         return retValue;
       } catch (NumberFormatException nfe) {
-        LOG.error("Caught NFE while converting to int " + nfe.getMessage());
-        nfe.printStackTrace();
+        LOG.error("Caught NFE while converting to int ", nfe);
         return 0;
       } catch (IllegalArgumentException iae) {
         // for exceptions like java.lang.IllegalArgumentException:
         // offset (0) + length (8) exceed the capacity of the array: 7
-        LOG.error("Caught IAE while converting to int " + iae.getMessage());
-        iae.printStackTrace();
+        LOG.error("Caught IAE while converting to int ", iae);
         return 0;
       }
     } else {

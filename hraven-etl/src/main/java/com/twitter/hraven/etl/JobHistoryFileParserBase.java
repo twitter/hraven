@@ -105,8 +105,8 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    * "mapred.child.java.opts" :" -Xmx1024m -verbose:gc -Xloggc:/tmp/@taskid@.gc
    * @return xmx value in MB
    */
-  public static Long getXmxValue(String javaChildOptsStr) {
-    Long retVal = 0L;
+  public static long getXmxValue(String javaChildOptsStr) {
+    long retVal = 0L;
     String valueStr = extractXmxValueStr(javaChildOptsStr);
     char lastChar = valueStr.charAt(valueStr.length() - 1);
     try {
@@ -139,8 +139,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
         retVal /= (1024 * 1024);
       }
     } catch (NumberFormatException nfe) {
-      LOG.error("Unable to get the Xmx value from " + javaChildOptsStr);
-      nfe.printStackTrace();
+      LOG.error("Unable to get the Xmx value from " + javaChildOptsStr + "\n", nfe);
       throw new ProcessingException("Unable to get the Xmx value from " + javaChildOptsStr, nfe);
     }
     return retVal;
@@ -150,7 +149,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    * considering the Xmx setting to be 75% of memory used 
    * return the total memory (xmx + native)
    */
-  public static Long getXmxTotal(final long xmx75) {
+  public static long getXmxTotal(final long xmx75) {
     return (xmx75 * 100 / 75);
   }
 
@@ -234,13 +233,13 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    * jobCost = thisJobMbMillis * computeTco / mbMillisInOneday
    * @param mb millis, compute tco, memory of the machine
    */
-  public static Double calculateJobCost(Long mbMillis, Double computeTco, Long machineMemory) {
+  public static double calculateJobCost(long mbMillis, double computeTco, long machineMemory) {
     if ((machineMemory == 0L) || (computeTco == 0.0)) {
       LOG.error("Unable to calculate job cost since machineMemory " + machineMemory
           + " or computeTco " + computeTco + " is 0; returning jobCost as 0");
       return 0.0;
     }
-    Double jobCost = (mbMillis * computeTco) / (Constants.MILLIS_ONE_DAY * machineMemory);
+    double jobCost = (mbMillis * computeTco) / (Constants.MILLIS_ONE_DAY * machineMemory);
     return jobCost;
   }
 }
