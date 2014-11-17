@@ -879,9 +879,9 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
           + " since " + Constants.AM_MEMORY_MB_CONF_KEY + " not found!");
     }
 
-    Long mbMillis = 0L;
-    Long mapSlotMillis = this.jobDetails.getMapSlotMillis();
-    Long reduceSlotMillis = this.jobDetails.getReduceSlotMillis();
+    long mbMillis = 0L;
+    long mapSlotMillis = this.jobDetails.getMapSlotMillis();
+    long reduceSlotMillis = this.jobDetails.getReduceSlotMillis();
     if (uberized) {
       mbMillis = amMb * jobRunTime;
     } else {
