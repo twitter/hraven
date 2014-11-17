@@ -361,7 +361,7 @@ public class AppSummaryService {
     int attempts = 0;
     boolean status = false;
     // update number of runs
-    while ((status != true) && (attempts < AggregationConstants.RETRY_COUNT)) {
+    while ((!status) && (attempts < AggregationConstants.RETRY_COUNT)) {
       status = updateNumberRuns(appAggKey, aggTable, jobDetails);
       attempts++;
     }
