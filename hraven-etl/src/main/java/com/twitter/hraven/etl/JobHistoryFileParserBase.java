@@ -139,8 +139,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
         retVal /= (1024 * 1024);
       }
     } catch (NumberFormatException nfe) {
-      LOG.error("Unable to get the Xmx value from " + javaChildOptsStr);
-      nfe.printStackTrace();
+      LOG.error("Unable to get the Xmx value from " + javaChildOptsStr, nfe);
       throw new ProcessingException("Unable to get the Xmx value from " + javaChildOptsStr, nfe);
     }
     return retVal;
@@ -160,16 +159,19 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    * @return the job submit time in milliseconds since January 1, 1970 UTC;
    *         or 0 if no value can be found.
    */
-  public static long getSubmitTimeMillisFromJobHistory(byte[] jobHistoryRaw) {
+  public static long getSubmitTimeMillisFromJobHistory(HistoryFileType historyFileType,
+      byte[] jobHistoryRaw) {
+
+    if (null == historyFileType) {
+      throw new IllegalArgumentException("History file type can't be null ");
+    }
 
     long submitTimeMillis = 0;
     if (null == jobHistoryRaw) {
       return submitTimeMillis;
     }
 
-    HistoryFileType hv = JobHistoryFileParserFactory.getVersion(jobHistoryRaw);
-
-    switch (hv) {
+    switch (historyFileType) {
     case TWO:
       // look for the job submitted event, since that has the job submit time
       int startIndex = ByteUtil.indexOf(jobHistoryRaw, Constants.JOB_SUBMIT_EVENT_BYTES, 0);
@@ -185,7 +187,8 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
           try {
             submitTimeMillis = Long.parseLong(submitTimeMillisString);
           } catch (NumberFormatException nfe) {
-            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString + " " + nfe.getMessage());
+            LOG.error(" caught NFE during conversion of submit time "
+                + submitTimeMillisString + " ", nfe);
             submitTimeMillis = 0;
           }
         }
@@ -218,9 +221,28 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
             submitTimeMillis = Long.parseLong(submitTimeMillisString);
           } catch (NumberFormatException nfe) {
             LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString
-                + " " + nfe.getMessage());
+                + " ", nfe);
            submitTimeMillis = 0;
           }
+        }
+      }
+      break;
+
+    case SPARK:
+      // look for the spark submit time key
+      startIndex = ByteUtil.indexOf(jobHistoryRaw,
+          Constants.SPARK_SUBMIT_TIME_BYTES, 0);
+      if (startIndex != -1) {
+        // read the string that contains the unix timestamp
+        String submitTimeMillisString = Bytes.toString(jobHistoryRaw,
+              startIndex + Constants.SPARK_SUBMIT_TIME_BYTES.length,
+              Constants.EPOCH_TIMESTAMP_STRING_LENGTH);
+        try {
+          submitTimeMillis = Long.parseLong(submitTimeMillisString);
+        } catch (NumberFormatException nfe) {
+          LOG.error(" caught NFE during conversion of submit time "
+              + submitTimeMillisString + " ", nfe);
+          submitTimeMillis = 0;
         }
       }
       break;

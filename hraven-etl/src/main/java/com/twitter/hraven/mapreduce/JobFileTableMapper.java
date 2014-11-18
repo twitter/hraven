@@ -37,6 +37,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.Mapper;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.JobDesc;
 import com.twitter.hraven.JobDescFactory;
 import com.twitter.hraven.JobKey;
@@ -137,8 +138,11 @@ public class JobFileTableMapper extends
       context.progress();
 
       byte[] jobhistoryraw = rawService.getJobHistoryRawFromResult(value);
-      long submitTimeMillis = JobHistoryFileParserBase.getSubmitTimeMillisFromJobHistory(
-            jobhistoryraw);
+      // find out if it's a hadoop1 or hadoop2 file or a spark history file
+      HistoryFileType historyFileType = JobHistoryFileParserFactory
+          .getHistoryFileType(qualifiedJobId, jobhistoryraw);
+      long submitTimeMillis = JobHistoryFileParserBase
+              .getSubmitTimeMillisFromJobHistory(historyFileType, jobhistoryraw);
       context.progress();
       // explicitly setting the byte array to null to free up memory
       jobhistoryraw = null;
@@ -162,7 +166,8 @@ public class JobFileTableMapper extends
 
       // TODO: remove sysout
       String msg = "JobDesc (" + keyCount + "): " + jobDesc
-          + " submitTimeMillis: " + submitTimeMillis;
+          + " submitTimeMillis: " + submitTimeMillis
+          + " historyFileType=" + historyFileType;
       LOG.info(msg);
 
       List<Put> puts = JobHistoryService.getHbasePuts(jobDesc, jobConf);
@@ -203,7 +208,8 @@ public class JobFileTableMapper extends
         historyFileContents = keyValue.getValue();
       }
       JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-    		  .createJobHistoryFileParser(historyFileContents, jobConf);
+                .createJobHistoryFileParser(historyFileContents, jobConf,
+                      historyFileType);
 
       historyFileParser.parse(historyFileContents, jobKey);
       context.progress();

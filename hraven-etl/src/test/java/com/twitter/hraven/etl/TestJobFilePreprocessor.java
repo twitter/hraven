@@ -101,6 +101,7 @@ public class TestJobFilePreprocessor {
       ToolRunner.run(jr, args);
       pr = processRecordService.getLastSuccessfulProcessRecord(cluster);
       assertEquals(ProcessState.LOADED, pr.getProcessState());
+
     }
       catch (Exception e) {
       e.printStackTrace();

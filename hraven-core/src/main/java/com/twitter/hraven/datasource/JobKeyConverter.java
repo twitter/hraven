@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
@@ -150,19 +151,17 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
   }
 
   private static int getLengthJobIdPackedBytes(int offset, byte[] remainder) {
+
     int lengthRest = remainder.length - offset ;
     byte[] jobIdOtherStuff = null;
     if (lengthRest > offset) {
       jobIdOtherStuff = ByteUtil.safeCopy(remainder, offset,
         remainder.length-offset);
-    } else {
-      jobIdOtherStuff = new byte[0];
+      if (StringUtils.startsWith(Bytes.toString(jobIdOtherStuff), Constants.FRAMEWORK_CONF_SPARK_VALUE)) {
+        return Constants.SPARK_JOB_KEY_LENGTH;
+      }
     }
-    byte[][] splitRunIdJobIdExtra = ByteUtil.split(jobIdOtherStuff,
-        Constants.SEP_BYTES);
-    int lengthJobId = (splitRunIdJobIdExtra.length >= 1 ?
-        splitRunIdJobIdExtra[0].length : 0);
-    return lengthJobId;
+    return (Constants.SEQUENCE_NUM_LENGTH_JOBKEY + Constants.RUN_ID_LENGTH_JOBKEY);
   }
 
   /**

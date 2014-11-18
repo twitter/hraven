@@ -15,6 +15,8 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
 /**
@@ -72,21 +74,23 @@ public class JobDescFactory {
    */
   public static Framework getFramework(Configuration jobConf) {
     // Check if this is a pig job
-    boolean isPig = jobConf.get(Constants.PIG_CONF_KEY) != null;
-    if (isPig) {
+    if (jobConf.get(Constants.PIG_CONF_KEY) != null) {
       return Framework.PIG;
-    } else {
-      String flowId = jobConf.get(Constants.CASCADING_FLOW_ID_CONF_KEY);
-      if ((flowId == null) || (flowId.length() == 0)) {
-        if (Constants.FRAMEWORK_CONF_SPARK_VALUE.equals(
-                  jobConf.get(Constants.FRAMEWORK_CONF_KEY))) {
-          return Framework.SPARK;
-        }
-        return Framework.NONE;
-      } else {
-        return Framework.SCALDING;
-      }
     }
+
+    if ((jobConf.get(Constants.CASCADING_FLOW_ID_CONF_KEY) != null)
+        && (jobConf.get(Constants.CASCADING_FLOW_ID_CONF_KEY).length() != 0)) {
+      return Framework.SCALDING;
+    }
+
+    if ((jobConf.get(Constants.FRAMEWORK_CONF_KEY) != null)
+        && (Constants.FRAMEWORK_CONF_SPARK_VALUE
+            .equalsIgnoreCase(jobConf.get(Constants.FRAMEWORK_CONF_KEY)))) {
+      return Framework.SPARK;
+    }
+
+    return Framework.NONE;
+
   }
 
   /**

@@ -57,4 +57,8 @@ public class QualifiedJobId extends JobId {
     return cluster;
   }
 
+  @Override
+  public String toString() {
+    return this.cluster + Constants.SEP + this.getJobIdString();
+  }
 }

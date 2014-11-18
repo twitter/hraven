@@ -243,6 +243,17 @@ public class Constants {
       .toBytes(SUBMIT_TIME_PREFIX_HADOOP2);
 
   /**
+   * The string representing the submit time in a spark job history file.
+   */
+  public static final String SPARK_SUBMIT_TIME = "\"submit_time\":";
+
+  /**
+   * Raw bytes representation of {@link #SPARK_SUBMIT_TIME};
+   */
+  public static final byte[] SPARK_SUBMIT_TIME_BYTES = Bytes
+      .toBytes(SPARK_SUBMIT_TIME);
+
+  /**
    * length of string that contains a unix timestamp in milliseconds
    * this length will be correct till Sat, 20 Nov 2286 which is
    * 9999999999999 in epoch time
@@ -445,4 +456,6 @@ public class Constants {
 
   /** name of the properties file used for cluster to cluster identifier mapping */
   public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
+
+  public static final int SPARK_JOB_KEY_LENGTH = 21;
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"default?><configuration>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><configuration>
 <property><name>mapreduce.job.name</name><value>Sleep job</value></property>
 <property><name>batch.desc</name><value>Any descriptive string that identifies this batch of jobs- hraven will group individual MR jobs by this name</value></property>
 <property><name>mapreduce.framework.name</name><value>spark</value></property>

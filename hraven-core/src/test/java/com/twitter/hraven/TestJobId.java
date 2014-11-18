@@ -41,6 +41,7 @@ public class TestJobId {
     String job4 = "job_"+epoch+"_11111";
     String job5 = "spark_"+epoch+"_11112";
     String job6 = "spark_"+epoch+"_11113";
+    String job7 = "spark_1413515656084_305185";
 
     JobId jobId1 = new JobId(job1);
     assertEquals(epoch, jobId1.getJobEpoch());
@@ -80,6 +81,11 @@ public class TestJobId {
     // check Comparable implementation
     assertTrue(jobId5.compareTo(jobId6) < 0);
 
+    JobId jobId7 = new JobId(job7);
+    assertEquals(1413515656084L, jobId7.getJobEpoch());
+    assertEquals(305185L, jobId7.getJobSequence());
+    assertEquals(job7, jobId7.getJobIdString());
+
     JobIdConverter conv = new JobIdConverter();
     JobId tmp = conv.fromBytes( conv.toBytes(jobId1) );
     assertEquals(jobId1, tmp);
@@ -100,6 +106,9 @@ public class TestJobId {
     tmp = conv.fromBytes( conv.toBytes(jobId6) );
     assertEquals(jobId6, tmp);
     assertEquals(jobId6.hashCode(), tmp.hashCode());
+    tmp = conv.fromBytes( conv.toBytes(jobId7) );
+    assertEquals(jobId7, tmp);
+    assertEquals(jobId7.hashCode(), tmp.hashCode());
   }
 
   /**

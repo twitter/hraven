@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
- * test class for hadoop versions
+ * test class for hadoop history file type
  */
 public class TestHistoryFileType {
 
@@ -32,7 +32,7 @@ public class TestHistoryFileType {
   }
 
   @Test
-  public void checkVersions() {
+  public void checkHistoryFileType() {
     assertEquals(ExpHistoryFileType.values().length, HistoryFileType.values().length);
     for (HistoryFileType hv : HistoryFileType.values()) {
       assertTrue(ExpHistoryFileType.valueOf(hv.toString()) != null);
@@ -40,7 +40,7 @@ public class TestHistoryFileType {
   }
 
   @Test(expected=IllegalArgumentException.class)
-  public void testNonExistentVersion() {
+  public void testNonExistentHistoryFileType() {
     assertNull(HistoryFileType.valueOf("DOES NOT EXIST"));
   }
 };

@@ -17,7 +17,10 @@ package com.twitter.hraven.etl;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.HistoryFileType;
+import com.twitter.hraven.QualifiedJobId;
 
 /**
  * Deal with {@link JobHistoryFileParser} implementations.
@@ -49,7 +52,18 @@ public class JobHistoryFileParserFactory {
    * 
    * @throws IllegalArgumentException if neither match
    */
-  public static HistoryFileType getVersion(byte[] historyFileContents) {
+  public static HistoryFileType getHistoryFileType(QualifiedJobId qualifiedJobId,
+      byte[] historyFileContents) {
+    if (historyFileContents == null)
+      // throw an exception if it's null
+      throw new IllegalArgumentException("Null job history file");
+
+    // an easy check to see if file type is spark
+    if ((qualifiedJobId != null) && Constants.FRAMEWORK_CONF_SPARK_VALUE
+        .equalsIgnoreCase(qualifiedJobId.getJobPrefix())) {
+      return HistoryFileType.SPARK;
+    }
+
     if(historyFileContents.length > HADOOP2_VERSION_LENGTH) {
       // the first 10 bytes in a hadoop2.0 history file contain Avro-Json
       String version2Part =  new String(historyFileContents, 0, HADOOP2_VERSION_LENGTH);
@@ -58,7 +72,7 @@ public class JobHistoryFileParserFactory {
       } else {
         if(historyFileContents.length > HADOOP1_VERSION_LENGTH) {
           // the first 18 bytes in a hadoop1.0 history file contain Meta VERSION="1" .
-          String version1Part =  new String(historyFileContents, 0, HADOOP1_VERSION_LENGTH);
+          String version1Part =  new String(historyFileContents, 0,HADOOP1_VERSION_LENGTH);
           if (StringUtils.equalsIgnoreCase(version1Part, HADOOP1_VERSION_STRING)) {
             return HistoryFileType.ONE;
           }
@@ -66,7 +80,8 @@ public class JobHistoryFileParserFactory {
       }
     }
     // throw an exception if we did not find any matching version
-    throw new IllegalArgumentException(" Unknown format of job history file: " + historyFileContents);
+    throw new IllegalArgumentException(" Unknown format of job history file: "
+        + historyFileContents);
   }
 
   /**
@@ -80,21 +95,24 @@ public class JobHistoryFileParserFactory {
    * Or return null if either input is null
    */
   public static JobHistoryFileParser createJobHistoryFileParser(
-      byte[] historyFileContents, Configuration jobConf) throws IllegalArgumentException {
+      byte[] historyFileContents, Configuration jobConf,
+      HistoryFileType historyFileType)
+          throws IllegalArgumentException {
 
     if (historyFileContents == null) {
       throw new IllegalArgumentException(
           "Job history contents should not be null");
     }
 
-    HistoryFileType version = getVersion(historyFileContents);
-
-    switch (version) {
+    switch (historyFileType) {
     case ONE:
       return new JobHistoryFileParserHadoop1(jobConf);
 
     case TWO:
       return new JobHistoryFileParserHadoop2(jobConf);
+
+    case SPARK:
+      return new JobHistoryFileParserSpark(jobConf);
 
     default:
       throw new IllegalArgumentException(
@@ -103,14 +121,14 @@ public class JobHistoryFileParserFactory {
   }
 
   /**
-   * @return HISTORY_FILE_VERSION1
+   * @return HISTORY FILE TYPE VERSION1
    */
   public static HistoryFileType getHistoryFileVersion1() {
     return HistoryFileType.ONE;
   }
 
   /**
-   * @return HISTORY_FILE_VERSION2
+   * @return HISTORY FILE TYPE VERSION2
    */
   public static HistoryFileType getHistoryFileVersion2() {
     return HistoryFileType.TWO;

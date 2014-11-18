@@ -93,8 +93,11 @@ public class TestJobKey {
   @Test
   public void testKeySerializationSpark() {
     JobKeyConverter conv = new JobKeyConverter();
-    JobKey key = new JobKey("clusterS1@identifierS1", "userS1", "appSpark1",
-        13, "spark_1413515656084_3051855");
+    JobKey key = new JobKey("clusterS1@identifierS1",
+      "userS1",
+      "appSpark1",
+      13,
+      "spark_1413515656084_3051855");
     byte[] keyBytes = conv.toBytes(key);
     JobKey key2 = conv.fromBytes(keyBytes);
     assertEquals(key.getCluster(), key2.getCluster());
@@ -115,7 +118,23 @@ public class TestJobKey {
     keyBytes = conv.toBytes(key);
     key2 = conv.fromBytes(keyBytes);
     assertKey(key, key2);
-  }
+
+    JobKey jobKey = new JobKey("cluster1",
+      "user1",
+      "com.example.spark_program.simple_example.Main$",
+      13,
+      // this job id has the seperator in its byte representation
+      // hence check for this id
+      "spark_1413515656084_305185");
+    keyBytes = conv.toBytes(jobKey);
+    key2 = conv.fromBytes(keyBytes);
+    assertEquals(jobKey.getCluster(), key2.getCluster());
+    assertEquals(jobKey.getUserName(), key2.getUserName());
+    assertEquals(jobKey.getAppId(), key2.getAppId());
+    assertEquals(jobKey.getRunId(), key2.getRunId());
+    assertEquals(jobKey.getJobId(), key2.getJobId());
+
+    }
 
   @Test
   public void checkOldFormatKey() {
