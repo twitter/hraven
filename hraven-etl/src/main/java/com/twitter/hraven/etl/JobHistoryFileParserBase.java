@@ -162,7 +162,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
   public static long getSubmitTimeMillisFromJobHistory(HistoryFileType historyFileType,
       byte[] jobHistoryRaw) {
 
-    if (null == historyFileType) {
+    if (historyFileType == null) {
       throw new IllegalArgumentException("History file type can't be null ");
     }
 
@@ -188,7 +188,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
             submitTimeMillis = Long.parseLong(submitTimeMillisString);
           } catch (NumberFormatException nfe) {
             LOG.error(" caught NFE during conversion of submit time "
-                + submitTimeMillisString + " ", nfe);
+                + submitTimeMillisString, nfe);
             submitTimeMillis = 0;
           }
         }
@@ -220,8 +220,8 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
           try {
             submitTimeMillis = Long.parseLong(submitTimeMillisString);
           } catch (NumberFormatException nfe) {
-            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString
-                + " ", nfe);
+            LOG.error(" caught NFE during conversion of submit time "
+                + submitTimeMillisString, nfe);
            submitTimeMillis = 0;
           }
         }

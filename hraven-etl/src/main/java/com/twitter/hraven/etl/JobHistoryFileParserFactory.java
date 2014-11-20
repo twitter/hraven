@@ -54,9 +54,10 @@ public class JobHistoryFileParserFactory {
    */
   public static HistoryFileType getHistoryFileType(QualifiedJobId qualifiedJobId,
       byte[] historyFileContents) {
-    if (historyFileContents == null)
+    if (historyFileContents == null) {
       // throw an exception if it's null
       throw new IllegalArgumentException("Null job history file");
+    }
 
     // an easy check to see if file type is spark
     if ((qualifiedJobId != null) && Constants.FRAMEWORK_CONF_SPARK_VALUE

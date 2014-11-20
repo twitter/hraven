@@ -45,7 +45,7 @@ public class JobHistoryFileParserSpark extends JobHistoryFileParserBase {
   private List<Put> jobPuts = new LinkedList<Put>();
   private List<Put> taskPuts = new LinkedList<Put>();
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
-  private Long megabytemillis;
+  private long megabytemillis;
   private static final Log LOG = LogFactory.getLog(JobHistoryFileParserSpark.class);
 
   public JobHistoryFileParserSpark(Configuration jobConf) {
@@ -64,9 +64,8 @@ public class JobHistoryFileParserSpark extends JobHistoryFileParserBase {
       byte[] qualifier;
       byte[] valueBytes;
 
-      Iterator<Map.Entry<String, JsonNode>> fieldsIterator = rootNode.getFields();
-      while (fieldsIterator.hasNext()) {
-
+     Iterator<Map.Entry<String, JsonNode>> fieldsIterator = rootNode.getFields();
+     while (fieldsIterator.hasNext()) {
         Map.Entry<String, JsonNode> field = fieldsIterator.next();
         // job history keys are in upper case
         key = field.getKey().toUpperCase();

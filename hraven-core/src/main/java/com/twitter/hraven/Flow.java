@@ -434,8 +434,8 @@ public class Flow implements Comparable<Flow> {
     return historyFileType;
   }
 
-  public void setHistoryFileType(HistoryFileType hadoopVersion) {
-    this.historyFileType = hadoopVersion;
+  public void setHistoryFileType(HistoryFileType hadoopFileType) {
+    this.historyFileType = hadoopFileType;
   }
 
   public long getReduceShuffleBytes() {
