@@ -457,5 +457,11 @@ public class Constants {
   /** name of the properties file used for cluster to cluster identifier mapping */
   public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
 
+  /** spark job keys have a prefix of "spark"
+   *  hence spark job key length is calculated as
+   *        5
+   *     +
+   *        regular job key length which is 16 (epoch and sequence number)
+   */
   public static final int SPARK_JOB_KEY_LENGTH = 21;
 }
