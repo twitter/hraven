@@ -1,4 +1,4 @@
 {
-  "jobname":"com.example.spark_program.simple_example.Main$","jobid":"spark_1412702189634_248930","user":"user1","submit_time":1415146248235,"start_time":1415146253739,"finish_time":1415146273227,"queue":"default","megabytemillis":1528224768,"job_status":"SUCCEEDED","batch.desc":""}another string": "World"
+  "jobname":"com.example.spark_program.simple_example.Main$","jobid":"spark_1412702189634_248930","user":"user1","submit_time":1415146248235,"start_time":1415146253739,"finish_time":1415146273227,"queue":"default","megabytemillis":1528224768,"job_status":"SUCCEEDED","batch.desc":""}
 }
 
