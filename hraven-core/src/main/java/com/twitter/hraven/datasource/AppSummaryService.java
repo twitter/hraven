@@ -412,8 +412,9 @@ public class AppSummaryService {
     }
 
     double newCost = existingCost + jobDetails.getCost();
-    LOG.trace(" total app aggregated cost  " + newCost);
-
+    if (LOG.isTraceEnabled()) {
+      LOG.trace(" total app aggregated cost  " + newCost);
+    }
     // now insert cost
     return executeCheckAndPut(aggTable, rowKey, existingCostBytes,
       Bytes.toBytes(newCost),
@@ -451,8 +452,10 @@ public class AppSummaryService {
     // if existing and to be inserted queue lists are different, then
     // execute check and put
     if (insertQueues.equalsIgnoreCase(existingQueues)) {
-      LOG.trace("Queue already present in aggregation for this app "
-          + existingQueues + " " + insertQueues);
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("Queue already present in aggregation for this app "
+            + existingQueues + " " + insertQueues);
+      }
       return true;
     } else {
       return executeCheckAndPut(aggTable, rowKey, existingQueuesBytes,
@@ -502,8 +505,10 @@ public class AppSummaryService {
     g.addColumn(AggregationConstants.SCRATCH_FAM_BYTES, numberRowsCol);
     Result r = aggTable.get(g);
 
-    LOG.trace(" jobkey " + jobDetails.getJobKey().toString()
-      + " runid in updateNumberRuns " + jobDetails.getJobKey().getRunId());
+    if (LOG.isTraceEnabled()) {
+      LOG.trace(" jobkey " + jobDetails.getJobKey().toString()
+          + " runid in updateNumberRuns " + jobDetails.getJobKey().getRunId());
+    }
     long numberRuns = getNumberRunsScratch(r.getFamilyMap
         (AggregationConstants.SCRATCH_FAM_BYTES));
     if (numberRuns == 1L) {
@@ -558,8 +563,10 @@ public class AppSummaryService {
     }
     byte[] insertValueBytes = Bytes.toBytes(insertValue);
 
-    LOG.trace(" before statusCheckAndPut " + insertValue
-      + " " + expectedValueBeforePut);
+    if (LOG.isTraceEnabled()) {
+      LOG.trace(" before statusCheckAndPut " + insertValue + " "
+          + expectedValueBeforePut);
+    }
     return executeCheckAndPut(aggTable,
           rowKey,
           expectedValueBeforePutBytes,

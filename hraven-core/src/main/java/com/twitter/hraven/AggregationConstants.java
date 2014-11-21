@@ -52,7 +52,7 @@ public class AggregationConstants {
    * name of the flag that determines whether or not re-aggregate
    * (overrides aggregation status in raw table for that job)
    */
-  public static String RE_AGGREGATION_FLAG_NAME = "reaggregate";
+  public static final String RE_AGGREGATION_FLAG_NAME = "reaggregate";
 
   /** column name for app id in aggregation table */
   public static final String APP_ID_COL = "app_id";
