@@ -259,7 +259,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(aFlow.getRunId());
           jsonGenerator.writeFieldName("version");
           jsonGenerator.writeString(aFlow.getVersion());
-          jsonGenerator.writeFieldName("hadoopVersion");
+          jsonGenerator.writeFieldName("historyFileType");
           /**
            *  unlikely that the next line with .toString 
            *  will throw NPE since Flow class always sets
