@@ -31,7 +31,7 @@ import org.junit.Test;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
 
 
@@ -54,10 +54,10 @@ public class TestJobHistoryListener {
 		
 		JobHistoryFileParserHadoop1 jh = new JobHistoryFileParserHadoop1(null);
 
-		Put versionPut = jh.getHadoopVersionPut(
-				HadoopVersion.ONE,
+		Put versionPut = jh.getHistoryFileTypePut(
+		  HistoryFileType.ONE,
 				jobHistoryListener.getJobKeyBytes());
-		jobHistoryListener.includeHadoopVersionPut(versionPut);
+		jobHistoryListener.includeHistoryFileTypePut(versionPut);
 		assertEquals(jobHistoryListener.getJobPuts().size(), 1);
 
 		// check hadoop version
@@ -76,7 +76,7 @@ public class TestJobHistoryListener {
 			for (KeyValue kv : lkv) {
 			  // ensure we have a hadoop2 version as the value
 			  assertEquals(Bytes.toString(kv.getValue()),
-						HadoopVersion.ONE.toString() );
+			    HistoryFileType.ONE.toString() );
  			  // ensure we don't see the same put twice
 			  assertFalse(foundVersion1);
 			  // now set this to true

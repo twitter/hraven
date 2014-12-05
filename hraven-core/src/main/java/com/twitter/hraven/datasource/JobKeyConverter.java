@@ -15,6 +15,7 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
@@ -105,19 +106,23 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
       byte[] remainder = splits[3];
       byte[][] extraComponents = new byte[3][];
 
-      int offset = 0;
-      // run ID
-      extraComponents[0] = ByteUtil.safeCopy(remainder, offset, 8);
-      // followed by sep + job epoch + job seq
-      offset += 8+Constants.SEP_BYTES.length;
-      extraComponents[1] = ByteUtil.safeCopy(remainder, offset, 16);
-      offset += 16+Constants.SEP_BYTES.length;
-      // followed by any remainder
-      extraComponents[2] = ByteUtil.safeCopy(remainder, offset, remainder.length - offset);
+      // now extract components (runId!jobId!additional)
+      // run id occurs at the start and is of 8 bytes in length
+      extraComponents[0] = extractRunId(remainder, Constants.RUN_ID_LENGTH_JOBKEY);
+      // job id occurs after run id and seperator
+      int offset = Constants.RUN_ID_LENGTH_JOBKEY + Constants.SEP_BYTES.length;
+      extraComponents[1] = extractJobId(offset, remainder);
+
+      // now extract any additional stuff after the job id
+      if (extraComponents[1] != null) {
+        offset += extraComponents[1].length;
+      }
+      offset += Constants.SEP_BYTES.length;
+      extraComponents[2] = extractRemainder(offset, remainder);
 
       int extraSize = 0;
       // figure out the full size of all splits
-      for (int i=0; i < extraComponents.length; i++) {
+      for (int i = 0; i < extraComponents.length; i++) {
         if (extraComponents[i] != null) {
           extraSize++;
         } else {
@@ -138,5 +143,48 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
       return allComponents;
     }
     return splits;
+  }
+
+  private static byte[] extractRemainder(int offset, byte[] remainder) {
+    return ByteUtil.safeCopy(remainder, offset,
+      remainder.length - offset);
+  }
+
+  private static int getLengthJobIdPackedBytes(int offset, byte[] remainder) {
+
+    int lengthRest = remainder.length - offset ;
+    byte[] jobIdOtherStuff = null;
+    if (lengthRest > offset) {
+      jobIdOtherStuff = ByteUtil.safeCopy(remainder, offset,
+        remainder.length-offset);
+      if (StringUtils.startsWith(Bytes.toString(jobIdOtherStuff), Constants.FRAMEWORK_CONF_SPARK_VALUE)) {
+        return Constants.SPARK_JOB_KEY_LENGTH;
+      }
+    }
+    return (Constants.SEQUENCE_NUM_LENGTH_JOBKEY + Constants.RUN_ID_LENGTH_JOBKEY);
+  }
+
+  /**
+   * extracts the job id from the packged byte array array looks like encodedRunid!jobid!otherstuff
+   * @param remainder
+   * @return
+   */
+  private static byte[] extractJobId(int offset, byte[] remainder) {
+    // since remainder contains runid ! jobid ! possibly other stuff
+    // the offset for reading job is:
+    //      8 bytes for run id
+    //       +
+    //      bytes for separator field
+    int lengthJobId = getLengthJobIdPackedBytes(offset, remainder);
+
+    return ByteUtil.safeCopy(remainder, offset, lengthJobId);
+  }
+
+  /**
+   * extracts a long number representation of encoded run id it reads 8 bytes
+   * @param remainder
+   */
+  private static byte[] extractRunId(byte[] remainder, int lengthToRead) {
+    return ByteUtil.safeCopy(remainder, 0, lengthToRead);
   }
 }

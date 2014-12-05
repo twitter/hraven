@@ -23,7 +23,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.util.ByteUtil;
@@ -32,7 +32,7 @@ import com.twitter.hraven.util.ByteUtil;
  *  Abstract class for job history file parsing 
  *  
  *  Implements the interface for history file parsing
- *  Adds the implementation for a getHadoopVersionPut function
+ *  Adds the implementation for a getHistoryFileTypePut function
  *  Other methods to be implemented for parsing by sub classes
  * 
  */
@@ -54,7 +54,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
 	 * 
 	 * @return Put
 	 */
-	public Put getHadoopVersionPut(HadoopVersion historyFileVersion, byte[] jobKeyBytes) {
+	public Put getHistoryFileTypePut(HistoryFileType historyFileVersion, byte[] jobKeyBytes) {
 	  Put pVersion = new Put(jobKeyBytes);
 	  byte[] valueBytes = null;
 	  valueBytes = Bytes.toBytes(historyFileVersion.toString());
@@ -139,8 +139,7 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
         retVal /= (1024 * 1024);
       }
     } catch (NumberFormatException nfe) {
-      LOG.error("Unable to get the Xmx value from " + javaChildOptsStr);
-      nfe.printStackTrace();
+      LOG.error("Unable to get the Xmx value from " + javaChildOptsStr, nfe);
       throw new ProcessingException("Unable to get the Xmx value from " + javaChildOptsStr, nfe);
     }
     return retVal;
@@ -160,16 +159,19 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
    * @return the job submit time in milliseconds since January 1, 1970 UTC;
    *         or 0 if no value can be found.
    */
-  public static long getSubmitTimeMillisFromJobHistory(byte[] jobHistoryRaw) {
+  public static long getSubmitTimeMillisFromJobHistory(HistoryFileType historyFileType,
+      byte[] jobHistoryRaw) {
+
+    if (historyFileType == null) {
+      throw new IllegalArgumentException("History file type can't be null ");
+    }
 
     long submitTimeMillis = 0;
     if (null == jobHistoryRaw) {
       return submitTimeMillis;
     }
 
-    HadoopVersion hv = JobHistoryFileParserFactory.getVersion(jobHistoryRaw);
-
-    switch (hv) {
+    switch (historyFileType) {
     case TWO:
       // look for the job submitted event, since that has the job submit time
       int startIndex = ByteUtil.indexOf(jobHistoryRaw, Constants.JOB_SUBMIT_EVENT_BYTES, 0);
@@ -185,7 +187,8 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
           try {
             submitTimeMillis = Long.parseLong(submitTimeMillisString);
           } catch (NumberFormatException nfe) {
-            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString + " " + nfe.getMessage());
+            LOG.error(" caught NFE during conversion of submit time "
+                + submitTimeMillisString, nfe);
             submitTimeMillis = 0;
           }
         }
@@ -217,10 +220,29 @@ public abstract class JobHistoryFileParserBase implements JobHistoryFileParser {
           try {
             submitTimeMillis = Long.parseLong(submitTimeMillisString);
           } catch (NumberFormatException nfe) {
-            LOG.error(" caught NFE during conversion of submit time " + submitTimeMillisString
-                + " " + nfe.getMessage());
+            LOG.error(" caught NFE during conversion of submit time "
+                + submitTimeMillisString, nfe);
            submitTimeMillis = 0;
           }
+        }
+      }
+      break;
+
+    case SPARK:
+      // look for the spark submit time key
+      startIndex = ByteUtil.indexOf(jobHistoryRaw,
+          Constants.SPARK_SUBMIT_TIME_BYTES, 0);
+      if (startIndex != -1) {
+        // read the string that contains the unix timestamp
+        String submitTimeMillisString = Bytes.toString(jobHistoryRaw,
+              startIndex + Constants.SPARK_SUBMIT_TIME_BYTES.length,
+              Constants.EPOCH_TIMESTAMP_STRING_LENGTH);
+        try {
+          submitTimeMillis = Long.parseLong(submitTimeMillisString);
+        } catch (NumberFormatException nfe) {
+          LOG.error(" caught NFE during conversion of submit time "
+              + submitTimeMillisString + " ", nfe);
+          submitTimeMillis = 0;
         }
       }
       break;

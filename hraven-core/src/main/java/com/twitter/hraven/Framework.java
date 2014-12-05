@@ -29,6 +29,10 @@ public enum Framework {
    */
   SCALDING("s", "scalding"),
   /**
+   * Identifies Spark applications
+   */
+  SPARK("sp", "spark"),
+  /**
    * 
    */
   NONE("n", "none, plain map-reduce");

@@ -149,8 +149,8 @@ public class Flow implements Comparable<Flow> {
   /**  app Version for this flow  */
   private String version ;
 
-  /**  hadoop Version for this flow  */
-  private HadoopVersion hadoopVersion ;
+  /**  hadoop history file type for this flow  */
+  private HistoryFileType historyFileType ;
 
   /**  hadoop pool/queue for this flow  */
   private String queue ;
@@ -281,13 +281,13 @@ public class Flow implements Comparable<Flow> {
     // set the submit time of the flow to the submit time of the first job
     if (( this.submitTime == 0L ) || (job.getSubmitTime() < this.submitTime)) {
       this.submitTime = job.getSubmitTime();
-      // set the hadoop version once for this job
-      this.hadoopVersion = job.getHadoopVersion();
+      // set the hadoop history file type once for this job
+      this.historyFileType = job.getHistoryFileType();
       // set the queue/pool once for this flow
       this.queue = job.getQueue();
-      if (this.hadoopVersion == null) {
+      if (this.historyFileType == null) {
         // set it to default so that we don't run into NPE during json serialization
-        this.hadoopVersion = HadoopVersion.ONE;
+        this.historyFileType = HistoryFileType.ONE;
       }
     }
 
@@ -430,12 +430,12 @@ public class Flow implements Comparable<Flow> {
     this.cost = cost;
   }
 
-  public HadoopVersion getHadoopVersion() {
-    return hadoopVersion;
+  public HistoryFileType getHistoryFileType() {
+    return historyFileType;
   }
 
-  public void setHadoopVersion(HadoopVersion hadoopVersion) {
-    this.hadoopVersion = hadoopVersion;
+  public void setHistoryFileType(HistoryFileType hadoopFileType) {
+    this.historyFileType = hadoopFileType;
   }
 
   public long getReduceShuffleBytes() {

@@ -15,8 +15,10 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobId;
 
 /**
@@ -24,19 +26,38 @@ import com.twitter.hraven.JobId;
 public class JobIdConverter implements ByteConverter<JobId> {
   @Override
   public byte[] toBytes(JobId jobId) {
-    return Bytes.add(Bytes.toBytes(jobId.getJobEpoch()),
-        Bytes.toBytes(jobId.getJobSequence()));
+    String prefix = jobId.getJobPrefix();
+    if (StringUtils.isBlank(prefix)) {
+      // do not include "job" prefix in conversion
+      return Bytes.add(Bytes.toBytes(jobId.getJobEpoch()),
+                       Bytes.toBytes(jobId.getJobSequence()));
+    } else {
+      return Bytes.add(Bytes.toBytes(jobId.getJobPrefix()),
+                       Bytes.toBytes(jobId.getJobEpoch()),
+                       Bytes.toBytes(jobId.getJobSequence()));
+    }
   }
 
   @Override
   public JobId fromBytes(byte[] bytes) {
-    if (bytes == null || bytes.length < 16) {
+    int packedBytesEpochSeqSize = Constants.RUN_ID_LENGTH_JOBKEY
+          + Constants.SEQUENCE_NUM_LENGTH_JOBKEY;
+
+    if (bytes == null || bytes.length < packedBytesEpochSeqSize) {
       return null;
     }
 
-    // expect a packed bytes encoding of [8 bytes epoch][8 bytes seq]
-    long epoch = Bytes.toLong(bytes, 0);
-    long seq = Bytes.toLong(bytes, 8);
-    return new JobId(epoch, seq);
+    if (bytes.length <= packedBytesEpochSeqSize) {
+      // expect a packed bytes encoding of [8 bytes epoch][8 bytes seq]
+      long epoch = Bytes.toLong(bytes, 0);
+      long seq = Bytes.toLong(bytes, Constants.SEQUENCE_NUM_LENGTH_JOBKEY);
+      return new JobId(epoch, seq);
+    } else {
+      // expect a packed bytes encoding of [prefix][8 bytes epoch][8 bytes seq]
+      String prefix = Bytes.toString(bytes, 0, (bytes.length - packedBytesEpochSeqSize));
+      long epoch = Bytes.toLong(bytes, prefix.length());
+      long seq = Bytes.toLong(bytes, (bytes.length - Constants.SEQUENCE_NUM_LENGTH_JOBKEY));
+      return new JobId(prefix, epoch, seq);
+    }
   }
 }

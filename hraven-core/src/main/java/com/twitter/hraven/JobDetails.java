@@ -59,7 +59,7 @@ public class JobDetails implements Comparable<JobDetails> {
   private String priority;
   private String status;
   private String version;
-  private HadoopVersion hadoopVersion;
+  private HistoryFileType historyFileType;
   private String queue;
   private long submitTime;
   private long launchTime;
@@ -182,13 +182,13 @@ public class JobDetails implements Comparable<JobDetails> {
     this.version = version;
   }
 
-  public HadoopVersion getHadoopVersion() {
-    return hadoopVersion;
+  public HistoryFileType getHistoryFileType() {
+    return historyFileType;
   }
 
-  public void setHadoopVersion(String hadoopVersion) {
+  public void setHistoryFileType(String historyFileType) {
     // the enum.valueOf could throw a NPE or IllegalArgumentException
-    this.hadoopVersion = HadoopVersion.valueOf(hadoopVersion);
+    this.historyFileType = HistoryFileType.valueOf(historyFileType);
   }
 
   public long getSubmitTime() {
@@ -523,21 +523,22 @@ public class JobDetails implements Comparable<JobDetails> {
   }
 
   /**
-   * return an enum value from the NavigableMap for hadoop version
+   * return an enum value from the NavigableMap
+   * for history file type
    * @param key
    * @param infoValues
    * @return value as a enum or default of hadoop ONE
    */
-  private HadoopVersion getHadoopVersionFromResult(final JobHistoryKeys key,
+  private HistoryFileType getHistoryFileTypeFromResult(final JobHistoryKeys key,
       final NavigableMap<byte[], byte[]> infoValues) {
     byte[] value = infoValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(key));
     if (value != null) {
       String hv = Bytes.toString(value);
       // could throw an NPE or IllegalArgumentException
-      return HadoopVersion.valueOf(hv);
+      return HistoryFileType.valueOf(hv);
     } else {
       // default is hadoop 1
-      return HadoopVersion.ONE;
+      return HistoryFileType.ONE;
     }
   }
 
@@ -594,7 +595,7 @@ public class JobDetails implements Comparable<JobDetails> {
     this.jobName = getValueAsString(JobHistoryKeys.JOBNAME, infoValues);
     this.priority = getValueAsString(JobHistoryKeys.JOB_PRIORITY, infoValues);
     this.status = getValueAsString(JobHistoryKeys.JOB_STATUS, infoValues);
-    this.hadoopVersion = getHadoopVersionFromResult(JobHistoryKeys.hadoopversion, infoValues);
+    this.historyFileType = getHistoryFileTypeFromResult(JobHistoryKeys.hadoopversion, infoValues);
     this.version = getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues);
     this.cost = getValueAsDouble(Constants.JOBCOST_BYTES, infoValues);
 
@@ -622,8 +623,8 @@ public class JobDetails implements Comparable<JobDetails> {
         infoValues);
 
     // populate stats from counters for this job based on
-    // hadoop version
-    if (this.hadoopVersion == HadoopVersion.TWO) {
+    // history file type
+    if (this.historyFileType == HistoryFileType.TWO) {
       // map file bytes read
       this.mapFileBytesRead = getCounterValueAsLong(this.mapCounters, 
             Constants.FILESYSTEM_COUNTER_HADOOP2, Constants.FILES_BYTES_READ);

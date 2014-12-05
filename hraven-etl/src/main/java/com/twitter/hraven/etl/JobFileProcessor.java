@@ -40,7 +40,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.filecache.DistributedCache;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Scan;
@@ -254,7 +253,7 @@ public class JobFileProcessor extends Configured implements Tool {
     Path hdfsPath = new Path(costFilePath + Constants.COST_PROPERTIES_FILENAME);
     // add to distributed cache
     DistributedCache.addCacheFile(hdfsPath.toUri(), hbaseConf);
-    
+
     // Grab the machine type argument
     String machineType = commandLine.getOptionValue("m");
     // set it as part of conf so that the

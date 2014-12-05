@@ -209,15 +209,15 @@ public class JobHistoryRawService {
       InclusiveStopFilter inclusiveStopFilter = new InclusiveStopFilter(lastRow);
       filters.addFilter(inclusiveStopFilter);
       LOG.info("Stopping raw table scan (stop filter) at "
-          + Bytes.toStringBinary(lastRow) + " " + idConv.fromBytes(lastRow));
+          + Bytes.toStringBinary(lastRow) + " " + idConv.fromBytes(lastRow).toString());
 
       // Add one to the jobSequence of the maximum JobId.
       JobId maximumJobId = new JobId(maxJobId);
-      JobId oneBiggerThanMaxJobId = new JobId(maximumJobId.getJobEpoch(),
+      JobId oneBiggerThanMaxJobId = new JobId(maximumJobId.getJobPrefix(),
+          maximumJobId.getJobEpoch(),
           maximumJobId.getJobSequence() + 1);
       stopRow = idConv.toBytes(new QualifiedJobId(cluster,
           oneBiggerThanMaxJobId));
-
     } else {
       char oneBiggerSep = (char) (Constants.SEP_CHAR + 1);
       stopRow = Bytes.toBytes(cluster + oneBiggerSep);

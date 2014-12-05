@@ -21,7 +21,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import com.google.common.io.Files;
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
@@ -55,7 +55,8 @@ public class TestJobHistoryFileParserHadoop2 {
     jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
 
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf,
+          HistoryFileType.TWO);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
@@ -87,7 +88,7 @@ public class TestJobHistoryFileParserHadoop2 {
     	  for (KeyValue kv : lkv) {
     		// ensure we have a hadoop2 version as the value
     		assertEquals(Bytes.toString(kv.getValue()), 
-    				HadoopVersion.TWO.toString()); 
+    				HistoryFileType.TWO.toString()); 
 
     	    // ensure we don't see the same put twice
     	    assertFalse(foundVersion2);
@@ -180,7 +181,8 @@ public class TestJobHistoryFileParserHadoop2 {
     File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
     byte[] contents = Files.toByteArray(jobHistoryfile);
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, null);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, null,
+          HistoryFileType.TWO);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
@@ -204,7 +206,8 @@ public class TestJobHistoryFileParserHadoop2 {
     jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
 
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf,
+          HistoryFileType.TWO);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
@@ -269,7 +272,8 @@ public class TestJobHistoryFileParserHadoop2 {
     jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
 
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf,
+          HistoryFileType.TWO);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.x files

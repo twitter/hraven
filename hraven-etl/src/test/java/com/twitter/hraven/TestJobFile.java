@@ -45,6 +45,8 @@ public class TestJobFile {
   /** 2.0 job history file name */
   final static String VALID_JOB_HISTORY_FILENAME5 =
       "job_1374258111572_0003-1374260622449-userName1-TeraGen-1374260635219-2-0-SUCCEEDED-default.jhist";
+  final static String VALID_SPARK_HISTORY_FILENAME =
+      "spark_1413515656084_3051855.json";
 
   final static String INVALID_JOB_FILENAME = "jabbedabbedoo.txt";
 
@@ -106,6 +108,15 @@ public class TestJobFile {
      * history file name
      */
     assertEquals("job_1374258111572_0003", jobFile.getJobid());
+
+    jobFile = new JobFile(VALID_SPARK_HISTORY_FILENAME);
+    assertFalse("This should not be a valid job conf file", jobFile.isJobConfFile());
+    assertTrue("this should be a spark job history file", jobFile.isJobHistoryFile());
+    /*
+     * confirm that the job id was parsed correctly. Note that the history filename is a 2.0 job
+     * history file name
+     */
+    assertEquals("spark_1413515656084_3051855", jobFile.getJobid());
 
   }
 

@@ -298,7 +298,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     this.jobPuts.add(jobStatusPut);
 
     // set the hadoop version for this record
-    Put versionPut = getHadoopVersionPut(JobHistoryFileParserFactory.getHistoryFileVersion2(), this.jobKeyBytes);
+    Put versionPut = getHistoryFileTypePut(JobHistoryFileParserFactory.getHistoryFileVersion2(), this.jobKeyBytes);
     this.jobPuts.add(versionPut);
 
     LOG.info("For " + this.jobKey + " #jobPuts " + jobPuts.size() + " #taskPuts: "

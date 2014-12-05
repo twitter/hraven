@@ -27,6 +27,7 @@ public class JobDescFactory {
 
   private static final MRJobDescFactory MR_JOB_DESC_FACTORY = new MRJobDescFactory();
   private static final PigJobDescFactory PIG_JOB_DESC_FACTORY = new PigJobDescFactory();
+  private static final SparkJobDescFactory SPARK_JOB_DESC_FACTORY = new SparkJobDescFactory();
   private static final ScaldingJobDescFactory SCALDING_JOB_DESC_FACTORY =
       new ScaldingJobDescFactory();
 
@@ -43,6 +44,8 @@ public class JobDescFactory {
       return PIG_JOB_DESC_FACTORY;
     case SCALDING:
       return SCALDING_JOB_DESC_FACTORY;
+    case SPARK:
+      return SPARK_JOB_DESC_FACTORY;
     default:
       return MR_JOB_DESC_FACTORY;
     }
@@ -69,17 +72,22 @@ public class JobDescFactory {
    */
   public static Framework getFramework(Configuration jobConf) {
     // Check if this is a pig job
-    boolean isPig = jobConf.get(Constants.PIG_CONF_KEY) != null;
-    if (isPig) {
+    if (jobConf.get(Constants.PIG_CONF_KEY) != null) {
       return Framework.PIG;
-    } else {
-      String flowId = jobConf.get(Constants.CASCADING_FLOW_ID_CONF_KEY);
-      if ((flowId == null) || (flowId.length() == 0)) {
-        return Framework.NONE;
-      } else {
-        return Framework.SCALDING;
-      }
     }
+
+    if ((jobConf.get(Constants.CASCADING_FLOW_ID_CONF_KEY) != null)
+        && (jobConf.get(Constants.CASCADING_FLOW_ID_CONF_KEY).length() != 0)) {
+      return Framework.SCALDING;
+    }
+
+    if (Constants.FRAMEWORK_CONF_SPARK_VALUE
+            .equalsIgnoreCase(jobConf.get(Constants.FRAMEWORK_CONF_KEY))) {
+      return Framework.SPARK;
+    }
+
+    return Framework.NONE;
+
   }
 
   /**

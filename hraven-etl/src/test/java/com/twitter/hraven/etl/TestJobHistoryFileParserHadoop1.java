@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import com.google.common.io.Files;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.HistoryFileType;
 import com.twitter.hraven.JobKey;
 
 public class TestJobHistoryFileParserHadoop1 {
@@ -55,7 +56,8 @@ public class TestJobHistoryFileParserHadoop1 {
     jobConf.addResource(new Path(JOB_CONF_FILENAME));
 
     JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf,
+          HistoryFileType.ONE);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 1.0 files

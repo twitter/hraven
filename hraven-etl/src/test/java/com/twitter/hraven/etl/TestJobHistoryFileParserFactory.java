@@ -21,7 +21,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
-import com.twitter.hraven.HadoopVersion;
+import com.twitter.hraven.HistoryFileType;
 
 /**
  * Test {@link JobHistoryFileParserFactory}
@@ -35,7 +35,7 @@ public class TestJobHistoryFileParserFactory {
 		String jHist = "Meta VERSION=\"1\" .\n"
 				+ "Job JOBID=\"job_201301010000_12345\"";
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(jHist.getBytes(), null);
+				.createJobHistoryFileParser(jHist.getBytes(), null, HistoryFileType.ONE);
 
 		assertNotNull(historyFileParser);
 
@@ -52,15 +52,17 @@ public class TestJobHistoryFileParserFactory {
   @Test
   public void testGetVersion() {
     String jHist1 = "Meta VERSION=\"1\" .\n" + "Job JOBID=\"job_201301010000_12345\"";
-    HadoopVersion version1 = JobHistoryFileParserFactory.getVersion(jHist1.getBytes());
-    // confirm that we get back hadoop 1.0 version
+    HistoryFileType version1 = JobHistoryFileParserFactory.getHistoryFileType(null,
+      jHist1.getBytes());
+    // confirm that we get back hadoop 1.0 version as history file type
     assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion1(), version1);
 
     String jHist2 = "Avro-Json\n"
             + "{\"type\":\"record\",\"name\":\"Event\", "
             + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\",\"fields\":[]\"";
-    HadoopVersion version2 = JobHistoryFileParserFactory.getVersion(jHist2.getBytes());
-    // confirm that we get back hadoop 2.0 version
+    HistoryFileType version2 = JobHistoryFileParserFactory.getHistoryFileType(null,
+      jHist2.getBytes());
+    // confirm that we get back hadoop 2.0 version as history file type
     assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion2(), version2);
   }
 
@@ -68,20 +70,20 @@ public class TestJobHistoryFileParserFactory {
    * confirm that exception is thrown on incorrect input
    */
   @Test(expected = IllegalArgumentException.class)
-  public void testGetVersionIncorrect2() {
+  public void testGetHistoryFileTypeIncorrect2() {
     String jHist2 =
         "Avro-HELLO-Json\n" + "{\"type\":\"record\",\"name\":\"Event\", "
             + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\",\"fields\":[]\"";
-    JobHistoryFileParserFactory.getVersion(jHist2.getBytes());
+    JobHistoryFileParserFactory.getHistoryFileType(null, jHist2.getBytes());
   }
 
   /**
    * confirm that exception is thrown on incorrect input
    */
   @Test(expected = IllegalArgumentException.class)
-  public void testGetVersionIncorrect1() {
+  public void testGetHistoryFileTypeIncorrect1() {
     String jHist1 = "Meta HELLO VERSION=\"1\" .\n" + "Job JOBID=\"job_201301010000_12345\"";
-    JobHistoryFileParserFactory.getVersion(jHist1.getBytes());
+    JobHistoryFileParserFactory.getHistoryFileType(null, jHist1.getBytes());
   }
 
   /**
@@ -90,7 +92,7 @@ public class TestJobHistoryFileParserFactory {
 	@Test(expected = IllegalArgumentException.class)
 	public void testCreateJobHistoryFileParserNullCreation() {
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(null, null);
+				.createJobHistoryFileParser(null, null, null);
 		assertNull(historyFileParser);
 	}
 }

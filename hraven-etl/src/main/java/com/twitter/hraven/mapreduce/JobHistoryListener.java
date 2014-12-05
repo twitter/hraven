@@ -124,7 +124,7 @@ public class JobHistoryListener implements Listener {
    * @param pVersion
    * @throws IllegalArgumentException if put is null
    */
-  public void includeHadoopVersionPut(Put pVersion) {
+  public void includeHistoryFileTypePut(Put pVersion) {
 	  // set the hadoop version for this record
 	  if (pVersion != null) {
 		  this.jobPuts.add(pVersion);

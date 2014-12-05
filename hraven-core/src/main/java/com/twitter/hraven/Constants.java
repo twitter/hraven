@@ -243,6 +243,17 @@ public class Constants {
       .toBytes(SUBMIT_TIME_PREFIX_HADOOP2);
 
   /**
+   * The string representing the submit time in a spark job history file.
+   */
+  public static final String SPARK_SUBMIT_TIME = "\"submit_time\":";
+
+  /**
+   * Raw bytes representation of {@link #SPARK_SUBMIT_TIME};
+   */
+  public static final byte[] SPARK_SUBMIT_TIME_BYTES = Bytes
+      .toBytes(SPARK_SUBMIT_TIME);
+
+  /**
    * length of string that contains a unix timestamp in milliseconds
    * this length will be correct till Sat, 20 Nov 2286 which is
    * 9999999999999 in epoch time
@@ -266,6 +277,16 @@ public class Constants {
    */
   public static final int MAX_LONG_LENGTH = Long.toString(Long.MAX_VALUE)
       .length();
+
+  /**
+   * length of run id in bytes in the job key
+   */
+  public static final int RUN_ID_LENGTH_JOBKEY = 8;
+
+  /**
+   * length of sequence number in bytes in the job key
+   */
+  public static final int SEQUENCE_NUM_LENGTH_JOBKEY = 8;
 
   public static final String USER_CONF_KEY = "user.name";
   public static final String USER_CONF_KEY_HADOOP2 = "mapreduce.job.user.name";
@@ -322,6 +343,9 @@ public class Constants {
   
   public static final String MR_RUN_CONF_KEY = "mapred.app.submitted.timestamp";
 
+  public static final String FRAMEWORK_CONF_KEY = "mapreduce.framework.name";
+  public static final String FRAMEWORK_CONF_SPARK_VALUE = "spark";
+  public static final String SPARK_VERSION_CONF_KEY = "spark.signature";
   /**
    * hadoop2 memory mb for container size
    * for map, reduce and AM containers
@@ -358,7 +382,9 @@ public class Constants {
   }
 
   /**
-   * Regex to parse a job file name. First back-ref is JT name, second one if
+   * Regex to parse a job file name.
+   * It could be a job history file from a mapreduce job or a spark job
+   * First back-ref is JT name, second one if
    * job-id
    * <p>
    * For example,
@@ -372,8 +398,12 @@ public class Constants {
    * job_201306192120_0003_1371677828795_hadoop_conf.xml
    * in hadoop 2.0, job history file names are named as
    * job_1374258111572_0003-1374260622449-userName1-TeraGen-1374260635219-2-0-SUCCEEDED-default.jhist
+   * in spark, the file name looks like:
+   * spark_1413515656084_3051855
+   * and the spark conf file name:
+   * spark_1413515656084_3051855_conf.xml
    */
-  public static final String JOB_FILENAME_PATTERN_REGEX = ".*(job_[0-9]*_[0-9]*)(-|_)([0-9]*[aA-zZ]*)*(.*)$";
+  public static final String JOB_FILENAME_PATTERN_REGEX = ".*?((job|spark)_[0-9]*_[0-9]*)(-|_)*([0-9]*[aA-zZ]*)*(.*)$";
 
   // JobHistory file name parsing related
   public static final String JOB_CONF_FILE_END = "(.*)(conf.xml)$";
@@ -426,4 +456,12 @@ public class Constants {
 
   /** name of the properties file used for cluster to cluster identifier mapping */
   public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
+
+  /** spark job keys have a prefix of "spark"
+   *  hence spark job key length is calculated as
+   *        5
+   *     +
+   *        regular job key length which is 16 (epoch and sequence number)
+   */
+  public static final int SPARK_JOB_KEY_LENGTH = 21;
 }
