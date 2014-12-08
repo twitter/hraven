@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.mapred.JobHistoryCopy;
 import com.twitter.hraven.Constants;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.mapreduce.JobHistoryListener;
@@ -113,13 +114,13 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
       return Constants.NOTFOUND_VALUE;
     }
 
-    Long mapSlotMillis = jobHistoryListener.getMapSlotMillis();
-    Long reduceSlotMillis = jobHistoryListener.getReduceSlotMillis();
+    long mapSlotMillis = jobHistoryListener.getJobDetails().getMapSlotMillis();
+    long reduceSlotMillis = jobHistoryListener.getJobDetails().getReduceSlotMillis();
 
     if (jobConf == null) {
       throw new ProcessingException("JobConf is null, cannot calculate megabytemillis");
     }
-    Long xmx75 = getXmxValue(jobConf.get(Constants.JAVA_CHILD_OPTS_CONF_KEY));
+    long xmx75 = getXmxValue(jobConf.get(Constants.JAVA_CHILD_OPTS_CONF_KEY));
     if (xmx75 == 0L) {
       /** maximum heap size as per
        * http://docs.oracle.com/javase/6/docs/technotes/guides/vm/gc-ergonomics.html
@@ -130,10 +131,15 @@ public class JobHistoryFileParserHadoop1 extends JobHistoryFileParserBase {
       LOG.info("Xmx value is 0, now presuming default Xmx size "
           + Constants.DEFAULT_XMX_SETTING);
     }
-    Long xmxTotal = getXmxTotal(xmx75);
+    long xmxTotal = getXmxTotal(xmx75);
     LOG.trace("\n Xmx " + xmxTotal + ": " + mapSlotMillis + " \n " + ": "
         + reduceSlotMillis + " \n ");
     Long mbMillis = xmxTotal * mapSlotMillis + xmxTotal * reduceSlotMillis;
     return mbMillis;
+  }
+
+  @Override
+  public JobDetails getJobDetails() {
+    return jobHistoryListener.getJobDetails();
   }
 }

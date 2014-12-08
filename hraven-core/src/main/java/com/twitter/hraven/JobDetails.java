@@ -18,13 +18,10 @@ package com.twitter.hraven;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.NavigableMap;
 
 import org.apache.commons.lang.builder.CompareToBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -34,6 +31,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.apache.commons.lang.NotImplementedException;
 
 import com.twitter.hraven.datasource.JobHistoryService;
+import com.twitter.hraven.util.ByteUtil;
 
 /**
  * Represents the configuration, statistics, and counters from a single
@@ -44,8 +42,6 @@ import com.twitter.hraven.datasource.JobHistoryService;
   include= JsonSerialize.Inclusion.NON_NULL
 )
 public class JobDetails implements Comparable<JobDetails> {
-
-  private static Log LOG = LogFactory.getLog(JobDetails.class);
 
   // job key -- maps to row key
   private JobKey jobKey;
@@ -420,62 +416,6 @@ public class JobDetails implements Comparable<JobDetails> {
   }
 
   /**
-   * return a value from the Map as a Long
-   * @param key
-   * @param infoValues
-   * @return value as Long or 0L
-   */
-  static Long getValueAsLong(final JobHistoryKeys key, final Map<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(key));
-    if (value != null) {
-      try {
-      long retValue = Bytes.toLong(value);
-      return retValue;
-      } catch (NumberFormatException nfe) {
-        LOG.error("Caught NFE while converting to long " + nfe.getMessage());
-        nfe.printStackTrace();
-        return 0L;
-      } catch (IllegalArgumentException iae ) {
-        // for exceptions like java.lang.IllegalArgumentException:
-        // offset (0) + length (8) exceed the capacity of the array: 7
-        LOG.error("Caught IAE while converting to long " +  iae.getMessage());
-        iae.printStackTrace();
-        return 0L;
-      }
-    } else {
-      return 0L;
-    }
-  }
-
-  /**
-   * return a value from the Map as a Long
-   * @param key
-   * @param infoValues
-   * @return value as Long or 0L
-   */
-  static Long getValueAsLong(final byte[] key, final Map<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(key);
-    if (value != null) {
-      try {
-      long retValue = Bytes.toLong(value);
-      return retValue;
-      } catch (NumberFormatException nfe) {
-        LOG.error("Caught NFE while converting to long " + nfe.getMessage());
-        nfe.printStackTrace();
-        return 0L;
-      } catch (IllegalArgumentException iae ) {
-        // for exceptions like java.lang.IllegalArgumentException:
-        // offset (0) + length (8) exceed the capacity of the array: 7
-        LOG.error("Caught IAE while converting to long " +  iae.getMessage());
-        iae.printStackTrace();
-        return 0L;
-      }
-    } else {
-      return 0L;
-    }
-  }
-
-  /**
    * return a value for that counters from the NavigableMap as a Long
    * @param key
    * @param infoValues
@@ -488,37 +428,6 @@ public class JobDetails implements Comparable<JobDetails> {
       return c1.getValue();
     } else {
       return 0L;
-    }
-  }
-
-  /**
-   * return a value from the Map as a String
-   * @param key
-   * @param map of infoValues
-   * @return value as a String or ""
-   */
-  static String getValueAsString(final JobHistoryKeys key,
-      final Map<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(key));
-    if (value != null) {
-      return Bytes.toString(value);
-    } else {
-      return "";
-    }
-  }
-
-  /**
-   * return a value from the Map as a Double
-   * @param key to be looked up for the value
-   * @param infoValues - the map containing the key values
-   * @return value as Double or 0.0
-   */
-  public static double getValueAsDouble(byte[] key, Map<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(key);
-    if (value != null) {
-      return Bytes.toDouble(value);
-    } else {
-      return 0.0;
     }
   }
 
@@ -541,76 +450,54 @@ public class JobDetails implements Comparable<JobDetails> {
     }
   }
 
-  /**
-   * get value from a map as an int
-   * @param key
-   * @param infoValues
-   * @return int
-   */
-  static int getValueAsInt(JobHistoryKeys key, Map<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(JobHistoryKeys.KEYS_TO_BYTES.get(key));
-    if (value != null) {
-      try {
-        int retValue = Bytes.toInt(value);
-        return retValue;
-      } catch (NumberFormatException nfe) {
-        LOG.error("Caught NFE while converting to int " + nfe.getMessage());
-        nfe.printStackTrace();
-        return 0;
-      } catch (IllegalArgumentException iae) {
-        // for exceptions like java.lang.IllegalArgumentException:
-        // offset (0) + length (8) exceed the capacity of the array: 7
-        LOG.error("Caught IAE while converting to int " + iae.getMessage());
-        iae.printStackTrace();
-        return 0;
-      }
-    } else {
-      return 0;
-    }
-  }
-
-  /**
-   * return a value from the result as a String
-   * @param key
-   * @param infoValues
-   * @return value as a String or ""
-   */
-  static String getValueAsString(final byte[] key, final NavigableMap<byte[], byte[]> infoValues) {
-    byte[] value = infoValues.get(key);
-    if (value != null) {
-      return Bytes.toString(value);
-    } else {
-      return "";
-    }
-  }
-
   /** TODO: refactor this out into a data access layer */
   public void populate(Result result) {
     // process job-level stats and properties
     NavigableMap<byte[], byte[]> infoValues = result.getFamilyMap(Constants.INFO_FAM_BYTES);
 
-    this.jobId = getValueAsString(JobHistoryKeys.JOBID, infoValues);
-    this.user = getValueAsString(JobHistoryKeys.USER, infoValues);
-    this.jobName = getValueAsString(JobHistoryKeys.JOBNAME, infoValues);
-    this.priority = getValueAsString(JobHistoryKeys.JOB_PRIORITY, infoValues);
-    this.status = getValueAsString(JobHistoryKeys.JOB_STATUS, infoValues);
+    this.jobId = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.JOBID), infoValues);
+    this.user = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.USER), infoValues);
+    this.jobName = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.JOBNAME),infoValues);
+    this.priority = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.JOB_PRIORITY), infoValues);
+    this.status = ByteUtil.getValueAsString(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.JOB_STATUS), infoValues);
     this.hadoopVersion = getHadoopVersionFromResult(JobHistoryKeys.hadoopversion, infoValues);
-    this.version = getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues);
-    this.cost = getValueAsDouble(Constants.JOBCOST_BYTES, infoValues);
+    this.version = ByteUtil.getValueAsString(Constants.VERSION_COLUMN_BYTES, infoValues);
+    this.cost = ByteUtil.getValueAsDouble(Constants.JOBCOST_BYTES, infoValues);
 
     // times
-    this.submitTime = getValueAsLong(JobHistoryKeys.SUBMIT_TIME, infoValues);
-    this.launchTime = getValueAsLong(JobHistoryKeys.LAUNCH_TIME, infoValues);
-    this.finishTime = getValueAsLong(JobHistoryKeys.FINISH_TIME, infoValues);
-    this.megabyteMillis = getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues);
+    this.submitTime = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.SUBMIT_TIME), infoValues);
+    this.launchTime = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.LAUNCH_TIME), infoValues);
+    this.finishTime = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES
+          .get(JobHistoryKeys.FINISH_TIME), infoValues);
+    this.megabyteMillis = ByteUtil.getValueAsLong(Constants.MEGABYTEMILLIS_BYTES, infoValues);
+    this.cost = ByteUtil.getValueAsDouble(Constants.JOBCOST_BYTES, infoValues);
 
     // task counts
-    this.totalMaps = getValueAsLong(JobHistoryKeys.TOTAL_MAPS, infoValues);
-    this.totalReduces = getValueAsLong(JobHistoryKeys.TOTAL_REDUCES, infoValues);
-    this.finishedMaps = getValueAsLong(JobHistoryKeys.FINISHED_MAPS, infoValues);
-    this.finishedReduces = getValueAsLong(JobHistoryKeys.FINISHED_REDUCES, infoValues);
-    this.failedMaps = getValueAsLong(JobHistoryKeys.FAILED_MAPS, infoValues);
-    this.failedReduces = getValueAsLong(JobHistoryKeys.FAILED_REDUCES, infoValues);
+    this.totalMaps =
+        ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_MAPS),
+          infoValues);
+    this.totalReduces =
+        ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_REDUCES),
+          infoValues);
+    this.finishedMaps =
+        ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISHED_MAPS),
+          infoValues);
+    this.finishedReduces =
+        ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISHED_REDUCES),
+          infoValues);
+    this.failedMaps =
+        ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FAILED_MAPS),
+          infoValues);
+    this.failedReduces =
+        ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FAILED_REDUCES),
+          infoValues);
 
     this.config = JobHistoryService.parseConfiguration(infoValues);
     this.queue = this.config.get(Constants.HRAVEN_QUEUE);
