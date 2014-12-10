@@ -298,8 +298,19 @@ public class JobFilePreprocessor extends Configured implements Tool {
       ProcessRecord lastProcessRecord = null;
 
       if (!forceAllFiles) {
+        // need to pass in the output dir since there may be multiple
+        // process records for the same cluster, e.g.
+        // mapreduce and spark
         lastProcessRecord = processRecordService
-            .getLastSuccessfulProcessRecord(cluster);
+            .getLastSuccessfulProcessRecord(cluster, output);
+        LOG.info("Fetched last process record for"
+              + " processFileSubString=" + output + " details are "
+              + " key=" + lastProcessRecord.getKey()
+              + " processFile=" + lastProcessRecord.getProcessFile()
+              + " cluster=" + lastProcessRecord.getCluster()
+              + " maxJobId=" + lastProcessRecord.getMaxJobId()
+              + " minJobId=" + lastProcessRecord.getMinJobId()
+              + " processState=" + lastProcessRecord.getProcessState());
       }
 
       long minModificationTimeMillis = 0;

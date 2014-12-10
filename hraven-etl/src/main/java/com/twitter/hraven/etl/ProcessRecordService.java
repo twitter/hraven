@@ -162,6 +162,27 @@ public class ProcessRecordService {
   /**
    * @param cluster
    *          for which to return the last ProcessRecord.
+   * @param processFileSubstring
+   *          the processing file substring for the process record
+   * @return the last process record that is not in {@link ProcessState#CREATED}
+   *         state.
+   * @throws IOException
+   */
+  public ProcessRecord getLastSuccessfulProcessRecord(String cluster,
+      String processFileSubstring)
+      throws IOException {
+    List<ProcessRecord> processRecords = getProcessRecords(cluster, NOT_EQUAL,
+        CREATED, 1, processFileSubstring);
+    if (processRecords.size() > 0) {
+      return processRecords.get(0);
+    }
+    // Did not get any record.
+    return null;
+  }
+
+  /**
+   * @param cluster
+   *          for which to return the last ProcessRecord.
    * @param maxCount
    *          the maximum number of results to return.
    * @param processFileSubstring
