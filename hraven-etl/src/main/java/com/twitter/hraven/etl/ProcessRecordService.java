@@ -150,13 +150,7 @@ public class ProcessRecordService {
    */
   public ProcessRecord getLastSuccessfulProcessRecord(String cluster)
       throws IOException {
-    List<ProcessRecord> processRecords = getProcessRecords(cluster, NOT_EQUAL,
-        CREATED, 1, null);
-    if (processRecords.size() > 0) {
-      return processRecords.get(0);
-    }
-    // Did not get any record.
-    return null;
+    return getLastSuccessfulProcessRecord(cluster, null);
   }
 
   /**
