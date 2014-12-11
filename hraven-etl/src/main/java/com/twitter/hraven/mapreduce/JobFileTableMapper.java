@@ -94,6 +94,9 @@ public class JobFileTableMapper extends
 
   private long keyCount = 0;
 
+  /** indicates if this map attempt is the first */
+  private boolean isThisAttemptTheFirst = true;
+
   /**
    * @return the key class for the job output data.
    */
@@ -118,6 +121,15 @@ public class JobFileTableMapper extends
     rawService = new JobHistoryRawService(myConf);
 
     keyCount = 0;
+    String attemptid = context.getTaskAttemptID().toString();
+    if (attemptid != null) {
+      /*
+       * attempt ids usually look like attempt_201312051846_640924_m_000007_1
+       * or attempt_1410982972375_22309_m_000000_0
+       * the last character if 0 indicates that this is the first task attempt
+       */
+      isThisAttemptTheFirst = (attemptid.endsWith("0") ? true : false);
+    }
   }
 
   @Override
@@ -162,6 +174,21 @@ public class JobFileTableMapper extends
       JobDesc jobDesc = JobDescFactory.createJobDesc(qualifiedJobId,
           submitTimeMillis, jobConf);
       JobKey jobKey = new JobKey(jobDesc);
+      context.progress();
+
+      /* At times, a map task attempt is restarted due to a failure
+       * in the previous attempt while processing some history file
+       * In such cases, previous jobs in this process record
+       * may have already been processed
+       * Hence check the processing status of the job before proceeding
+       * The check is done only if this is NOT the first attempt
+       */
+      if ((!isThisAttemptTheFirst)
+          && (rawService.isJobAlreadyProcessed(jobKeyConv.toBytes(jobKey)))) {
+        LOG.info("Job " + jobKey.toString()
+            + " has already been proccessed successfully, returning.");
+        return;
+      }
       context.progress();
 
       // TODO: remove sysout

@@ -472,6 +472,37 @@ public class JobHistoryRawService {
   }
 
   /**
+   * @param row
+   *          the identifier of the row in the RAW table. Cannot be null.
+   *
+   * @return a boolean to indicate if this job has already been processed successfully
+   */
+  public boolean isJobAlreadyProcessed(byte[] row) {
+    Get get = new Get(row);
+    get.addColumn(Constants.INFO_FAM_BYTES, Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
+
+    boolean success = false;
+    Result result = null;
+    try {
+      result = rawTable.get(get);
+    } catch (IOException e) {
+      return success;
+    }
+    try {
+      if (result != null && !result.isEmpty()) {
+        byte[] successBytes = result.getValue(Constants.INFO_FAM_BYTES,
+            Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
+        if (successBytes != null) {
+          success = Bytes.toBoolean(successBytes);
+        }
+      }
+    } catch (Exception e) {
+      return success;
+    }
+    return success;
+  }
+
+  /**
    * attempts to approximately set the job submit time based on the last modification time of the
    * job history file
    * @param hbase result
