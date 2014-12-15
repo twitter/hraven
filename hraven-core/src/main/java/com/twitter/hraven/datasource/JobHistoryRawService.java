@@ -481,25 +481,25 @@ public class JobHistoryRawService {
     Get get = new Get(row);
     get.addColumn(Constants.INFO_FAM_BYTES, Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
 
-    boolean success = false;
+    boolean processed = false;
     Result result = null;
     try {
       result = rawTable.get(get);
     } catch (IOException e) {
-      return success;
+      return processed;
     }
     try {
       if (result != null && !result.isEmpty()) {
-        byte[] successBytes = result.getValue(Constants.INFO_FAM_BYTES,
+        byte[] processedSuccessBytes = result.getValue(Constants.INFO_FAM_BYTES,
             Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
-        if (successBytes != null) {
-          success = Bytes.toBoolean(successBytes);
+        if (processedSuccessBytes != null) {
+          processed = Bytes.toBoolean(processedSuccessBytes);
         }
       }
+      return processed;
     } catch (Exception e) {
-      return success;
+      return processed;
     }
-    return success;
   }
 
   /**

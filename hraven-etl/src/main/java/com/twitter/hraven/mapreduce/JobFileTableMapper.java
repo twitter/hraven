@@ -128,7 +128,7 @@ public class JobFileTableMapper extends
        * or attempt_1410982972375_22309_m_000000_0
        * the last character if 0 indicates that this is the first task attempt
        */
-      isThisAttemptTheFirst = (attemptid.endsWith("0") ? true : false);
+      isThisAttemptTheFirst = attemptid.endsWith("0");
     }
   }
 
