@@ -475,31 +475,37 @@ public class JobHistoryRawService {
    * @param row
    *          the identifier of the row in the RAW table. Cannot be null.
    *
-   * @return a boolean to indicate if this job has already been processed successfully
+   * @return processing status as seen in hbase column value
+   *         true
+   *             if this job has already been processed successfully
+   *         false
+   *            if it hasn't been processed yet or
+   *            if an exception occurs during the table operations
    */
-  public boolean isJobAlreadyProcessed(byte[] row) {
+  public boolean isJobAlreadyProcessed(byte[] row) throws ProcessingException {
+    if (row == null) {
+      throw new ProcessingException("Row key can't be null");
+    }
     Get get = new Get(row);
     get.addColumn(Constants.INFO_FAM_BYTES, Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
 
-    boolean processed = false;
     Result result = null;
     try {
       result = rawTable.get(get);
     } catch (IOException e) {
-      return processed;
+      // safer to return false on account of the exception caught
+      // while trying to get the value from the raw table
+      return false;
     }
-    try {
-      if (result != null && !result.isEmpty()) {
-        byte[] processedSuccessBytes = result.getValue(Constants.INFO_FAM_BYTES,
-            Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
-        if (processedSuccessBytes != null) {
-          processed = Bytes.toBoolean(processedSuccessBytes);
-        }
+    if (result != null && !result.isEmpty()) {
+      byte[] processedSuccessBytes =
+          result.getValue(Constants.INFO_FAM_BYTES, Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
+      if (processedSuccessBytes != null) {
+        return Bytes.toBoolean(processedSuccessBytes);
       }
-      return processed;
-    } catch (Exception e) {
-      return processed;
     }
+    // return false since the column was not found in the table
+    return false;
   }
 
   /**

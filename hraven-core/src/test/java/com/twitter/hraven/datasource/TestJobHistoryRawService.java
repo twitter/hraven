@@ -32,7 +32,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.twitter.hraven.Constants;
-import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobId;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.Range;
@@ -199,6 +198,14 @@ public class TestJobHistoryRawService {
           "job_20140101000100_2041");
     JobKeyConverter keyConv = new JobKeyConverter();
     boolean success = rawService.isJobAlreadyProcessed(keyConv.toBytes(key));
+    assertEquals(false, success);
+
+  }
+
+  @Test(expected=ProcessingException.class)
+  public void testIsJobAlreadyProcessedNullRowKey() throws IOException {
+    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
+    boolean success = rawService.isJobAlreadyProcessed(null);
     assertEquals(false, success);
 
   }
