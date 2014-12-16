@@ -303,7 +303,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
         // mapreduce and spark
         lastProcessRecord = processRecordService
             .getLastSuccessfulProcessRecord(cluster, output);
-        LOG.info("Fetched last process record for"
+        if (lastProcessRecord != null) {
+          LOG.info("Fetched last process record for"
               + " processFileSubString=" + output + " details are "
               + " key=" + lastProcessRecord.getKey()
               + " processFile=" + lastProcessRecord.getProcessFile()
@@ -311,6 +312,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
               + " maxJobId=" + lastProcessRecord.getMaxJobId()
               + " minJobId=" + lastProcessRecord.getMinJobId()
               + " processState=" + lastProcessRecord.getProcessState());
+        }
       }
 
       long minModificationTimeMillis = 0;
