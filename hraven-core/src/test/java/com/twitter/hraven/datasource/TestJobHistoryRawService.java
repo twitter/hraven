@@ -24,6 +24,8 @@ import java.util.TreeSet;
 
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.BeforeClass;
@@ -31,6 +33,7 @@ import org.junit.Test;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobId;
+import com.twitter.hraven.JobKey;
 import com.twitter.hraven.Range;
 import com.twitter.hraven.util.BatchUtil;
 
@@ -161,4 +164,49 @@ public class TestJobHistoryRawService {
     assertEquals(expts, st);
   }
 
+  @Test
+  public void testIsJobAlreadyProcessed() throws IOException {
+    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
+    HTable rawTable =  new HTable(UTIL.getConfiguration(),
+      Constants.HISTORY_RAW_TABLE_BYTES);
+
+    JobKeyConverter keyConv = new JobKeyConverter();
+    String jobId = "job_20140101000100_1041";
+    String cluster = "cluster1@idenfifier1";
+    String user = "user2";
+    String app = "SomeApplicationName";
+    long runId = 1418170747019L;
+    JobKey key = new JobKey(cluster, user, app, runId, jobId);
+    Put p = new Put(keyConv.toBytes(key));
+    p.add(Constants.INFO_FAM_BYTES,
+      Constants.JOB_PROCESSED_SUCCESS_COL_BYTES,
+      Bytes.toBytes(true));
+    rawTable.put(p);
+
+    boolean success = rawService.isJobAlreadyProcessed(keyConv.toBytes(key));
+    assertEquals(success, true);
+  }
+
+  @Test
+  public void testIsJobAlreadyProcessedNonExistentRecord() throws IOException {
+    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
+    // check for non existent record
+    JobKey key = new JobKey("cluster2@identifier3",
+          "nonExistentUser1",
+          "SomeAppThatDoesNotExist",
+          1418170747019L,
+          "job_20140101000100_2041");
+    JobKeyConverter keyConv = new JobKeyConverter();
+    boolean success = rawService.isJobAlreadyProcessed(keyConv.toBytes(key));
+    assertEquals(false, success);
+
+  }
+
+  @Test(expected=ProcessingException.class)
+  public void testIsJobAlreadyProcessedNullRowKey() throws IOException {
+    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
+    boolean success = rawService.isJobAlreadyProcessed(null);
+    assertEquals(false, success);
+
+  }
 }

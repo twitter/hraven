@@ -472,6 +472,43 @@ public class JobHistoryRawService {
   }
 
   /**
+   * @param row
+   *          the identifier of the row in the RAW table. Cannot be null.
+   *
+   * @return processing status as seen in hbase column value
+   *         true
+   *             if this job has already been processed successfully
+   *         false
+   *            if it hasn't been processed yet or
+   *            if an exception occurs during the table operations
+   */
+  public boolean isJobAlreadyProcessed(byte[] row) throws ProcessingException {
+    if (row == null) {
+      throw new ProcessingException("Row key can't be null");
+    }
+    Get get = new Get(row);
+    get.addColumn(Constants.INFO_FAM_BYTES, Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
+
+    Result result = null;
+    try {
+      result = rawTable.get(get);
+    } catch (IOException e) {
+      // safer to return false on account of the exception caught
+      // while trying to get the value from the raw table
+      return false;
+    }
+    if (result != null && !result.isEmpty()) {
+      byte[] processedSuccessBytes =
+          result.getValue(Constants.INFO_FAM_BYTES, Constants.JOB_PROCESSED_SUCCESS_COL_BYTES);
+      if (processedSuccessBytes != null) {
+        return Bytes.toBoolean(processedSuccessBytes);
+      }
+    }
+    // return false since the column was not found in the table
+    return false;
+  }
+
+  /**
    * attempts to approximately set the job submit time based on the last modification time of the
    * job history file
    * @param hbase result
