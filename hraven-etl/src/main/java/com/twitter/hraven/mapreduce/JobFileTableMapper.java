@@ -129,6 +129,7 @@ public class JobFileTableMapper extends
        * the last character if 0 indicates that this is the first task attempt
        */
       isThisAttemptTheFirst = attemptid.endsWith("0");
+      LOG.info("isThisAttemptTheFirst=" + isThisAttemptTheFirst);
     }
   }
 
@@ -327,14 +328,7 @@ public class JobFileTableMapper extends
 
     // Indicate that we processed the RAW successfully so that we can skip it
     // on the next scan (or not).
-    Put successPut = rawService.getJobProcessedSuccessPut(value.getRow(),
-        success);
-    // TODO: In the unlikely event of multiple mappers running against one RAW
-    // row, with one succeeding and one failing, there could be a race where the
-    // raw does not properly indicate the true status (which is questionable in
-    // any case with multiple simultaneous runs with different outcome).
-    context.write(RAW_TABLE, successPut);
-
+    rawService.doJobProcessedSuccessPut(value.getRow(), success);
   }
 
   /**

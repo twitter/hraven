@@ -275,7 +275,8 @@ public class JobFileProcessor extends Configured implements Tool {
 
     boolean success = false;
     if (reprocess) {
-      success = reProcessRecords(hbaseConf, cluster, batchSize, threadCount);
+      success = reProcessRecords(hbaseConf, cluster, batchSize, threadCount,
+        processFileSubstring);
     } else {
       success = processRecords(hbaseConf, cluster, batchSize, threadCount,
           processFileSubstring);
@@ -335,7 +336,8 @@ public class JobFileProcessor extends Configured implements Tool {
     }
 
     List<JobRunner> jobRunners = getJobRunners(conf, cluster, false, batchSize,
-        minMaxJobFileTracker.getMinJobId(), minMaxJobFileTracker.getMaxJobId());
+        minMaxJobFileTracker.getMinJobId(), minMaxJobFileTracker.getMaxJobId(),
+        processFileSubstring);
 
     boolean success = runJobs(threadCount, jobRunners);
     if (success) {
@@ -367,11 +369,11 @@ public class JobFileProcessor extends Configured implements Tool {
    * @throws RowKeyParseException
    */
   boolean reProcessRecords(Configuration conf, String cluster, int batchSize,
-      int threadCount) throws IOException, InterruptedException,
+      int threadCount, String processFileSubstring) throws IOException, InterruptedException,
       ClassNotFoundException, ExecutionException, RowKeyParseException {
 
     List<JobRunner> jobRunners = getJobRunners(conf, cluster, true, batchSize,
-        null, null);
+        null, null, processFileSubstring);
 
     boolean success = runJobs(threadCount, jobRunners);
     return success;
@@ -537,7 +539,8 @@ public class JobFileProcessor extends Configured implements Tool {
    * @throws RowKeyParseException
    */
   private List<JobRunner> getJobRunners(Configuration conf, String cluster,
-      boolean reprocess, int batchSize, String minJobId, String maxJobId)
+      boolean reprocess, int batchSize, String minJobId, String maxJobId,
+      String processFileSubstring)
       throws IOException, InterruptedException, ClassNotFoundException,
       RowKeyParseException {
     List<JobRunner> jobRunners = new LinkedList<JobRunner>();
@@ -553,7 +556,7 @@ public class JobFileProcessor extends Configured implements Tool {
           cluster, minJobId, maxJobId, reprocess, batchSize);
 
       for (Scan scan : scanList) {
-        Job job = getProcessingJob(conf, scan, scanList.size());
+        Job job = getProcessingJob(conf, scan, scanList.size(), processFileSubstring);
 
         JobRunner jobRunner = new JobRunner(job, null);
         jobRunners.add(jobRunner);
@@ -588,7 +591,8 @@ public class JobFileProcessor extends Configured implements Tool {
    * @throws InterruptedException
    * @throws ClassNotFoundException
    */
-  private Job getProcessingJob(Configuration conf, Scan scan, int totalJobCount)
+  private Job getProcessingJob(Configuration conf, Scan scan, int totalJobCount,
+        String processFileSubstring)
       throws IOException {
 
     Configuration confClone = new Configuration(conf);
@@ -598,7 +602,7 @@ public class JobFileProcessor extends Configured implements Tool {
     confClone.setBoolean("mapred.map.tasks.speculative.execution", false);
 
     // Set up job
-    Job job = new Job(confClone, getJobName(totalJobCount));
+    Job job = new Job(confClone, getJobName(totalJobCount, processFileSubstring));
 
     // This is a map-only class, skip reduce step
     job.setNumReduceTasks(0);
@@ -618,8 +622,8 @@ public class JobFileProcessor extends Configured implements Tool {
    *          name how far along this job is.
    * @return the name to use for each consecutive Hadoop job to launch.
    */
-  private synchronized String getJobName(int totalJobCount) {
-    String jobName = NAME + " [" + startTimestamp + " "
+  private synchronized String getJobName(int totalJobCount, String processFileSubstring) {
+    String jobName = NAME + " [" + processFileSubstring +" " + startTimestamp + " "
         + jobCounter.incrementAndGet() + "/" + totalJobCount + "]";
     return jobName;
   }

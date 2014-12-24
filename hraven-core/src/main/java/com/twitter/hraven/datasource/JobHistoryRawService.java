@@ -495,6 +495,7 @@ public class JobHistoryRawService {
     } catch (IOException e) {
       // safer to return false on account of the exception caught
       // while trying to get the value from the raw table
+      LOG.info("returning false, error in get", e);
       return false;
     }
     if (result != null && !result.isEmpty()) {
@@ -587,5 +588,9 @@ public class JobHistoryRawService {
 
     byte[] jobHistoryRaw = keyValue.getValue();
     return jobHistoryRaw;
+  }
+
+  public void doJobProcessedSuccessPut(byte[] row, boolean status) throws IOException {
+    rawTable.put(getJobProcessedSuccessPut(row, status));
   }
 }
