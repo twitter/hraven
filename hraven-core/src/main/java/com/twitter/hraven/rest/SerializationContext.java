@@ -52,6 +52,11 @@ public class SerializationContext {
     APP_SUMMARY_STATS_NEW_JOBS_ONLY,
 
     /**
+     * return all apps
+     */
+    APP_SUMMARY_STATS_ALL_APPS,
+
+    /**
      * Indicating that job details along with summary stats are to be returned
      */
     FLOW_SUMMARY_STATS_WITH_JOB_STATS;

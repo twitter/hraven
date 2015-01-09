@@ -46,5 +46,18 @@ create 'flow_queue', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFIL
 # flow_event - stores events fired during pig job execution
 create 'flow_event', {NAME => 'i', VERSIONS => 3, COMPRESSION => 'LZO', BLOOMFILTER => 'ROW'}
 
+# job_history_agg_daily - stores daily aggregated job info
+# the s column family has a TTL of 30 days, it's used as a scratch col family
+# it stores the run ids that are seen for that day
+# we assume that a flow will not run for more than 30 days, hence it's fine to "expire" that data
+create 'job_history_agg_daily', {NAME => 'i', COMPRESSION => 'LZO', BLOOMFILTER => 'ROWCOL'},
+                           {NAME => 's', VERSIONS => 1, COMPRESSION => 'LZO', BLOCKCACHE => false, TTL => '2592000'}
+
+# job_history_agg_weekly - stores weekly aggregated job info
+# the s column family has a TTL of 30 days
+# it stores the run ids that are seen for that week
+# we assume that a flow will not run for more than 30 days, hence it's fine to "expire" that data
+create 'job_history_agg_weekly', {NAME => 'i', COMPRESSION => 'LZO', BLOOMFILTER => 'ROWCOL'},
+                           {NAME => 's', VERSIONS => 1, COMPRESSION => 'LZO', BLOCKCACHE => false, TTL => '2592000'}
 
 exit

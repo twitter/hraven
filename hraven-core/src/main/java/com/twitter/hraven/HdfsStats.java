@@ -22,6 +22,8 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.client.Result;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 
+import com.twitter.hraven.util.ByteUtil;
+
 
 /**
  * An HdfsStats object represents information about a particular
@@ -251,21 +253,21 @@ public class HdfsStats implements Comparable<HdfsStats> {
     NavigableMap<byte[], byte[]> infoValues =
         result.getFamilyMap(HdfsConstants.DISK_INFO_FAM_BYTES);
 
-    this.fileCount += JobDetails.getValueAsLong(HdfsConstants.FILE_COUNT_COLUMN_BYTES, infoValues);
-    this.dirCount += JobDetails.getValueAsLong(HdfsConstants.DIR_COUNT_COLUMN_BYTES, infoValues);
-    this.spaceConsumed += JobDetails.getValueAsLong(HdfsConstants.SPACE_CONSUMED_COLUMN_BYTES,
+    this.fileCount += ByteUtil.getValueAsLong(HdfsConstants.FILE_COUNT_COLUMN_BYTES, infoValues);
+    this.dirCount += ByteUtil.getValueAsLong(HdfsConstants.DIR_COUNT_COLUMN_BYTES, infoValues);
+    this.spaceConsumed += ByteUtil.getValueAsLong(HdfsConstants.SPACE_CONSUMED_COLUMN_BYTES,
           infoValues);
-    this.accessCountTotal += JobDetails.getValueAsLong(HdfsConstants.ACCESS_COUNT_TOTAL_COLUMN_BYTES,
+    this.accessCountTotal += ByteUtil.getValueAsLong(HdfsConstants.ACCESS_COUNT_TOTAL_COLUMN_BYTES,
       infoValues);
-    this.owner = JobDetails.getValueAsString(HdfsConstants.OWNER_COLUMN_BYTES, infoValues);
-    this.quota += JobDetails.getValueAsLong(HdfsConstants.QUOTA_COLUMN_BYTES, infoValues);
-    this.spaceQuota += JobDetails.getValueAsLong(HdfsConstants.SPACE_QUOTA_COLUMN_BYTES, infoValues);
-    this.tmpFileCount += JobDetails.getValueAsLong(HdfsConstants.TMP_FILE_COUNT_COLUMN_BYTES, infoValues);
-    this.tmpSpaceConsumed += JobDetails.getValueAsLong(HdfsConstants.TMP_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
-    this.trashFileCount += JobDetails.getValueAsLong(HdfsConstants.TRASH_FILE_COUNT_COLUMN_BYTES, infoValues);
-    this.trashSpaceConsumed += JobDetails.getValueAsLong(HdfsConstants.TRASH_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
-    this.accessCost += JobDetails.getValueAsDouble(HdfsConstants.ACCESS_COST_COLUMN_BYTES, infoValues);
-    this.storageCost += JobDetails.getValueAsDouble(HdfsConstants.STORAGE_COST_COLUMN_BYTES, infoValues);
+    this.owner = ByteUtil.getValueAsString(HdfsConstants.OWNER_COLUMN_BYTES, infoValues);
+    this.quota += ByteUtil.getValueAsLong(HdfsConstants.QUOTA_COLUMN_BYTES, infoValues);
+    this.spaceQuota += ByteUtil.getValueAsLong(HdfsConstants.SPACE_QUOTA_COLUMN_BYTES, infoValues);
+    this.tmpFileCount += ByteUtil.getValueAsLong(HdfsConstants.TMP_FILE_COUNT_COLUMN_BYTES, infoValues);
+    this.tmpSpaceConsumed += ByteUtil.getValueAsLong(HdfsConstants.TMP_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
+    this.trashFileCount += ByteUtil.getValueAsLong(HdfsConstants.TRASH_FILE_COUNT_COLUMN_BYTES, infoValues);
+    this.trashSpaceConsumed += ByteUtil.getValueAsLong(HdfsConstants.TRASH_SPACE_CONSUMED_COLUMN_BYTES, infoValues);
+    this.accessCost += ByteUtil.getValueAsDouble(HdfsConstants.ACCESS_COST_COLUMN_BYTES, infoValues);
+    this.storageCost += ByteUtil.getValueAsDouble(HdfsConstants.STORAGE_COST_COLUMN_BYTES, infoValues);
     this.hdfsCost = calculateHDFSCost();
 
   }
