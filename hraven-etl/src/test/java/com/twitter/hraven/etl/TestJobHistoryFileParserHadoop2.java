@@ -311,4 +311,33 @@ public class TestJobHistoryFileParserHadoop2 {
     // ensure that we got the hadoop2 version put
     assertTrue(foundQueue);
   }
+
+  @Test
+  public void testCreateJobHistoryFileParserJobError() throws IOException {
+    final String JOB_HISTORY_FILE_NAME = "src/test/resources/" +
+        "job_1300307629410_0001-1393307687476-user1-Example+job-1393307723835-0-0-ERROR-default-1393307693920.jhist";
+
+    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
+    byte[] contents = Files.toByteArray(jobHistoryfile);
+
+    JobHistoryFileParser historyFileParser =
+        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, new Configuration(),
+          HistoryFileType.TWO);
+    assertNotNull(historyFileParser);
+
+    // confirm that we get back an object that can parse hadoop 2.0 files
+    assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
+
+    JobKey jobKey = new JobKey("cluster1", "user1", "Example job", 1, "job_1300307629410_0001");
+    // this would throw an exception when JOB_ERROR was not added as a record type
+    // check that processing goes ahead
+    historyFileParser.parse(contents, jobKey);
+    List<Put> jobPuts = historyFileParser.getJobPuts();
+    assertEquals(6, jobPuts.size());
+
+    JobKeyConverter jobKeyConv = new JobKeyConverter();
+    assertEquals("cluster1!user1!Example job!1!job_1300307629410_0001",
+      jobKeyConv.fromBytes(jobPuts.get(0).getRow()).toString());
+
+  }
 }
