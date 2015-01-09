@@ -588,4 +588,48 @@ public class JobHistoryRawService {
     byte[] jobHistoryRaw = keyValue.getValue();
     return jobHistoryRaw;
   }
+
+  /**
+   * creates a put to be updated into the RAW table for aggregation status
+   * @param row key
+   * @param status of aggregation
+   * @return {@link Put}
+   */
+  public Put getAggregatedStatusPut(byte[] row, byte[] col, Boolean status) {
+    Put put = new Put(row);
+    put.add(Constants.INFO_FAM_BYTES,
+      col,
+      Bytes.toBytes(status));
+    try {
+      LOG.info(" agg status " + status + " and put " + put.toJSON() );
+    } catch (IOException e) {
+      // ignore json exception
+    }
+    return put;
+  }
+
+  /**
+   * creates a Get to be fetch  daily aggregation status from the RAW table
+   * @param row key
+   * @return {@link Get}
+   * @throws IOException
+   */
+  public boolean getStatusAgg(byte[] row, byte[] col) throws IOException {
+    Get g = new Get(row);
+    g.addColumn(Constants.INFO_FAM_BYTES, col);
+    Result r = rawTable.get(g);
+    KeyValue kv = r.getColumnLatest(Constants.INFO_FAM_BYTES, col);
+    boolean status = false;
+    try {
+      if (kv != null) {
+        status = Bytes.toBoolean(kv.getValue());
+      }
+    } catch (IllegalArgumentException iae) {
+      LOG.error("Caught " + iae);
+    }
+    LOG.info("Returning from Raw, " + Bytes.toString(col)
+      + " for this job=" + status);
+    return status;
+  }
+
 }

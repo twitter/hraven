@@ -17,6 +17,8 @@ package com.twitter.hraven.etl;
 
 import java.util.List;
 import org.apache.hadoop.hbase.client.Put;
+
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.ProcessingException;
 
@@ -60,4 +62,10 @@ public interface JobHistoryFileParser {
 	 */
 	public List<Put> getTaskPuts();
 
+	/**
+	 * get the Job Details object for this history file so that
+	 * it can be used for storing aggregation summary
+	 * @return JobDetails
+	 */
+	public JobDetails getJobDetails();
 }

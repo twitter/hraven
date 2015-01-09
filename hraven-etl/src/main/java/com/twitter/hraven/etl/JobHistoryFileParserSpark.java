@@ -34,6 +34,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.HistoryFileType;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.datasource.JobKeyConverter;
@@ -46,6 +47,7 @@ public class JobHistoryFileParserSpark extends JobHistoryFileParserBase {
   private List<Put> taskPuts = new LinkedList<Put>();
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
   private long megabytemillis;
+  private JobDetails jobDetails = null;
   private static final Log LOG = LogFactory.getLog(JobHistoryFileParserSpark.class);
 
   public JobHistoryFileParserSpark(Configuration jobConf) {
@@ -56,6 +58,7 @@ public class JobHistoryFileParserSpark extends JobHistoryFileParserBase {
   public void parse(byte[] historyFile, JobKey jobKey) {
     byte[] jobKeyBytes = jobKeyConv.toBytes(jobKey);
     Put sparkJobPuts = new Put(jobKeyBytes);
+    this.jobDetails = new JobDetails(jobKey);
 
     ObjectMapper objectMapper = new ObjectMapper();
     try {
@@ -91,6 +94,12 @@ public class JobHistoryFileParserSpark extends JobHistoryFileParserBase {
                 // us a default value
                 valueBytes = Constants.ZERO_LONG_BYTES;
               }
+              // populate the job details
+              if (key.compareToIgnoreCase(JobHistoryKeys.SUBMIT_TIME.toString()) == 0) {
+                jobDetails.setSubmitTime(field.getValue().getLongValue());
+              } else if (key.compareToIgnoreCase(JobHistoryKeys.FINISH_TIME.toString()) == 0) {
+                jobDetails.setFinishTime(field.getValue().getLongValue());
+              }
             } else {
               // keep the string representation by default
               valueBytes = Bytes.toBytes(field.getValue().getTextValue());
@@ -116,11 +125,15 @@ public class JobHistoryFileParserSpark extends JobHistoryFileParserBase {
           } else if (StringUtils.equals(key.toLowerCase(), Constants.MEGABYTEMILLIS)) {
             qualifier = Constants.MEGABYTEMILLIS_BYTES;
             this.megabytemillis = field.getValue().getLongValue();
+            this.jobDetails.setMegabyteMillis(this.megabytemillis);
             valueBytes = Bytes.toBytes(this.megabytemillis);
           } else {
             // simply store the key as is
             qualifier = Bytes.toBytes(key.toLowerCase());
             valueBytes = Bytes.toBytes(field.getValue().getTextValue());
+            if (key.compareToIgnoreCase(Constants.HRAVEN_QUEUE) == 0) {
+              jobDetails.setQueue(field.getValue().getTextValue());
+            }
           }
         }
         sparkJobPuts.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
@@ -153,6 +166,11 @@ public class JobHistoryFileParserSpark extends JobHistoryFileParserBase {
   @Override
   public List<Put> getTaskPuts() {
     return this.taskPuts;
+  }
+
+  @Override
+  public JobDetails getJobDetails() {
+    return this.jobDetails ;
   }
 
 }

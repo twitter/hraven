@@ -325,7 +325,43 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeFieldName("lastRunId");
           jsonGenerator.writeNumber(anApp.getLastRunId());
           jsonGenerator.writeEndObject();
+        } else if (selectedSerialization == SerializationContext.DetailLevel.APP_SUMMARY_STATS_ALL_APPS) {
+          // should generate the json for everything in the flow object
+          ObjectMapper om = new ObjectMapper();
+          om.registerModule(
+              addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
+          jsonGenerator.writeStartObject();
+          jsonGenerator.writeFieldName("cluster");
+          jsonGenerator.writeString(anApp.getKey().getCluster());
+          jsonGenerator.writeFieldName("userName");
+          jsonGenerator.writeString(anApp.getKey().getUserName());
+          jsonGenerator.writeFieldName("appId");
+          jsonGenerator.writeString(anApp.getKey().getAppId());
+          jsonGenerator.writeFieldName("queue");
+          jsonGenerator.writeObject(anApp.getQueue());
+          jsonGenerator.writeFieldName("numberRuns");
+          jsonGenerator.writeNumber(anApp.getNumberRuns());
+          jsonGenerator.writeFieldName("firstRunId");
+          jsonGenerator.writeNumber(anApp.getFirstRunId());
+          jsonGenerator.writeFieldName("lastRunId");
+          jsonGenerator.writeNumber(anApp.getLastRunId());
+          jsonGenerator.writeFieldName("totalMaps");
+          jsonGenerator.writeNumber(anApp.getTotalMaps());
+          jsonGenerator.writeFieldName("totalReduces");
+          jsonGenerator.writeNumber(anApp.getTotalReduces());
+          jsonGenerator.writeFieldName("mapSlotMillis");
+          jsonGenerator.writeNumber(anApp.getMapSlotMillis());
+          jsonGenerator.writeFieldName("reduceSlotMillis");
+          jsonGenerator.writeNumber(anApp.getReduceSlotMillis());
+          jsonGenerator.writeFieldName("megaByteMillis");
+          jsonGenerator.writeNumber(anApp.getMbMillis());
+          jsonGenerator.writeFieldName("jobCount");
+          jsonGenerator.writeNumber(anApp.getJobCount());
+          jsonGenerator.writeFieldName("dailyCost");
+          jsonGenerator.writeNumber(anApp.getCost());
+          jsonGenerator.writeEndObject();
         }
+
       }
     }
   }
