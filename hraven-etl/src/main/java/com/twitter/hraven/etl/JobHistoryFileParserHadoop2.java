@@ -878,8 +878,8 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     }
 
     /* in case of older versions of hadoop2
-     *  hadoop2 counter of mb millis is not available
-     * then use slot millis counter
+     *  the counter of mb millis is not available
+     * then use slot millis counter value
      */
     if (this.mapMbMillis == Constants.NOTFOUND_VALUE) {
       this.mapMbMillis = (mapMb * mapSlotMillis);
