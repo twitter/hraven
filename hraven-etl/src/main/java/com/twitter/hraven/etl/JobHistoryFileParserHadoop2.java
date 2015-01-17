@@ -740,10 +740,13 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * hadoop2ReportedMapSlotMillis * yarn.scheduler.minimum-allocation-mb
    *        / mapreduce.mapreduce.memory.mb
    * similarly for reduce slot millis
+   *
+   * Marking method as deprecated as noted in Pull Request #132
    * @param counterName
    * @param counterValue
    * @return corrected counter value
    */
+  @Deprecated
   private Long getStandardizedCounterValue(String counterName, Long counterValue) {
     if (jobConf == null) {
       throw new ProcessingException("While correcting slot millis, jobConf is null");
