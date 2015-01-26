@@ -89,6 +89,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   private long mapSlotMillis = 0L;
   private long reduceSlotMillis = 0L;
 
+  // initialize mb millis to NOTFOUND_VALUE
+  // since older versions of hadoop2 did not have this counter
+  private long mapMbMillis = Constants.NOTFOUND_VALUE;
+  private long reduceMbMillis = Constants.NOTFOUND_VALUE;
+
   private long startTime = Constants.NOTFOUND_VALUE;
   private long endTime = Constants.NOTFOUND_VALUE;
   private static final String LAUNCH_TIME_KEY_STR = JobHistoryKeys.LAUNCH_TIME.toString();
@@ -690,7 +695,18 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     byte[] groupPrefix = Bytes.add(counterPrefix, Bytes.toBytes(groupName), Constants.SEP_BYTES);
     byte[] qualifier = Bytes.add(groupPrefix, Bytes.toBytes(counterName));
 
-    /**
+    /*
+     * store the map and reduce mb millis counter value
+     */
+    if (Constants.JOB_COUNTER_HADOOP2.equals(groupName)) {
+      if (Constants.MB_MILLIS_MAPS.equals(counterName)) {
+        this.mapMbMillis = counterValue;
+      } else if (Constants.MB_MILLIS_REDUCES.equals(counterName)) {
+          this.reduceMbMillis = counterValue;
+      }
+    }
+
+    /*
      * correct and populate map and reduce slot millis
      */
     if ((Constants.SLOTS_MILLIS_MAPS.equals(counterName)) ||
@@ -724,10 +740,13 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
    * hadoop2ReportedMapSlotMillis * yarn.scheduler.minimum-allocation-mb
    *        / mapreduce.mapreduce.memory.mb
    * similarly for reduce slot millis
+   *
+   * Marking method as deprecated as noted in Pull Request #132
    * @param counterName
    * @param counterValue
    * @return corrected counter value
    */
+  @Deprecated
   private Long getStandardizedCounterValue(String counterName, Long counterValue) {
     if (jobConf == null) {
       throw new ProcessingException("While correcting slot millis, jobConf is null");
@@ -861,19 +880,47 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
           + " since " + Constants.AM_MEMORY_MB_CONF_KEY + " not found!");
     }
 
+    /* in case of older versions of hadoop2
+     *  the counter of mb millis is not available
+     * then use slot millis counter value
+     */
+    if (this.mapMbMillis == Constants.NOTFOUND_VALUE) {
+      this.mapMbMillis = (mapMb * mapSlotMillis);
+    }
+    if (this.reduceMbMillis == Constants.NOTFOUND_VALUE) {
+       this.reduceMbMillis = (reduceMb * reduceSlotMillis);
+    }
+
     Long mbMillis = 0L;
     if (uberized) {
       mbMillis = amMb * jobRunTime;
     } else {
-      mbMillis = (mapMb * mapSlotMillis) + (reduceMb * reduceSlotMillis) + (amMb * jobRunTime);
+      mbMillis = this.mapMbMillis + this.reduceMbMillis + (amMb * jobRunTime);
     }
 
-    LOG.debug("For " + jobKey.toString() + " " + Constants.MEGABYTEMILLIS + " is " + mbMillis
-        + " since \n uberized: " + uberized + " \n " + "mapMb: " + mapMb + " mapSlotMillis: "
+    LOG.debug("For " + jobKey.toString() + "\n" + Constants.MEGABYTEMILLIS + " is " + mbMillis
+        + " since \n uberized: " + uberized + " \n " + "mapMbMillis: " + mapMbMillis
+        + " reduceMbMillis:" + reduceMbMillis + "mapMb: " + mapMb + " mapSlotMillis: "
         + mapSlotMillis + " \n " + " reduceMb: " + reduceMb + " reduceSlotMillis: "
         + reduceSlotMillis + " \n " + " amMb: " + amMb + " jobRunTime: " + jobRunTime
         + " start time: " + this.startTime + " endtime " + this.endTime);
 
     return mbMillis;
+  }
+
+  public long getMapMbMillis() {
+    return mapMbMillis;
+  }
+
+  public void setMapMbMillis(long mapMbMillis) {
+    this.mapMbMillis = mapMbMillis;
+  }
+
+  public long getReduceMbMillis() {
+    return reduceMbMillis;
+  }
+
+  public void setReduceMbMillis(long reduceMbMillis) {
+    this.reduceMbMillis = reduceMbMillis;
   }
 }
