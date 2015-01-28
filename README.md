@@ -135,7 +135,8 @@ Optional QS params:
 
 ### Get Tasks
 
-Path: /tasks/<cluster>/[jobId]
+Path: `/tasks/<cluster>/[jobId]`
+
 Returns: task details of that single job
 
 ### Get App Versions
@@ -148,7 +149,8 @@ Optional QS params:
 
 ### Get New Jobs
 
-Path: /newJobs/<cluster>/
+Path: `/newJobs/<cluster>/`
+
 Returns: list of apps with only minimal stats
 
 Optional params:
