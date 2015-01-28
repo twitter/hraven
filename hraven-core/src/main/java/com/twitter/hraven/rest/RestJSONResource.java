@@ -658,6 +658,51 @@ public class RestJSONResource {
     return newApps;
  }
 
+  @GET
+  @Path("summary/apps/{cluster}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public List<AppSummary> getAllApps(@PathParam("cluster") String cluster,
+                                     @QueryParam("user") String user,
+                                     @QueryParam("startTime") long startTime,
+                                     @QueryParam("endTime") long endTime,
+                                     @QueryParam("limit") int limit)
+                                         throws IOException {
+    Stopwatch timer = new Stopwatch().start();
+
+    if (limit == 0) {
+      limit = Integer.MAX_VALUE;
+    }
+    if (startTime == 0L) {
+      // 24 hours back
+      startTime = System.currentTimeMillis() - Constants.MILLIS_ONE_DAY;
+      // get top of the hour
+      startTime -= (startTime % 3600000);
+    }
+    if (endTime == 0L) {
+      // now
+      endTime = System.currentTimeMillis();
+      // get top of the hour
+      endTime -= (endTime % 3600000);
+    }
+
+    LOG.info("Fetching all apps for cluster=" + cluster + " user=" + user + " startTime="
+        + startTime + " endTime=" + endTime);
+    AppSummaryService as = getAppSummaryService();
+    List<AppSummary> newApps = as.getAllApps(
+          StringUtils.trimToEmpty(cluster),
+          StringUtils.trimToEmpty(user),
+          startTime,
+          endTime,
+          limit);
+    timer.stop();
+    LOG.info("For summary/apps/{cluster}/{user}/{appId}/ with input query " + "summary/apps/"
+        + cluster + SLASH + user + "?limit=" + limit + "&startTime=" + startTime + "&endTime="
+        + endTime + " fetched " + newApps.size() + " apps in " + timer);
+    serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.APP_SUMMARY_STATS_ALL_APPS));
+    return newApps;
+  }
+
   private AppSummaryService getAppSummaryService() {
     if (LOG.isDebugEnabled()) {
       LOG.debug(String.format("Returning AppService %s bound to thread %s",
