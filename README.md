@@ -133,6 +133,10 @@ Optional QS params:
 *Note:* This endpoint duplicates functionality from the "/flow/" endpoint and
  maybe be combined back in to it in the future.
 
+### Get Tasks
+
+Path: /tasks/<cluster>/[jobId]
+Returns: task details of that single job
 
 ### Get App Versions
 
@@ -142,6 +146,16 @@ Optional QS params:
 
 * `limit` - max results to return
 
+### Get New Jobs
+
+Path: /newJobs/<cluster>/
+Returns: list of apps with only minimal stats
+
+Optional params:
+ * `startTime` (epoch timestamp in milliseconds)
+ * `endTime` (epoch timestamp in milliseconds)
+ * `limit` (max rows to return)
+ * `user` (user name to filter it by)
 
 Project Resources
 --------------------
