@@ -203,19 +203,24 @@ public class TestJobHistoryFileParserHadoop2 {
     Configuration jobConf = new Configuration();
     jobConf.addResource(new Path(JOB_CONF_FILE_NAME));
 
-    JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf);
+    JobHistoryFileParserHadoop2 historyFileParser =
+        new JobHistoryFileParserHadoop2(jobConf);
     assertNotNull(historyFileParser);
 
-    // confirm that we get back an object that can parse hadoop 2.0 files
-    assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
     JobKey jobKey = new JobKey("cluster1", "user", "Sleep", 1, "job_1329348432655_0001");
     historyFileParser.parse(contents, jobKey);
 
     // this history file has only map slot millis no reduce millis
+    Long mapMbMillis = historyFileParser.getMapMbMillis();
+    assertNotNull(mapMbMillis);
+    assertEquals(mapMbMillis, new Long(178169856L));
+    Long reduceMbMillis = historyFileParser.getReduceMbMillis();
+    assertNotNull(reduceMbMillis);
+    assertEquals(reduceMbMillis, Constants.NOTFOUND_VALUE);
+
     Long mbMillis = historyFileParser.getMegaByteMillis();
     assertNotNull(mbMillis);
-    Long expValue = 10402816L;
+    Long expValue = 188559872L;
     assertEquals(expValue, mbMillis);
   }
 
@@ -307,4 +312,5 @@ public class TestJobHistoryFileParserHadoop2 {
     // ensure that we got the hadoop2 version put
     assertTrue(foundQueue);
   }
+
 }
