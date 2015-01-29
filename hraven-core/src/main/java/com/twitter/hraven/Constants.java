@@ -187,6 +187,10 @@ public class Constants {
   public static final String SLOTS_MILLIS_REDUCES = "SLOTS_MILLIS_REDUCES";
   public static final String REDUCE_SHUFFLE_BYTES = "REDUCE_SHUFFLE_BYTES";
 
+  /** MB MILLIS counters in hadoop2 */
+  public static final String MB_MILLIS_MAPS  = "MB_MILLIS_MAPS";
+  public static final String MB_MILLIS_REDUCES = "MB_MILLIS_REDUCES";
+
   /** used to indicate how expensive a job is in terms of memory and time taken*/
   public static final String MEGABYTEMILLIS = "megabytemillis" ;
   public static final byte[] MEGABYTEMILLIS_BYTES = Bytes.toBytes(MEGABYTEMILLIS);
