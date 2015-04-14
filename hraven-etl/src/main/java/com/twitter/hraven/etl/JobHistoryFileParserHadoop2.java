@@ -589,6 +589,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     if (id != null && id.startsWith("job_") && id.length() > 4) {
       this.jobNumber = id.substring(4);
     }
+      this.jobDetails.setJobId(id);
   }
 
   /**
