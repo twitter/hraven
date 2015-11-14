@@ -63,7 +63,7 @@ import com.twitter.hraven.datasource.VersionInfo;
 @Path("/api/v1/")
 public class RestJSONResource {
   private static final Log LOG = LogFactory.getLog(RestJSONResource.class);
-  private static final String SLASH = "/" ;
+  public static final String SLASH = "/" ;
 
   private static final Configuration HBASE_CONF = HBaseConfiguration.create();
   private static final ThreadLocal<JobHistoryService> serviceThreadLocal =
@@ -135,18 +135,30 @@ public class RestJSONResource {
   @Path("job/{cluster}/{jobId}")
   @Produces(MediaType.APPLICATION_JSON)
   public JobDetails getJobById(@PathParam("cluster") String cluster,
-                               @PathParam("jobId") String jobId) throws IOException {
+                               @PathParam("jobId") String jobId,
+                               @QueryParam("include") List<String> includeFields)
+                                   throws IOException {
     LOG.info("Fetching JobDetails for jobId=" + jobId);
     Stopwatch timer = new Stopwatch().start();
+    Predicate<String> includeFilter = null;
+    if (includeFields != null && !includeFields.isEmpty()) {
+      includeFilter = new SerializationContext.FieldNameFilter(includeFields);
+    }
     serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING));
+        SerializationContext.DetailLevel.EVERYTHING, null, null, includeFilter, null));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId);
     timer.stop();
+    StringBuilder builderIncludeJobRegex = new StringBuilder();
+    for(String s : includeFields) {
+      builderIncludeJobRegex.append(s);
+    }
     if (jobDetails != null) {
       LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
+          + "&includeJobField=" + builderIncludeJobRegex
           + " fetched jobDetails for " + jobDetails.getJobName() + " in " + timer);
     } else {
       LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
+          + "&includeJobField=" + builderIncludeJobRegex
           + " No jobDetails found, but spent " + timer);
     }
     // export latency metrics
@@ -161,19 +173,36 @@ public class RestJSONResource {
   @Path("tasks/{cluster}/{jobId}")
   @Produces(MediaType.APPLICATION_JSON)
   public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
-                                           @PathParam("jobId") String jobId) throws IOException {
+                                           @PathParam("jobId") String jobId,
+                                           @QueryParam("include") List<String> includeFields)
+                                               throws IOException {
     LOG.info("Fetching tasks info for jobId=" + jobId);
     Stopwatch timer = new Stopwatch().start();
+
+    Predicate<String> includeFilter = null;
+    if (includeFields != null && !includeFields.isEmpty()) {
+      includeFilter = new SerializationContext.FieldNameFilter(includeFields);
+    }
     serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING));
-    JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId, true);
-    timer.stop();
+        SerializationContext.DetailLevel.EVERYTHING, null, null, null,
+        includeFilter));
+
+    JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster,
+        jobId, true);
     List<TaskDetails> tasks = jobDetails.getTasks();
+    timer.stop();
+    StringBuilder builderIncludeFields = new StringBuilder();
+    for(String s : includeFields) {
+      builderIncludeFields.append(s);
+    }
+
     if(tasks != null && !tasks.isEmpty()) {
-      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId + ", fetched "
+      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId
+          + "?include="+ builderIncludeFields + " fetched "
           + tasks.size() + " tasks, spent time " + timer);
     } else {
       LOG.info("For endpoint /tasks/" + cluster + "/" + jobId
+          + "?include="+ builderIncludeFields
           + ", found no tasks, spent time " + timer);
     }
     return tasks;
@@ -183,20 +212,47 @@ public class RestJSONResource {
   @Path("jobFlow/{cluster}/{jobId}")
   @Produces(MediaType.APPLICATION_JSON)
   public Flow getJobFlowById(@PathParam("cluster") String cluster,
-                             @PathParam("jobId") String jobId) throws IOException {
+                             @PathParam("jobId") String jobId,
+                             @QueryParam("includeFlowField") List<String> includeFlowFields,
+                             @QueryParam("includeJobField") List<String> includeJobFields)
+                                 throws IOException {
     LOG.info(String.format("Fetching Flow for cluster=%s, jobId=%s", cluster, jobId));
     Stopwatch timer = new Stopwatch().start();
+    Predicate<String> jobFilter = null;
+    if (includeJobFields != null && !includeJobFields.isEmpty()) {
+      jobFilter = new SerializationContext.FieldNameFilter(includeJobFields);
+    }
+
+    Predicate<String> flowFilter = null;
+    if (includeFlowFields != null && !includeFlowFields.isEmpty()) {
+      flowFilter = new SerializationContext.FieldNameFilter(includeFlowFields);
+    }
+
     serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING));
+        SerializationContext.DetailLevel.EVERYTHING, null, flowFilter,
+        jobFilter, null));
     Flow flow = getJobHistoryService().getFlowByJobID(cluster, jobId, false);
     timer.stop();
+    StringBuilder builderIncludeJobRegex = new StringBuilder();
+    for(String s : includeJobFields) {
+      builderIncludeJobRegex.append(s);
+    }
+
+    StringBuilder builderIncludeFlowFields = new StringBuilder();
+    for(String s : includeJobFields) {
+      builderIncludeFlowFields.append(s);
+    }
+
     if (flow != null) {
-      LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/" + cluster + SLASH
-          + jobId + " fetched flow " + flow.getFlowName() + " with #jobs " + flow.getJobCount()
-          + " in " + timer);
+      LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/"
+          + cluster + SLASH + jobId + "&includeJobField="
+          + builderIncludeJobRegex + "&includeFlowField="
+          + builderIncludeFlowFields + " fetched flow " + flow.getFlowName()
+          + " with # " + flow.getJobCount() + " in " + timer);
     } else {
-      LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/" + cluster + SLASH
-          + jobId + " No flow found, spent " + timer);
+      LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/"
+          + cluster + SLASH + jobId + "&includeJobField="
+          + builderIncludeJobRegex + " No flow found, spent " + timer);
     }
 
     // export latency metrics
@@ -215,8 +271,10 @@ public class RestJSONResource {
                                    @QueryParam("limit") int limit,
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
+                                   @QueryParam("include") List<String> include,
                                    @QueryParam("includeConf") List<String> includeConfig,
-                                   @QueryParam("includeConfRegex") List<String> includeConfigRegex)
+                                   @QueryParam("includeConfRegex") List<String> includeConfigRegex,
+                                   @QueryParam("includeJobField") List<String> includeJobFields)
   throws IOException {
 
     Stopwatch timer = new Stopwatch().start();
@@ -233,13 +291,27 @@ public class RestJSONResource {
 
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
-      configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
+      configFilter = new SerializationContext.FieldNameFilter(includeConfig);
     } else if (includeConfigRegex != null && !includeConfigRegex.isEmpty()) {
-      configFilter = new SerializationContext.RegexConfigurationFilter(includeConfigRegex);
+      configFilter = new SerializationContext.RegexConfigurationFilter(
+          includeConfigRegex);
     }
+
+    Predicate<String> jobFilter = null;
+    if (includeJobFields != null && !includeJobFields.isEmpty()) {
+      jobFilter = new SerializationContext.FieldNameFilter(includeJobFields);
+    }
+
+    Predicate<String> flowFilter = null;
+    if (include != null && !include.isEmpty()) {
+      flowFilter = new SerializationContext.FieldNameFilter(include);
+    }
+
     serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING, configFilter));
-    List<Flow> flows = getFlowList(cluster, user, appId, version, startTime, endTime, limit);
+        SerializationContext.DetailLevel.EVERYTHING, configFilter, flowFilter,
+        jobFilter, null));
+    List<Flow> flows = getFlowList(cluster, user, appId, version, startTime,
+        endTime, limit);
     timer.stop();
 
     StringBuilder builderIncludeConfigs = new StringBuilder();
@@ -251,18 +323,39 @@ public class RestJSONResource {
       builderIncludeConfigRegex.append(s);
     }
 
+    StringBuilder builderIncludeJobFields = new StringBuilder();
+    for(String s : includeJobFields) {
+      builderIncludeJobFields.append(s);
+    }
+
+    StringBuilder builderIncludeFlowFields = new StringBuilder();
+    for(String s : includeJobFields) {
+      builderIncludeFlowFields.append(s);
+    }
+
     if (flows != null) {
-      LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+      LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: "
+          + "flow/" + cluster
+          + SLASH + user + SLASH + appId + SLASH + version
+          + "?limit=" + limit
           + " startTime=" + startTime + " endTime=" + endTime
-          + " &includeConf=" + builderIncludeConfigs + " &includeConfRegex="
-          + builderIncludeConfigRegex + " fetched " + flows.size() + " flows " + " in " + timer);
+          + " &includeConf=" + builderIncludeConfigs
+          + " &includeConfRegex="
+          + builderIncludeConfigRegex
+          + "&includeJobField=" +builderIncludeJobFields
+          + "&include=" +builderIncludeFlowFields
+          + " fetched " + flows.size() + " flows " + " in " + timer);
      } else {
-      LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: " + "flow/" + cluster
-          + SLASH + user + SLASH + appId + SLASH + version + "?limit=" + limit
+      LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: "
+          + "flow/" + cluster
+          + SLASH + user + SLASH + appId + SLASH + version
+          + "?limit=" + limit
           + " startTime=" + startTime + " endTime=" + endTime
-          + " &includeConf=" + builderIncludeConfigs + "&includeConfRegex="
-          + builderIncludeConfigRegex + " No flows fetched, spent " + timer);
+          + " &includeConf=" + builderIncludeConfigs
+          + "&includeConfRegex=" + builderIncludeConfigRegex
+          + "&includeJobField=" +builderIncludeJobFields
+          + "&include=" +builderIncludeFlowFields
+          + " No flows fetched, spent " + timer);
     }
 
     // export latency metrics
@@ -280,42 +373,79 @@ public class RestJSONResource {
                                    @QueryParam("limit") int limit,
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
+                                   @QueryParam("include") List<String> include,
                                    @QueryParam("includeConf") List<String> includeConfig,
-                                   @QueryParam("includeConfRegex") List<String> includeConfigRegex)
-  throws IOException {
+                                   @QueryParam("includeConfRegex") List<String> includeConfigRegex,
+                                   @QueryParam("includeJobField") List<String> includeJobFields)
+                                       throws IOException {
 
     Stopwatch timer = new Stopwatch().start();
     Predicate<String> configFilter = null;
     if (includeConfig != null && !includeConfig.isEmpty()) {
-      configFilter = new SerializationContext.ConfigurationFilter(includeConfig);
+      configFilter = new SerializationContext.FieldNameFilter(includeConfig);
     } else if (includeConfigRegex != null && !includeConfigRegex.isEmpty()) {
-      configFilter = new SerializationContext.RegexConfigurationFilter(includeConfigRegex);
-    } else {
-      serializationContext.set(new SerializationContext(
-        SerializationContext.DetailLevel.EVERYTHING, configFilter));
+      configFilter = new SerializationContext.RegexConfigurationFilter(
+          includeConfigRegex);
     }
-    List<Flow> flows = getFlowList(cluster, user, appId, null, startTime, endTime, limit);
+    Predicate<String> jobFilter = null;
+    if (includeJobFields != null && !includeJobFields.isEmpty()) {
+      jobFilter = new SerializationContext.FieldNameFilter(includeJobFields);
+    }
+
+    Predicate<String> flowFilter = null;
+    if (include != null && !include.isEmpty()) {
+      flowFilter = new SerializationContext.FieldNameFilter(include);
+    }
+
+    serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING, configFilter, flowFilter,
+        jobFilter, null));
+
+    List<Flow> flows = getFlowList(cluster, user, appId, null, startTime,
+        endTime, limit);
     timer.stop();
 
     StringBuilder builderIncludeConfigs = new StringBuilder();
     for(String s : includeConfig) {
       builderIncludeConfigs.append(s);
     }
+
     StringBuilder builderIncludeConfigRegex = new StringBuilder();
     for(String s : includeConfig) {
       builderIncludeConfigRegex.append(s);
     }
 
+    StringBuilder builderIncludeJobFields = new StringBuilder();
+    for(String s : includeJobFields) {
+      builderIncludeJobFields.append(s);
+    }
+
+    StringBuilder builderIncludeFlowFields = new StringBuilder();
+    for(String s : includeJobFields) {
+      builderIncludeFlowFields.append(s);
+    }
+
     if (flows != null) {
-      LOG.info("For flow/{cluster}/{user}/{appId} with input query: " + "flow/" + cluster + SLASH
-          + user + SLASH + appId + "?limit=" + limit + "&startTime=" + startTime 
-          + "&endTime=" + endTime + "&includeConf=" + builderIncludeConfigs
-          + "&includeConfRegex=" + builderIncludeConfigRegex + " fetched " + flows.size()
+      LOG.info("For flow/{cluster}/{user}/{appId} with input query: "
+          + "flow/" + cluster + SLASH
+          + user + SLASH + appId + "?limit=" + limit
+          + "&startTime=" + startTime 
+          + "&endTime=" + endTime
+          + "&includeConf=" + builderIncludeConfigs
+          + "&includeConfRegex=" + builderIncludeConfigRegex
+          + "&includeJobField=" +builderIncludeJobFields
+          + "&include=" +builderIncludeFlowFields
+          + " fetched " + flows.size()
           + " flows in " + timer);
     } else {
-      LOG.info("For flow/{cluster}/{user}/{appId} with input query: " + "flow/" + cluster + SLASH
-          + user + SLASH + appId + "?limit=" + limit + "&includeConf=" + builderIncludeConfigs
-          + "&includeConfRegex=" + builderIncludeConfigRegex + " No flows fetched, spent "+ timer);
+      LOG.info("For flow/{cluster}/{user}/{appId} with input query: "
+          + "flow/" + cluster + SLASH
+          + user + SLASH + appId + "?limit=" + limit
+          + "&includeConf=" + builderIncludeConfigs
+          + "&includeConfRegex=" + builderIncludeConfigRegex
+          + "&includeJobField=" +builderIncludeJobFields
+          + "&include=" +builderIncludeFlowFields
+          + " No flows fetched, spent "+ timer);
     }
 
     // export latency metrics
@@ -336,12 +466,15 @@ public class RestJSONResource {
                                    @QueryParam("startTime") long startTime,
                                    @QueryParam("endTime") long endTime,
                                    @QueryParam("limit") @DefaultValue("100") int limit,
-                                   @QueryParam("includeJobs") boolean includeJobs
+                                   @QueryParam("include") List<String> include,
+                                   @QueryParam("includeJobs") boolean includeJobs,
+                                   @QueryParam("includeJobField") List<String> includeJobFields
                                    ) throws IOException {
     LOG.info("Fetching flowStats for flowStats/{cluster}/{user}/{appId} with input query: "
-      + "flowStats/" + cluster  + SLASH // + user /{appId} cluster + " user " + user
+      + "flowStats/" + cluster  + SLASH + " user " + user
       + appId + "?version=" + version + "&limit=" + limit
-      + "&startRow=" + startRowParam + "&startTime=" + startTime + "&endTime=" + endTime
+      + "&startRow=" + startRowParam + "&startTime=" + startTime
+      + "&endTime=" + endTime
       + "&includeJobs=" + includeJobs);
 
     Stopwatch timer = new Stopwatch().start();
@@ -350,12 +483,24 @@ public class RestJSONResource {
       startRow = Base64.decode(startRowParam);
     }
 
+    Predicate<String> flowFilter = null;
+    if (include != null && !include.isEmpty()) {
+      flowFilter = new SerializationContext.FieldNameFilter(include);
+    }
+
     if (includeJobs) {
+      Predicate<String> jobFilter = null;
+      if (includeJobFields != null && !includeJobFields.isEmpty()) {
+        jobFilter = new SerializationContext.FieldNameFilter(includeJobFields);
+      }
+
       serializationContext.set(new SerializationContext(
-          SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS));
+          SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS,
+          null, flowFilter, jobFilter, null));
     } else {
       serializationContext.set(new SerializationContext(
-          SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_ONLY));
+          SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_ONLY, null,
+          flowFilter, null, null));
     }
 
     if(endTime == 0) {
@@ -403,12 +548,18 @@ public class RestJSONResource {
     }
     timer.stop();
 
+    StringBuilder builderIncludeJobRegex = new StringBuilder();
+    for(String s : includeJobFields) {
+      builderIncludeJobRegex.append(s);
+    }
+
     LOG.info("For flowStats/{cluster}/{user}/{appId} with input query: "
         + "flowStats/"
         + cluster
         + SLASH // + user /{appId} cluster + " user " + user
         + appId + "?version=" + version + "&limit=" + limit + "&startRow=" + startRow
         + "&startTime=" + startTime + "&endTime=" + endTime + "&includeJobs=" + includeJobs
+        + "&includeJobField=" +builderIncludeJobRegex
         + " fetched " + flows.size() + " in " + timer);
 
     // export latency metrics
