@@ -53,6 +53,7 @@ import com.twitter.hraven.datasource.HdfsStatsService;
 import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.VersionInfo;
+import com.twitter.hraven.util.StringUtil;
 
 /**
  * Main REST resource that handles binding the REST API to the JobHistoryService.
@@ -148,17 +149,16 @@ public class RestJSONResource {
         SerializationContext.DetailLevel.EVERYTHING, null, null, includeFilter, null));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId);
     timer.stop();
-    StringBuilder builderIncludeJobRegex = new StringBuilder();
-    for(String s : includeFields) {
-      builderIncludeJobRegex.append(s);
-    }
     if (jobDetails != null) {
-      LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
-          + "&includeJobField=" + builderIncludeJobRegex
-          + " fetched jobDetails for " + jobDetails.getJobName() + " in " + timer);
+      LOG.info("For job/{cluster}/{jobId} with input query:"
+          + " job/" + cluster + SLASH + jobId + "&"
+          + StringUtil.buildParam("include", includeFields)
+          + " fetched jobDetails for "
+          + jobDetails.getJobName() + " in " + timer);
     } else {
-      LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster + SLASH + jobId
-          + "&includeJobField=" + builderIncludeJobRegex
+      LOG.info("For job/{cluster}/{jobId} with input query:" + " job/"
+          + cluster + SLASH + jobId + "&"
+          + StringUtil.buildParam("include",includeFields)
           + " No jobDetails found, but spent " + timer);
     }
     // export latency metrics
@@ -191,18 +191,16 @@ public class RestJSONResource {
         jobId, true);
     List<TaskDetails> tasks = jobDetails.getTasks();
     timer.stop();
-    StringBuilder builderIncludeFields = new StringBuilder();
-    for(String s : includeFields) {
-      builderIncludeFields.append(s);
-    }
 
     if(tasks != null && !tasks.isEmpty()) {
-      LOG.info("For endpoint /tasks/" + cluster + "/" + jobId
-          + "?include="+ builderIncludeFields + " fetched "
+      LOG.info("For endpoint /tasks/" + cluster + "/"
+          + jobId + "?"
+          + StringUtil.buildParam("include", includeFields)
+          + " fetched "
           + tasks.size() + " tasks, spent time " + timer);
     } else {
       LOG.info("For endpoint /tasks/" + cluster + "/" + jobId
-          + "?include="+ builderIncludeFields
+          + "?" + StringUtil.buildParam("include", includeFields)
           + ", found no tasks, spent time " + timer);
     }
     return tasks;
@@ -233,26 +231,22 @@ public class RestJSONResource {
         jobFilter, null));
     Flow flow = getJobHistoryService().getFlowByJobID(cluster, jobId, false);
     timer.stop();
-    StringBuilder builderIncludeJobRegex = new StringBuilder();
-    for(String s : includeJobFields) {
-      builderIncludeJobRegex.append(s);
-    }
-
-    StringBuilder builderIncludeFlowFields = new StringBuilder();
-    for(String s : includeJobFields) {
-      builderIncludeFlowFields.append(s);
-    }
 
     if (flow != null) {
       LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/"
-          + cluster + SLASH + jobId + "&includeJobField="
-          + builderIncludeJobRegex + "&includeFlowField="
-          + builderIncludeFlowFields + " fetched flow " + flow.getFlowName()
+          + cluster + SLASH + jobId + "&"
+          + StringUtil.buildParam("includeJobField", includeJobFields)
+          + "&"
+          + StringUtil.buildParam("includeFlowField", includeFlowFields)
+              + " fetched flow " + flow.getFlowName()
           + " with # " + flow.getJobCount() + " in " + timer);
     } else {
       LOG.info("For jobFlow/{cluster}/{jobId} with input query: " + "jobFlow/"
-          + cluster + SLASH + jobId + "&includeJobField="
-          + builderIncludeJobRegex + " No flow found, spent " + timer);
+          + cluster + SLASH + jobId + "&"
+          + StringUtil.buildParam("includeJobField", includeJobFields)
+          + "&"
+          + StringUtil.buildParam("includeFlowField", includeFlowFields)
+          + " No flow found, spent " + timer);
     }
 
     // export latency metrics
@@ -323,16 +317,6 @@ public class RestJSONResource {
       builderIncludeConfigRegex.append(s);
     }
 
-    StringBuilder builderIncludeJobFields = new StringBuilder();
-    for(String s : includeJobFields) {
-      builderIncludeJobFields.append(s);
-    }
-
-    StringBuilder builderIncludeFlowFields = new StringBuilder();
-    for(String s : includeJobFields) {
-      builderIncludeFlowFields.append(s);
-    }
-
     if (flows != null) {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: "
           + "flow/" + cluster
@@ -342,8 +326,8 @@ public class RestJSONResource {
           + " &includeConf=" + builderIncludeConfigs
           + " &includeConfRegex="
           + builderIncludeConfigRegex
-          + "&includeJobField=" +builderIncludeJobFields
-          + "&include=" +builderIncludeFlowFields
+          + StringUtil.buildParam("includeJobField", includeJobFields)
+          + "&" + StringUtil.buildParam("include", include)
           + " fetched " + flows.size() + " flows " + " in " + timer);
      } else {
       LOG.info("For flow/{cluster}/{user}/{appId}/{version} with input query: "
@@ -353,8 +337,8 @@ public class RestJSONResource {
           + " startTime=" + startTime + " endTime=" + endTime
           + " &includeConf=" + builderIncludeConfigs
           + "&includeConfRegex=" + builderIncludeConfigRegex
-          + "&includeJobField=" +builderIncludeJobFields
-          + "&include=" +builderIncludeFlowFields
+          + StringUtil.buildParam("includeJobField", includeJobFields)
+          + "&" + StringUtil.buildParam("include", include)
           + " No flows fetched, spent " + timer);
     }
 
@@ -415,16 +399,6 @@ public class RestJSONResource {
       builderIncludeConfigRegex.append(s);
     }
 
-    StringBuilder builderIncludeJobFields = new StringBuilder();
-    for(String s : includeJobFields) {
-      builderIncludeJobFields.append(s);
-    }
-
-    StringBuilder builderIncludeFlowFields = new StringBuilder();
-    for(String s : includeJobFields) {
-      builderIncludeFlowFields.append(s);
-    }
-
     if (flows != null) {
       LOG.info("For flow/{cluster}/{user}/{appId} with input query: "
           + "flow/" + cluster + SLASH
@@ -433,8 +407,8 @@ public class RestJSONResource {
           + "&endTime=" + endTime
           + "&includeConf=" + builderIncludeConfigs
           + "&includeConfRegex=" + builderIncludeConfigRegex
-          + "&includeJobField=" +builderIncludeJobFields
-          + "&include=" +builderIncludeFlowFields
+          + StringUtil.buildParam("includeJobField", includeJobFields)
+          + "&" + StringUtil.buildParam("include", include)
           + " fetched " + flows.size()
           + " flows in " + timer);
     } else {
@@ -443,8 +417,8 @@ public class RestJSONResource {
           + user + SLASH + appId + "?limit=" + limit
           + "&includeConf=" + builderIncludeConfigs
           + "&includeConfRegex=" + builderIncludeConfigRegex
-          + "&includeJobField=" +builderIncludeJobFields
-          + "&include=" +builderIncludeFlowFields
+          + StringUtil.buildParam("includeJobField", includeJobFields)
+          + "&" + StringUtil.buildParam("includeFlowField", include)
           + " No flows fetched, spent "+ timer);
     }
 

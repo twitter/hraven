@@ -19,10 +19,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -33,8 +33,6 @@ import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.type.TypeReference;
-
-import scala.actors.threadpool.Arrays;
 
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.JobDetails;
@@ -164,7 +162,7 @@ public class HRavenRestClient {
 
     String configParam = "";
     if (configProps != null && configProps.length > 0) {
-      configParam = buildParam("includeConf", configProps);
+      configParam = StringUtil.buildParam("includeConf", configProps);
     }
     String urlString = signature == null ?
         String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d&%s",
@@ -206,8 +204,8 @@ public class HRavenRestClient {
 
     if ((configPropertyFields != null) && (configPropertyFields.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(buildParam("includeConf",
-          (String[]) configPropertyFields.toArray()));
+      urlStringBuilder.append(StringUtil.buildParam("includeConf",
+           configPropertyFields));
     }
     return retrieveFlowsFromURL(urlStringBuilder.toString());
   }
@@ -235,7 +233,7 @@ public class HRavenRestClient {
 
     String configParam = "";
     if (configPatterns != null && configPatterns.length > 0) {
-      configParam = buildParam("includeConfRegex", configPatterns);
+      configParam = StringUtil.buildParam("includeConfRegex", configPatterns);
     }
     String urlString = signature == null ?
         String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d&%s",
@@ -266,8 +264,8 @@ public class HRavenRestClient {
 
     if ((configPatterns != null) && (configPatterns.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(buildParam("includeConfRegex",
-          (String[]) configPatterns.toArray()));
+      urlStringBuilder.append(StringUtil.buildParam("includeConfRegex",
+           configPatterns));
     }
     return retrieveFlowsFromURL(urlStringBuilder.toString());
   }
@@ -313,35 +311,17 @@ public class HRavenRestClient {
     urlStringBuilder.append(limit);
     if ((flowResponseFilters != null) && (flowResponseFilters.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(buildParam("include",
-          (String[]) flowResponseFilters.toArray()));
+      urlStringBuilder.append(StringUtil.buildParam("include",
+          flowResponseFilters));
     }
 
     if ((jobResponseFilters != null) && (jobResponseFilters.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(buildParam("includeJobField",
-          (String[]) jobResponseFilters.toArray()));
+      urlStringBuilder.append(StringUtil.buildParam("includeJobField",
+          jobResponseFilters));
     }
 
     return urlStringBuilder;
-  }
-
-  /**
-   * builds up a String with the parameters for the filtering of fields
-   * @param paramName
-   * @param paramArgs
-   * @return String
-   * @throws IOException
-   */
-  private String buildParam(String paramName, String[] paramArgs) throws IOException {
-    StringBuilder sb = new StringBuilder();
-    for (String arg : paramArgs) {
-      if (sb.length() > 0) {
-        sb.append("&");
-      }
-      sb.append(paramName).append("=").append(URLEncoder.encode(arg, "UTF-8"));
-    }
-    return sb.toString();
   }
 
   private List<Flow> retrieveFlowsFromURL(String endpointURL) throws IOException {
@@ -375,8 +355,8 @@ public class HRavenRestClient {
    */
   public List<TaskDetails> fetchTaskDetails(String cluster, String jobId,
       List<String> taskResponseFilters) throws IOException {
-    String taskFilters = buildParam("include",
-        (String[]) taskResponseFilters.toArray());
+    String taskFilters = StringUtil.buildParam("include",
+        taskResponseFilters);
     String urlString = String.format("http://%s/api/v1/tasks/%s/%s?%s",
         apiHostname, cluster, jobId, taskFilters);
     return retrieveTaskDetailsFromUrl(urlString);
@@ -396,7 +376,6 @@ public class HRavenRestClient {
 
   private static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-  @SuppressWarnings("unchecked")
   public static void main(String[] args) throws IOException {
     String apiHostname = null;
     String cluster = null;

@@ -55,6 +55,7 @@ import com.twitter.hraven.rest.SerializationContext.DetailLevel;
 public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   private final ObjectMapper customMapper;
 
+  @SuppressWarnings("unused")
   private static final Log LOG = LogFactory.getLog(ObjectMapperProvider.class);
 
   public ObjectMapperProvider() {
@@ -66,11 +67,18 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     return customMapper;
   }
 
+  /**
+   * creates a new SimpleModule for holding the serializers
+   * @return SimpleModule
+   */
+  private static SimpleModule createhRavenModule() {
+    return new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
+  }
+
   public static ObjectMapper createCustomMapper() {
     ObjectMapper result = new ObjectMapper();
     result.configure(Feature.INDENT_OUTPUT, true);
-    SimpleModule module = new SimpleModule("hRavenModule", new Version(0, 4, 0,
-        null));
+    SimpleModule module = createhRavenModule();
     addJobMappings(module);
     module.addSerializer(Flow.class, new FlowSerializer());
     module.addSerializer(AppSummary.class, new AppSummarySerializer());
@@ -130,16 +138,15 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       Predicate<String> includeFilter = context.getTaskFilter();
 
       if (includeFilter == null) {
-        // should generate the json for everything in the flow object
+        // should generate the json for everything in the task details object
         ObjectMapper om = new ObjectMapper();
-        om.registerModule(addJobMappings(new SimpleModule("hRavenModule",
-            new Version(0, 4, 0, null))));
+        om.registerModule(addJobMappings(createhRavenModule()));
         om.writeValue(jsonGenerator, td);
       } else {
-        // should generate the json for everything in the flow object
+        // should generate the json for everything in the task details object
+        // as per the filtering criteria
         ObjectMapper om = new ObjectMapper();
-        om.registerModule(addJobMappings(new SimpleModule("hRavenModule",
-            new Version(0, 4, 0, null))));
+        om.registerModule(addJobMappings(createhRavenModule()));
         jsonGenerator.writeStartObject();
         filteredWrite("taskKey", includeFilter, td.getTaskKey(), jsonGenerator);
         filteredWrite("taskId", includeFilter, td.getTaskId(), jsonGenerator);
@@ -180,21 +187,19 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     @Override
     public void serialize(JobDetails jd, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
-
       SerializationContext context = RestJSONResource.serializationContext
           .get();
       Predicate<String> includeFilter = context.getJobFilter();
 
       if (includeFilter == null) {
         ObjectMapper om = new ObjectMapper();
-        om.registerModule(addJobMappings(new SimpleModule("hRavenModule",
-            new Version(0, 4, 0, null))));
+        om.registerModule(addJobMappings(createhRavenModule()));
         om.writeValue(jsonGenerator, jd);
       } else {
-        // should generate the json for everything in the flow object
+        // should generate the json for every field in the job details object
+        // as per the filtering criteria
         ObjectMapper om = new ObjectMapper();
-        om.registerModule(addJobMappings(new SimpleModule("hRavenModule",
-            new Version(0, 4, 0, null))));
+        om.registerModule(addJobMappings(createhRavenModule()));
         jsonGenerator.writeStartObject();
         filteredWrite("jobKey", includeFilter, jd.getJobKey(), jsonGenerator);
         filteredWrite("jobId", includeFilter, jd.getJobId(), jsonGenerator);
@@ -371,17 +376,15 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       SerializationContext.DetailLevel selectedSerialization = RestJSONResource.serializationContext
           .get().getLevel();
       if (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING) {
-        // should generate the json for everything in the flow object
+        // should generate the json for everything in the app summary object
         ObjectMapper om = new ObjectMapper();
-        om.registerModule(addJobMappings(new SimpleModule("hRavenModule",
-            new Version(0, 4, 0, null))));
+        om.registerModule(addJobMappings(createhRavenModule()));
         om.writeValue(jsonGenerator, anApp);
       } else {
         if (selectedSerialization == SerializationContext.DetailLevel.APP_SUMMARY_STATS_NEW_JOBS_ONLY) {
-          // should generate the json for everything in the flow object
+          // should generate the json for stats relevant for new jobs
           ObjectMapper om = new ObjectMapper();
-          om.registerModule(addJobMappings(new SimpleModule("hRavenModule",
-              new Version(0, 4, 0, null))));
+          om.registerModule(addJobMappings(createhRavenModule()));
           jsonGenerator.writeStartObject();
           jsonGenerator.writeFieldName("cluster");
           jsonGenerator.writeString(anApp.getKey().getCluster());
@@ -399,10 +402,9 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(anApp.getLastRunId());
           jsonGenerator.writeEndObject();
         } else if (selectedSerialization == SerializationContext.DetailLevel.APP_SUMMARY_STATS_ALL_APPS) {
-          // should generate the json for everything in the flow object
+          // should generate the json for everything in the app summary object
           ObjectMapper om = new ObjectMapper();
-          om.registerModule(addJobMappings(new SimpleModule("hRavenModule",
-              new Version(0, 4, 0, null))));
+          om.registerModule(addJobMappings(createhRavenModule()));
           jsonGenerator.writeStartObject();
           jsonGenerator.writeFieldName("cluster");
           jsonGenerator.writeString(anApp.getKey().getCluster());
@@ -485,7 +487,6 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
 
     // serialize individual members of this class
     filteredWrite("flowName", includeFilter, aFlow.getFlowName(), jsonGenerator);
-
     filteredWrite("userName", includeFilter, aFlow.getUserName(), jsonGenerator);
     filteredWrite("jobCount", includeFilter, aFlow.getJobCount(), jsonGenerator);
     filteredWrite("totalMaps", includeFilter, aFlow.getTotalMaps(), jsonGenerator);
