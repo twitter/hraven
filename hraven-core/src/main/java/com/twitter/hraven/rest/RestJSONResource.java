@@ -418,7 +418,7 @@ public class RestJSONResource {
           + "&includeConf=" + builderIncludeConfigs
           + "&includeConfRegex=" + builderIncludeConfigRegex
           + StringUtil.buildParam("includeJobField", includeJobFields)
-          + "&" + StringUtil.buildParam("includeFlowField", include)
+          + "&" + StringUtil.buildParam("include", include)
           + " No flows fetched, spent "+ timer);
     }
 
@@ -522,18 +522,13 @@ public class RestJSONResource {
     }
     timer.stop();
 
-    StringBuilder builderIncludeJobRegex = new StringBuilder();
-    for(String s : includeJobFields) {
-      builderIncludeJobRegex.append(s);
-    }
-
     LOG.info("For flowStats/{cluster}/{user}/{appId} with input query: "
         + "flowStats/"
         + cluster
         + SLASH // + user /{appId} cluster + " user " + user
         + appId + "?version=" + version + "&limit=" + limit + "&startRow=" + startRow
         + "&startTime=" + startTime + "&endTime=" + endTime + "&includeJobs=" + includeJobs
-        + "&includeJobField=" +builderIncludeJobRegex
+        + "&" + StringUtil.buildParam("includeJobField", includeJobFields)
         + " fetched " + flows.size() + " in " + timer);
 
     // export latency metrics
