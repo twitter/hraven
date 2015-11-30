@@ -12,7 +12,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-*/
+ */
 package com.twitter.hraven.rest;
 
 import java.io.IOException;
@@ -23,6 +23,7 @@ import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
 
 import org.apache.hadoop.conf.Configuration;
+import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.JsonSerializer;
@@ -42,7 +43,10 @@ import com.twitter.hraven.CounterMap;
 import com.twitter.hraven.Flow;
 import com.twitter.hraven.HdfsStats;
 import com.twitter.hraven.HdfsStatsKey;
+import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.QualifiedPathKey;
+import com.twitter.hraven.TaskDetails;
+import com.twitter.hraven.rest.SerializationContext.DetailLevel;
 
 /**
  * Class that provides custom JSON bindings (where needed) for out object model.
@@ -63,13 +67,23 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     return customMapper;
   }
 
+  /**
+   * creates a new SimpleModule for holding the serializers
+   * @return SimpleModule
+   */
+  private static SimpleModule createhRavenModule() {
+    return new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
+  }
+
   public static ObjectMapper createCustomMapper() {
     ObjectMapper result = new ObjectMapper();
     result.configure(Feature.INDENT_OUTPUT, true);
-    SimpleModule module = new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
+    SimpleModule module = createhRavenModule();
     addJobMappings(module);
     module.addSerializer(Flow.class, new FlowSerializer());
     module.addSerializer(AppSummary.class, new AppSummarySerializer());
+    module.addSerializer(TaskDetails.class, new TaskDetailsSerializer());
+    module.addSerializer(JobDetails.class, new JobDetailsSerializer());
     result.registerModule(module);
     return result;
   }
@@ -82,14 +96,17 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   }
 
   /**
-   * Custom serializer for Configuration object. We don't want to serialize the classLoader.
+   * Custom serializer for Configuration object. We don't want to serialize the
+   * classLoader.
    */
-  public static class ConfigurationSerializer extends JsonSerializer<Configuration> {
+  public static class ConfigurationSerializer extends
+      JsonSerializer<Configuration> {
 
     @Override
     public void serialize(Configuration conf, JsonGenerator jsonGenerator,
-                          SerializerProvider serializerProvider) throws IOException {
-      SerializationContext context = RestJSONResource.serializationContext.get();
+        SerializerProvider serializerProvider) throws IOException {
+      SerializationContext context = RestJSONResource.serializationContext
+          .get();
       Predicate<String> configFilter = context.getConfigurationFilter();
       Iterator<Map.Entry<String, String>> keyValueIterator = conf.iterator();
 
@@ -108,13 +125,152 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   }
 
   /**
+   * Custom serializer for TaskDetails object.
+   */
+  public static class TaskDetailsSerializer extends JsonSerializer<TaskDetails> {
+
+    @Override
+    public void serialize(TaskDetails td, JsonGenerator jsonGenerator,
+        SerializerProvider serializerProvider) throws IOException {
+
+      SerializationContext context = RestJSONResource.serializationContext
+          .get();
+      Predicate<String> includeFilter = context.getTaskFilter();
+
+      if (includeFilter == null) {
+        // should generate the json for everything in the task details object
+        ObjectMapper om = new ObjectMapper();
+        om.registerModule(addJobMappings(createhRavenModule()));
+        om.writeValue(jsonGenerator, td);
+      } else {
+        // should generate the json for everything in the task details object
+        // as per the filtering criteria
+        ObjectMapper om = new ObjectMapper();
+        om.registerModule(addJobMappings(createhRavenModule()));
+        jsonGenerator.writeStartObject();
+        filteredWrite("taskKey", includeFilter, td.getTaskKey(), jsonGenerator);
+        filteredWrite("taskId", includeFilter, td.getTaskId(), jsonGenerator);
+        filteredWrite("startTime", includeFilter, td.getStartTime(),
+            jsonGenerator);
+        filteredWrite("finishTime", includeFilter, td.getFinishTime(),
+            jsonGenerator);
+        filteredWrite("taskType", includeFilter, td.getType(), jsonGenerator);
+        filteredWrite("status", includeFilter, td.getStatus(), jsonGenerator);
+        filteredWrite("splits", includeFilter, td.getSplits(), jsonGenerator);
+        filteredWrite("counters", includeFilter, td.getCounters(),
+            jsonGenerator);
+        filteredWrite("taskAttemptId", includeFilter, td.getTaskAttemptId(),
+            jsonGenerator);
+        filteredWrite("trackerName", includeFilter, td.getTrackerName(),
+            jsonGenerator);
+        filteredWrite("hostname", includeFilter, td.getHostname(),
+            jsonGenerator);
+        filteredWrite("httpPort", includeFilter, td.getTrackerName(),
+            jsonGenerator);
+        filteredWrite("state", includeFilter, td.getState(), jsonGenerator);
+        filteredWrite("error", includeFilter, td.getError(), jsonGenerator);
+        filteredWrite("shuffleFinished", includeFilter,
+            td.getShuffleFinished(), jsonGenerator);
+        filteredWrite("sortFinished", includeFilter, td.getSortFinished(),
+            jsonGenerator);
+        jsonGenerator.writeEndObject();
+      }
+    }
+
+  }
+
+  /**
+   * Custom serializer for JobDetails object.
+   */
+  public static class JobDetailsSerializer extends JsonSerializer<JobDetails> {
+
+    @Override
+    public void serialize(JobDetails jd, JsonGenerator jsonGenerator,
+        SerializerProvider serializerProvider) throws IOException {
+      SerializationContext context = RestJSONResource.serializationContext
+          .get();
+      Predicate<String> includeFilter = context.getJobFilter();
+
+      if (includeFilter == null) {
+        ObjectMapper om = new ObjectMapper();
+        om.registerModule(addJobMappings(createhRavenModule()));
+        om.writeValue(jsonGenerator, jd);
+      } else {
+        // should generate the json for every field in the job details object
+        // as per the filtering criteria
+        ObjectMapper om = new ObjectMapper();
+        om.registerModule(addJobMappings(createhRavenModule()));
+        jsonGenerator.writeStartObject();
+        filteredWrite("jobKey", includeFilter, jd.getJobKey(), jsonGenerator);
+        filteredWrite("jobId", includeFilter, jd.getJobId(), jsonGenerator);
+        filteredWrite("jobName", includeFilter, jd.getJobName(), jsonGenerator);
+        filteredWrite("user", includeFilter, jd.getUser(), jsonGenerator);
+        filteredWrite("priority", includeFilter, jd.getPriority(),
+            jsonGenerator);
+        filteredWrite("status", includeFilter, jd.getStatus(), jsonGenerator);
+        filteredWrite("version", includeFilter, jd.getVersion(), jsonGenerator);
+        filteredWrite("hadoopVersion", includeFilter, jd.getHadoopVersion(),
+            jsonGenerator);
+        filteredWrite("queue", includeFilter, jd.getQueue(), jsonGenerator);
+        filteredWrite("submitTime", includeFilter, jd.getSubmitTime(),
+            jsonGenerator);
+        filteredWrite("launchTime", includeFilter, jd.getLaunchTime(),
+            jsonGenerator);
+        filteredWrite("finishTime", includeFilter, jd.getFinishTime(),
+            jsonGenerator);
+        filteredWrite("totalMaps", includeFilter, jd.getTotalMaps(),
+            jsonGenerator);
+        filteredWrite("totalReduces", includeFilter, jd.getTotalReduces(),
+            jsonGenerator);
+        filteredWrite("finishedMaps", includeFilter, jd.getFinishedMaps(),
+            jsonGenerator);
+        filteredWrite("finishedReduces", includeFilter,
+            jd.getFinishedReduces(), jsonGenerator);
+        filteredWrite("failedMaps", includeFilter, jd.getFailedMaps(),
+            jsonGenerator);
+        filteredWrite("failedReduces", includeFilter, jd.getFailedReduces(),
+            jsonGenerator);
+        filteredWrite("mapFileBytesRead", includeFilter,
+            jd.getMapFileBytesRead(), jsonGenerator);
+        filteredWrite("mapFileBytesWritten", includeFilter,
+            jd.getMapFileBytesWritten(), jsonGenerator);
+        filteredWrite("reduceFileBytesRead", includeFilter,
+            jd.getReduceFileBytesRead(), jsonGenerator);
+        filteredWrite("hdfsBytesRead", includeFilter, jd.getHdfsBytesRead(),
+            jsonGenerator);
+        filteredWrite("hdfsBytesWritten", includeFilter,
+            jd.getHdfsBytesWritten(), jsonGenerator);
+        filteredWrite("mapSlotMillis", includeFilter, jd.getMapSlotMillis(),
+            jsonGenerator);
+        filteredWrite("reduceSlotMillis", includeFilter,
+            jd.getReduceSlotMillis(), jsonGenerator);
+        filteredWrite("reduceShuffleBytes", includeFilter,
+            jd.getReduceShuffleBytes(), jsonGenerator);
+        filteredWrite("megabyteMillis", includeFilter, jd.getMegabyteMillis(),
+            jsonGenerator);
+        filteredWrite("cost", includeFilter, jd.getCost(), jsonGenerator);
+        filteredWrite("counters", includeFilter, jd.getCounters(),
+            jsonGenerator);
+        filteredWrite("mapCounters", includeFilter, jd.getMapCounters(),
+            jsonGenerator);
+        filteredWrite("reduceCounters", includeFilter, jd.getReduceCounters(),
+            jsonGenerator);
+        filteredWrite("cost", includeFilter, jd.getCost(), jsonGenerator);
+        filteredWrite("configuration", includeFilter, jd.getConfiguration(), jsonGenerator);
+        jsonGenerator.writeEndObject();
+      }
+    }
+
+  }
+
+  /**
    * Custom serializer for HdfsStats object
    */
   public static class HdfsStatsSerializer extends JsonSerializer<HdfsStats> {
 
     @Override
     public void serialize(HdfsStats hdfsStats, JsonGenerator jsonGenerator,
-                          SerializerProvider serializerProvider) throws IOException {
+        SerializerProvider serializerProvider) throws IOException {
 
       jsonGenerator.writeStartObject();
       jsonGenerator.writeFieldName("hdfsStatsKey");
@@ -160,19 +316,19 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       jsonGenerator.writeNumber(hdfsStats.getStorageCost());
       jsonGenerator.writeFieldName("hdfsCost");
       jsonGenerator.writeNumber(hdfsStats.getHdfsCost());
-
       jsonGenerator.writeEndObject();
     }
   }
 
   /**
-   * Custom serializer for Configuration object. We don't want to serialize the classLoader.
+   * Custom serializer for Configuration object. We don't want to serialize the
+   * classLoader.
    */
   public static class CounterSerializer extends JsonSerializer<CounterMap> {
 
     @Override
     public void serialize(CounterMap counterMap, JsonGenerator jsonGenerator,
-                          SerializerProvider serializerProvider) throws IOException {
+        SerializerProvider serializerProvider) throws IOException {
 
       jsonGenerator.writeStartObject();
       for (String group : counterMap.getGroups()) {
@@ -197,92 +353,14 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
    * fields to include in serialized response
    */
   public static class FlowSerializer extends JsonSerializer<Flow> {
-    @SuppressWarnings("deprecation")
     @Override
     public void serialize(Flow aFlow, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
-      SerializationContext.DetailLevel selectedSerialization =
-          RestJSONResource.serializationContext.get().getLevel();
-      if (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING) {
-        // should generate the json for everything in the flow object
-        ObjectMapper om = new ObjectMapper();
-        om.registerModule(
-            addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
-        om.writeValue(jsonGenerator, aFlow);
-      } else {
-        if (selectedSerialization == SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_ONLY
-            || selectedSerialization == SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS) {
-          jsonGenerator.writeStartObject();
-          // serialize the FlowKey object
-          jsonGenerator.writeFieldName("flowKey");
-          jsonGenerator.writeObject(aFlow.getFlowKey());
-          // serialize individual members of this class
-          jsonGenerator.writeFieldName("flowName");
-          jsonGenerator.writeString(aFlow.getFlowName());
-          jsonGenerator.writeFieldName("userName");
-          jsonGenerator.writeString(aFlow.getUserName());
-          jsonGenerator.writeFieldName("jobCount");
-          jsonGenerator.writeNumber(aFlow.getJobCount());
-          jsonGenerator.writeFieldName("totalMaps");
-          jsonGenerator.writeNumber(aFlow.getTotalMaps());
-          jsonGenerator.writeFieldName("totalReduces");
-          jsonGenerator.writeNumber(aFlow.getTotalReduces());
-          jsonGenerator.writeFieldName("mapFilesBytesRead");
-          jsonGenerator.writeNumber(aFlow.getMapFileBytesRead());
-          jsonGenerator.writeFieldName("mapFilesBytesWritten");
-          jsonGenerator.writeNumber(aFlow.getMapFileBytesWritten());
-          jsonGenerator.writeFieldName("reduceFilesBytesRead");
-          jsonGenerator.writeNumber(aFlow.getReduceFileBytesRead());
-          jsonGenerator.writeFieldName("hdfsBytesRead");
-          jsonGenerator.writeNumber(aFlow.getHdfsBytesRead());
-          jsonGenerator.writeFieldName("hdfsBytesWritten");
-          jsonGenerator.writeNumber(aFlow.getHdfsBytesWritten());
-          jsonGenerator.writeFieldName("mapSlotMillis");
-          jsonGenerator.writeNumber(aFlow.getMapSlotMillis());
-          jsonGenerator.writeFieldName("reduceSlotMillis");
-          jsonGenerator.writeNumber(aFlow.getReduceSlotMillis());
-          jsonGenerator.writeFieldName("megabyteMillis");
-          jsonGenerator.writeNumber(aFlow.getMegabyteMillis());
-          jsonGenerator.writeFieldName("cost");
-          jsonGenerator.writeNumber(aFlow.getCost());
-          jsonGenerator.writeFieldName("reduceShuffleBytes");
-          jsonGenerator.writeNumber(aFlow.getReduceShuffleBytes());
-          jsonGenerator.writeFieldName("duration");
-          jsonGenerator.writeNumber(aFlow.getDuration());
-          jsonGenerator.writeFieldName("wallClockTime");
-          jsonGenerator.writeNumber(aFlow.getWallClockTime());
-          jsonGenerator.writeFieldName("cluster");
-          jsonGenerator.writeString(aFlow.getCluster());
-          jsonGenerator.writeFieldName("appId");
-          jsonGenerator.writeString(aFlow.getAppId());
-          jsonGenerator.writeFieldName("runId");
-          jsonGenerator.writeNumber(aFlow.getRunId());
-          jsonGenerator.writeFieldName("version");
-          jsonGenerator.writeString(aFlow.getVersion());
-          jsonGenerator.writeFieldName("hadoopVersion");
-          /**
-           *  unlikely that the next line with .toString 
-           *  will throw NPE since Flow class always sets
-           *  default hadoop version in Flow#addJob
-           */
-          jsonGenerator.writeString(aFlow.getHadoopVersion().toString());
-          jsonGenerator.writeFieldName(Constants.HRAVEN_QUEUE);
-          jsonGenerator.writeString(aFlow.getQueue());
-          jsonGenerator.writeFieldName("counters");
-          jsonGenerator.writeObject(aFlow.getCounters());
-          jsonGenerator.writeFieldName("mapCounters");
-          jsonGenerator.writeObject(aFlow.getMapCounters());
-          jsonGenerator.writeFieldName("reduceCounters");
-          jsonGenerator.writeObject(aFlow.getReduceCounters());
-          // if flag, include job details
-          if (selectedSerialization ==
-              SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS) {
-            jsonGenerator.writeFieldName("jobs");
-            jsonGenerator.writeObject(aFlow.getJobs());
-          }
-          jsonGenerator.writeEndObject();
-        }
-      }
+
+      SerializationContext context = RestJSONResource.serializationContext.get();
+      SerializationContext.DetailLevel selectedSerialization = context.getLevel();
+      Predicate<String> includeFilter = context.getFlowFilter();
+      writeFlowDetails(jsonGenerator, aFlow, selectedSerialization, includeFilter);
     }
   }
 
@@ -295,20 +373,18 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     @Override
     public void serialize(AppSummary anApp, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
-      SerializationContext.DetailLevel selectedSerialization =
-          RestJSONResource.serializationContext.get().getLevel();
+      SerializationContext.DetailLevel selectedSerialization = RestJSONResource.serializationContext
+          .get().getLevel();
       if (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING) {
-        // should generate the json for everything in the flow object
+        // should generate the json for everything in the app summary object
         ObjectMapper om = new ObjectMapper();
-        om.registerModule(
-            addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
+        om.registerModule(addJobMappings(createhRavenModule()));
         om.writeValue(jsonGenerator, anApp);
       } else {
         if (selectedSerialization == SerializationContext.DetailLevel.APP_SUMMARY_STATS_NEW_JOBS_ONLY) {
-          // should generate the json for everything in the flow object
+          // should generate the json for stats relevant for new jobs
           ObjectMapper om = new ObjectMapper();
-          om.registerModule(
-              addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
+          om.registerModule(addJobMappings(createhRavenModule()));
           jsonGenerator.writeStartObject();
           jsonGenerator.writeFieldName("cluster");
           jsonGenerator.writeString(anApp.getKey().getCluster());
@@ -326,10 +402,9 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
           jsonGenerator.writeNumber(anApp.getLastRunId());
           jsonGenerator.writeEndObject();
         } else if (selectedSerialization == SerializationContext.DetailLevel.APP_SUMMARY_STATS_ALL_APPS) {
-          // should generate the json for everything in the flow object
+          // should generate the json for everything in the app summary object
           ObjectMapper om = new ObjectMapper();
-          om.registerModule(
-              addJobMappings(new SimpleModule("hRavenModule", new Version(0, 4, 0, null))));
+          om.registerModule(addJobMappings(createhRavenModule()));
           jsonGenerator.writeStartObject();
           jsonGenerator.writeFieldName("cluster");
           jsonGenerator.writeString(anApp.getKey().getCluster());
@@ -364,5 +439,92 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
 
       }
     }
+  }
+
+  /**
+   * checks if the member is to be filtered out or no if filter itself is
+   * null, writes out that member
+   * 
+   * @param member
+   * @param includeFilter
+   * @param taskObject
+   * @param jsonGenerator
+   * @throws JsonGenerationException
+   * @throws IOException
+   */
+  public static void filteredWrite(String member, Predicate<String> includeFilter,
+      Object taskObject, JsonGenerator jsonGenerator)
+      throws JsonGenerationException, IOException {
+    if (includeFilter != null) {
+      if (includeFilter.apply(member)) {
+        jsonGenerator.writeFieldName(member);
+        jsonGenerator.writeObject(taskObject);
+      }
+    } else {
+      jsonGenerator.writeFieldName(member);
+      jsonGenerator.writeObject(taskObject);
+    }
+  }
+
+  /**
+   * Writes out the flow object
+   *
+   * @param jsonGenerator
+   * @param aFlow
+   * @param selectedSerialization 
+   * @param includeFilter 
+   * @param includeJobFieldFilter 
+   * @throws JsonGenerationException
+   * @throws IOException
+   */
+  @SuppressWarnings("deprecation")
+  public static void writeFlowDetails(JsonGenerator jsonGenerator, Flow aFlow,
+      DetailLevel selectedSerialization, Predicate<String> includeFilter)
+      throws JsonGenerationException, IOException {
+    jsonGenerator.writeStartObject();
+    // serialize the FlowKey object
+    filteredWrite("flowKey", includeFilter, aFlow.getFlowKey(), jsonGenerator);
+
+    // serialize individual members of this class
+    filteredWrite("flowName", includeFilter, aFlow.getFlowName(), jsonGenerator);
+    filteredWrite("userName", includeFilter, aFlow.getUserName(), jsonGenerator);
+    filteredWrite("jobCount", includeFilter, aFlow.getJobCount(), jsonGenerator);
+    filteredWrite("totalMaps", includeFilter, aFlow.getTotalMaps(), jsonGenerator);
+    filteredWrite("totalReduces", includeFilter, aFlow.getTotalReduces(), jsonGenerator);
+    filteredWrite("mapFileBytesRead", includeFilter, aFlow.getMapFileBytesRead(), jsonGenerator);
+    filteredWrite("mapFileBytesWritten", includeFilter, aFlow.getMapFileBytesWritten(), jsonGenerator);
+    filteredWrite("reduceFileBytesRead", includeFilter, aFlow.getReduceFileBytesRead(), jsonGenerator);
+    filteredWrite("hdfsBytesRead", includeFilter, aFlow.getHdfsBytesRead(), jsonGenerator);
+    filteredWrite("hdfsBytesWritten", includeFilter, aFlow.getHdfsBytesWritten(), jsonGenerator);
+    filteredWrite("mapSlotMillis", includeFilter, aFlow.getMapSlotMillis(), jsonGenerator);
+    filteredWrite("reduceSlotMillis", includeFilter, aFlow.getReduceSlotMillis(), jsonGenerator);
+    filteredWrite("megabyteMillis", includeFilter, aFlow.getMegabyteMillis(), jsonGenerator);
+    filteredWrite("cost", includeFilter, aFlow.getCost(), jsonGenerator);
+    filteredWrite("reduceShuffleBytes", includeFilter, aFlow.getReduceShuffleBytes(), jsonGenerator);
+    filteredWrite("duration", includeFilter, aFlow.getDuration(), jsonGenerator);
+    filteredWrite("wallClockTime", includeFilter, aFlow.getWallClockTime(), jsonGenerator);
+    filteredWrite("cluster", includeFilter, aFlow.getCluster(), jsonGenerator);
+    filteredWrite("appId", includeFilter, aFlow.getAppId(), jsonGenerator);
+    filteredWrite("runId", includeFilter, aFlow.getRunId(), jsonGenerator);
+    filteredWrite("version", includeFilter, aFlow.getVersion(), jsonGenerator);
+    filteredWrite("hadoopVersion", includeFilter, aFlow.getHadoopVersion(), jsonGenerator);
+    if (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING) {
+      filteredWrite("submitTime", includeFilter, aFlow.getSubmitTime(), jsonGenerator);
+      filteredWrite("launchTime", includeFilter, aFlow.getLaunchTime(), jsonGenerator);
+      filteredWrite("finishTime", includeFilter, aFlow.getFinishTime(), jsonGenerator);
+    }
+    filteredWrite(Constants.HRAVEN_QUEUE, includeFilter, aFlow.getQueue(), jsonGenerator);
+    filteredWrite("counters", includeFilter, aFlow.getCounters(), jsonGenerator);
+    filteredWrite("mapCounters", includeFilter, aFlow.getMapCounters(), jsonGenerator);
+    filteredWrite("reduceCounters", includeFilter, aFlow.getReduceCounters(), jsonGenerator);
+
+    // if flag, include job details
+    if ((selectedSerialization == SerializationContext.DetailLevel.FLOW_SUMMARY_STATS_WITH_JOB_STATS)
+        || (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING)) {
+      jsonGenerator.writeFieldName("jobs");
+      jsonGenerator.writeObject(aFlow.getJobs());
+    }
+    jsonGenerator.writeEndObject();
+
   }
 }

@@ -66,10 +66,10 @@ public class SerializationContext {
    * Restricts returned job configuration data to specific configuration
    * properties.
    */
-  public static class ConfigurationFilter implements Predicate<String> {
+  public static class FieldNameFilter implements Predicate<String> {
     private final Set<String> allowedKeys;
 
-    public ConfigurationFilter(List<String> keys) {
+    public FieldNameFilter(List<String> keys) {
       if (keys != null) {
         this.allowedKeys = new HashSet<String>(keys);
       } else {
@@ -119,17 +119,36 @@ public class SerializationContext {
   }
 
   private final DetailLevel level;
-  private final Predicate<String> filter;
+  private final Predicate<String> configFilter;
+  private final Predicate<String> flowFilter;
+  private final Predicate<String> jobFilter;
+  private final Predicate<String> taskFilter;
 
   public SerializationContext(DetailLevel serializationLevel) {
     this.level = serializationLevel;
-    this.filter = null;
+    this.configFilter = null;
+    this.flowFilter = null;
+    this.jobFilter = null;
+    this.taskFilter = null;
   }
 
+  /**
+   * constructor to set the config filter, job filter and task filter
+   * @param serializationLevel
+   * @param configFilter
+   * @param jobFilter
+   * @param taskFilter
+   */
   public SerializationContext(DetailLevel serializationLevel,
-                              Predicate<String> filter) {
+                              Predicate<String> configFilter,
+                              Predicate<String> flowFilter,
+                              Predicate<String> jobFilter,
+                              Predicate<String> taskFilter) {
     this.level = serializationLevel;
-    this.filter = filter;
+    this.configFilter = configFilter;
+    this.flowFilter = flowFilter;
+    this.jobFilter = jobFilter;
+    this.taskFilter = taskFilter;
   }
 
   public DetailLevel getLevel() {
@@ -137,6 +156,18 @@ public class SerializationContext {
   }
 
   public Predicate<String> getConfigurationFilter() {
-    return this.filter;
+    return this.configFilter;
+  }
+
+  public Predicate<String> getFlowFilter() {
+    return flowFilter;
+  }
+
+  public Predicate<String> getJobFilter() {
+    return jobFilter;
+  }
+
+  public Predicate<String> getTaskFilter() {
+    return taskFilter;
   }
 }
