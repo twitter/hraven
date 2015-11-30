@@ -128,9 +128,10 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
 
     // test serialization matching specific property keys
     // serialize flow into json
-    RestJSONResource.serializationContext.set(
-        new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
-            new SerializationContext.ConfigurationFilter(serializedKeys)));
+    RestJSONResource.serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING,
+        new SerializationContext.FieldNameFilter(serializedKeys), null, null,
+        null));
     ObjectMapper om = ObjectMapperProvider.createCustomMapper();
     om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
     om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
@@ -149,9 +150,10 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
 
     // test serialization matching property regexes
     List<String> patterns = Lists.newArrayList("^.*prop$");
-    RestJSONResource.serializationContext.set(
-        new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
-            new SerializationContext.RegexConfigurationFilter(patterns)));
+    RestJSONResource.serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING,
+        new SerializationContext.RegexConfigurationFilter(patterns), null,
+        null, null));
     om = ObjectMapperProvider.createCustomMapper();
     om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
     om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
@@ -200,7 +202,7 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
     assertEquals(flow1.getTotalMaps(), flow2.getTotalMaps());
     assertEquals(flow1.getTotalReduces(), flow2.getTotalReduces());
     assertEquals(flow1.getVersion(), flow2.getVersion());
-    assertEquals(flow1.getHistoryFileType(), flow2.getHistoryFileType());
+    assertEquals(flow1.getHadoopVersion(), flow2.getHadoopVersion());
     assertEquals(flow1.getUserName(), flow2.getUserName());
     assertJobListEquals(flow1.getJobs(), flow2.getJobs());
   }
@@ -222,7 +224,7 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
       assertEquals(job1.get(j).getMapSlotMillis(), job2.get(j).getMapSlotMillis());
       assertEquals(job1.get(j).getReduceSlotMillis(), job2.get(j).getReduceSlotMillis());
       assertEquals(job1.get(j).getMegabyteMillis(), job2.get(j).getMegabyteMillis());
-      assertEquals(job1.get(j).getHistoryFileType(), job2.get(j).getHistoryFileType());
+      assertEquals(job1.get(j).getHadoopVersion(), job2.get(j).getHadoopVersion());
       assertEquals(job1.get(j).getUser(), job2.get(j).getUser());
     }
   }
