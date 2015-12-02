@@ -15,6 +15,10 @@ limitations under the License.
 */
 package com.twitter.hraven.util;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.List;
+
 import com.twitter.hraven.Constants;
 
 /**
@@ -41,4 +45,43 @@ public class StringUtil {
 
     return cleansed;
   }
+
+  /**
+   * builds up a String with the parameters for the filtering of fields
+   * @param paramName
+   * @param paramArgs
+   * @return String
+   * @throws IOException
+   */
+  public static String buildParam(String paramName, List<String> paramArgs)
+      throws IOException {
+    StringBuilder sb = new StringBuilder();
+    for (String arg : paramArgs) {
+      if (sb.length() > 0) {
+        sb.append("&");
+      }
+      sb.append(paramName).append("=").append(URLEncoder.encode(arg, "UTF-8"));
+    }
+    return sb.toString();
+  }
+
+  /**
+   * builds up a String with the parameters for the filtering of fields
+   * @param paramName
+   * @param paramArgs
+   * @return String
+   * @throws IOException
+   */
+  public static String buildParam(String paramName, String[] paramArgs)
+      throws IOException {
+    StringBuilder sb = new StringBuilder();
+    for (String arg : paramArgs) {
+      if (sb.length() > 0) {
+        sb.append("&");
+      }
+      sb.append(paramName).append("=").append(URLEncoder.encode(arg, "UTF-8"));
+    }
+    return sb.toString();
+  }
+
 }

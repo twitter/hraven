@@ -128,9 +128,10 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
 
     // test serialization matching specific property keys
     // serialize flow into json
-    RestJSONResource.serializationContext.set(
-        new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
-            new SerializationContext.ConfigurationFilter(serializedKeys)));
+    RestJSONResource.serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING,
+        new SerializationContext.FieldNameFilter(serializedKeys), null, null,
+        null));
     ObjectMapper om = ObjectMapperProvider.createCustomMapper();
     om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
     om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
@@ -149,9 +150,10 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
 
     // test serialization matching property regexes
     List<String> patterns = Lists.newArrayList("^.*prop$");
-    RestJSONResource.serializationContext.set(
-        new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
-            new SerializationContext.RegexConfigurationFilter(patterns)));
+    RestJSONResource.serializationContext.set(new SerializationContext(
+        SerializationContext.DetailLevel.EVERYTHING,
+        new SerializationContext.RegexConfigurationFilter(patterns), null,
+        null, null));
     om = ObjectMapperProvider.createCustomMapper();
     om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
     om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
