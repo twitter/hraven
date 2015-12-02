@@ -209,7 +209,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
             jsonGenerator);
         filteredWrite("status", includeFilter, jd.getStatus(), jsonGenerator);
         filteredWrite("version", includeFilter, jd.getVersion(), jsonGenerator);
-        filteredWrite("hadoopVersion", includeFilter, jd.getHadoopVersion(),
+        filteredWrite("historyFileType", includeFilter, jd.getHistoryFileType(),
             jsonGenerator);
         filteredWrite("queue", includeFilter, jd.getQueue(), jsonGenerator);
         filteredWrite("submitTime", includeFilter, jd.getSubmitTime(),
@@ -507,7 +507,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     filteredWrite("appId", includeFilter, aFlow.getAppId(), jsonGenerator);
     filteredWrite("runId", includeFilter, aFlow.getRunId(), jsonGenerator);
     filteredWrite("version", includeFilter, aFlow.getVersion(), jsonGenerator);
-    filteredWrite("hadoopVersion", includeFilter, aFlow.getHadoopVersion(), jsonGenerator);
+    filteredWrite("historyFileType", includeFilter, aFlow.getHistoryFileType(), jsonGenerator);
     if (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING) {
       filteredWrite("submitTime", includeFilter, aFlow.getSubmitTime(), jsonGenerator);
       filteredWrite("launchTime", includeFilter, aFlow.getLaunchTime(), jsonGenerator);
