@@ -42,6 +42,8 @@ hbaseconfdir=${HBASE_CONF_DIR:-$HBASE_HOME/conf}
 # HDFS directories for processing and loading job history data
 historyRawDir=/yarn/history/done/
 historyProcessingDir=/hraven/processing/
+pathExclusionFilter=distcp
+pathInclusionFilter=rmcuser
 #######################################################
 
 
@@ -60,7 +62,7 @@ create_pidfile $HRAVEN_PID_DIR
 trap 'cleanup_pidfile_and_exit $HRAVEN_PID_DIR' INT TERM EXIT
 
 # Pre-process
-$home/jobFilePreprocessor.sh $hadoopconfdir $historyRawDir $historyProcessingDir $cluster $batchsize $defaultrawfilesizelimit
+$home/jobFilePreprocessor.sh $hadoopconfdir $historyRawDir $historyProcessingDir $cluster $batchsize $defaultrawfilesizelimit $pathExclusionFilter $pathInclusionFilter
 
 # Load
 $home/jobFileLoader.sh $hadoopconfdir $mapredmaxsplitsize $schedulerpoolname $cluster $historyProcessingDir
