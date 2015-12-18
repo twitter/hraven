@@ -17,6 +17,8 @@ package com.twitter.hraven;
 
 import java.text.SimpleDateFormat;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -430,4 +432,6 @@ public class Constants {
 
   /** name of the properties file used for cluster to cluster identifier mapping */
   public static final String HRAVEN_CLUSTER_PROPERTIES_FILENAME = "hRavenClusters.properties";
+
+  public static final Pattern HADOOPV1HISTORYPATTERN = Pattern.compile("(.*)/done/(.*)/([0-9]{4})/([0-9]{2})/([0-9]{2})/(.*)/(.*)");
 }

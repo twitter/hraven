@@ -118,7 +118,9 @@ public class FileLister {
 
     LOG.info(" in getListFilesToProcess maxFileSize=" + maxFileSize
         + " inputPath= " + inputPath.toUri());
-    FileStatus[] origList = listFiles(recurse, hdfs, inputPath, pathFilter);
+    //Instead of getting a base path and recursing, we insist on getting a path pattern
+    //and using globStatus to return all files instead, which is much faster than the recursive method call:
+    FileStatus[] origList = hdfs.globStatus(inputPath, pathFilter);
     if (origList == null) {
       LOG.info(" No files found, orig list returning 0");
       return new FileStatus[0];

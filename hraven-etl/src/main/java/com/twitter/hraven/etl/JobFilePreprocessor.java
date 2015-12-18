@@ -18,6 +18,8 @@ package com.twitter.hraven.etl;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -137,8 +139,27 @@ public class JobFilePreprocessor extends Configured implements Tool {
         "i",
         "input",
         true,
-        "input directory in hdfs. Default is mapred.job.tracker.history.completed.location.");
+        "Path pattern for mapred.job.tracker.history.completed.location");
     o.setArgName("input-path");
+    o.setRequired(false);
+    options.addOption(o);
+    
+    // Input
+    o = new Option(
+        "bi",
+        "baseinput",
+        true,
+        "Base path for mapred.job.tracker.history.completed.location");
+    o.setArgName("base-path");
+    o.setRequired(false);
+    options.addOption(o);
+
+    // special parameter - specify if month in history folder pattern should start from 00
+    
+    o =
+        new Option("zm", "zeromonth", false,
+            "Pass this option if month in history folder pattern starts from 00");
+    o.setArgName("zeromonth");
     o.setRequired(false);
     options.addOption(o);
 
@@ -214,25 +235,45 @@ public class JobFilePreprocessor extends Configured implements Tool {
     // Output should be an hdfs path.
     FileSystem hdfs = FileSystem.get(hbaseConf);
 
-    // Grab the input path argument
-    String output = commandLine.getOptionValue("o");
-    LOG.info(" output=" + output);
-    Path outputPath = new Path(output);
-    FileStatus outputFileStatus = hdfs.getFileStatus(outputPath);
+    // Grab the output path argument
+    String processingDirectory = commandLine.getOptionValue("o");
+    LOG.info("output: " + processingDirectory);
+    Path processingDirectoryPath = new Path(processingDirectory);
 
-    if (!outputFileStatus.isDir()) {
-      throw new IOException("Output is not a directory"
-          + outputFileStatus.getPath().getName());
+    if (!hdfs.exists(processingDirectoryPath)) {
+      hdfs.mkdirs(processingDirectoryPath);
     }
 
     // Grab the input path argument
     String input;
     if (commandLine.hasOption("i")) {
       input = commandLine.getOptionValue("i");
+      
+      if (commandLine.hasOption("zm")) {
+        LOG.info("Changing input path pattern for zero-month folder glitch in hadoop");
+        Matcher matcher = Constants.HADOOPV1HISTORYPATTERN.matcher(input);
+        if (matcher.matches()) {
+          //month is from 00 till 11 for some reason
+          int month = Integer.parseInt(matcher.group(4));
+          input = matcher.replaceFirst("$1/done/$2/$3/" + String.format("%02d", month-1) + "/$5/$6/$7");
+        }  
+      }
     } else {
-      input = hbaseConf.get("mapred.job.tracker.history.completed.location");
+      //input = hbaseConf.get("mapred.job.tracker.history.completed.location");
+      //Use should specify the complete path pattern for the history folder
+      //much more efficient to use globStatus instead
+      throw new RuntimeException("Kindly provide a path pattern for the history folder");
     }
     LOG.info("input=" + input);
+    
+    // Grab the base input argumnt
+    String baseinput;
+    if (commandLine.hasOption("bi")) {
+      baseinput = commandLine.getOptionValue("bi");
+    } else {
+      baseinput = hbaseConf.get("mapred.job.tracker.history.completed.location");
+    }
+    LOG.info("baseinput=" + baseinput);
 
     // Grab the batch-size argument
     int batchSize;
@@ -258,11 +299,12 @@ public class JobFilePreprocessor extends Configured implements Tool {
     LOG.info("forceAllFiles: " + forceAllFiles);
 
     Path inputPath = new Path(input);
-    FileStatus inputFileStatus = hdfs.getFileStatus(inputPath);
+    Path baseInputPath = new Path(baseinput);
+    FileStatus baseInputFileStatus = hdfs.getFileStatus(baseInputPath);
 
-    if (!inputFileStatus.isDir()) {
-      throw new IOException("Input is not a directory"
-          + inputFileStatus.getPath().getName());
+    if (!baseInputFileStatus.isDir()) {
+      throw new IOException("Base input is not a directory"
+          + baseInputFileStatus.getPath().getName());
     }
 
     // Grab the cluster argument
@@ -323,10 +365,9 @@ public class JobFilePreprocessor extends Configured implements Tool {
       String timestamp = Constants.TIMESTAMP_FORMAT.format(new Date(
           minModificationTimeMillis));
 
-      ContentSummary contentSummary = hdfs.getContentSummary(inputPath);
-      LOG.info("Listing / filtering ("
-          + contentSummary.getFileCount() + ") files in: " + inputPath
-          + " that are modified since " + timestamp);
+      ContentSummary contentSummary = hdfs.getContentSummary(baseInputPath);
+      LOG.info("Listing / filtering " + contentSummary.getFileCount() + " files in: " + inputPath
+          + " (" + baseInputPath + ") that are modified since " + timestamp + "(" + minModificationTimeMillis + ")");
 
       // get the files in the done folder,
       // need to traverse dirs under done recursively for versions
@@ -344,14 +385,14 @@ public class JobFilePreprocessor extends Configured implements Tool {
       LOG.info("Batch count: " + batchCount);
       for (int b = 0; b < batchCount; b++) {
         processBatch(jobFileStatusses, b, batchSize, processRecordService,
-            cluster, outputPath);
+            cluster, processingDirectoryPath);
       }
 
     } finally {
       processRecordService.close();
     }
 
-    Statistics statistics = FileSystem.getStatistics(inputPath.toUri()
+    Statistics statistics = FileSystem.getStatistics(baseInputPath.toUri()
         .getScheme(), hdfs.getClass());
     if (statistics != null) {
       LOG.info("HDFS bytes read: " + statistics.getBytesRead());
