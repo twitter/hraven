@@ -23,12 +23,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Lists;
@@ -44,11 +47,18 @@ public class AppVersionService {
 
   @SuppressWarnings("unused")
   private final Configuration conf;
-  private final HTable versionsTable;
+  private final Table versionsTable;
 
-  public AppVersionService(Configuration conf) throws IOException {
-    this.conf = conf;
-    this.versionsTable = new HTable(conf, Constants.HISTORY_APP_VERSION_TABLE);
+  public AppVersionService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      this.conf = new Configuration();
+    } else {
+      this.conf = hbaseConf;
+    }
+
+    Connection conn = ConnectionFactory.createConnection(conf);
+
+    this.versionsTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
   }
 
   /**
@@ -193,7 +203,7 @@ public class AppVersionService {
   }
 
   /**
-   * Close the underlying HTable reference to free resources
+   * Close the underlying Table reference to free resources
    * @throws IOException
    */
   public void close() throws IOException {

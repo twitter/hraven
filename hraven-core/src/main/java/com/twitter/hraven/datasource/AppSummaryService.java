@@ -72,9 +72,9 @@ public class AppSummaryService {
 
   public AppSummaryService(Configuration hbaseConf) throws IOException {
     if (hbaseConf == null) {
-      this.conf = new Configuration();
+      conf = new Configuration();
     } else {
-      this.conf = hbaseConf;
+      conf = hbaseConf;
     }
 
     Connection conn = ConnectionFactory.createConnection(conf);
