@@ -29,13 +29,16 @@ import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -55,23 +58,31 @@ import com.twitter.hraven.util.HadoopConfUtil;
 public class JobHistoryService {
   private static Log LOG = LogFactory.getLog(JobHistoryService.class);
 
-  private final Configuration myConf;
-  private final HTable historyTable;
-  private final HTable taskTable;
+  private final Configuration conf;
+  private final Table historyTable;
+  private final Table taskTable;
   private final JobHistoryByIdService idService;
   private final JobKeyConverter jobKeyConv = new JobKeyConverter();
   private final TaskKeyConverter taskKeyConv = new TaskKeyConverter();
 
   private final int defaultScannerCaching;
 
-  public JobHistoryService(Configuration myConf) throws IOException {
-    this.myConf = myConf;
-    // TODO dogpiledays, update HTable references
-    this.historyTable = new HTable(myConf, Constants.HISTORY_TABLE_BYTES);
-    this.taskTable = new HTable(myConf, Constants.HISTORY_TASK_TABLE_BYTES);
-    this.idService = new JobHistoryByIdService(this.myConf);
-    this.defaultScannerCaching = myConf.getInt("hbase.client.scanner.caching", 100);
+  public JobHistoryService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    Connection conn = ConnectionFactory.createConnection(conf);
+
+    this.historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
+    this.taskTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TASK_TABLE_BYTES));
+    this.idService = new JobHistoryByIdService(conf);
+    this.defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
   }
+
+
 
   /**
    * Returns the most recent flow by application ID. This version will only

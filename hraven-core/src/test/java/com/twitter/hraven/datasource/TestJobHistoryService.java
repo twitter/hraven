@@ -28,8 +28,11 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -52,7 +55,7 @@ import com.twitter.hraven.datasource.HRavenTestUtil;
 public class TestJobHistoryService {
   private static Log LOG = LogFactory.getLog(TestJobHistoryService.class);
   private static HBaseTestingUtility UTIL;
-  private static HTable historyTable;
+  private static Table historyTable;
   private static JobHistoryByIdService idService;
   private static GenerateFlowTestData flowDataGen ;
 
@@ -61,8 +64,10 @@ public class TestJobHistoryService {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
     HRavenTestUtil.createSchema(UTIL);
-  //TODO dogpiledays update HTable calls
-    historyTable = new HTable(UTIL.getConfiguration(), Constants.HISTORY_TABLE_BYTES);
+
+    Connection conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
+
     idService = new JobHistoryByIdService(UTIL.getConfiguration());
     flowDataGen = new GenerateFlowTestData();
 

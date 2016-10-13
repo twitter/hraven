@@ -18,10 +18,13 @@ package com.twitter.hraven.datasource;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Table;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobKey;
@@ -38,11 +41,19 @@ public class JobHistoryByIdService {
   /**
    * Used to store the job to jobHistoryKey index in.
    */
-  private final HTable historyByJobIdTable;
+  private final Table historyByJobIdTable;
 
-  public JobHistoryByIdService(Configuration myHBaseConf) throws IOException {
-    historyByJobIdTable = new HTable(myHBaseConf,
-        Constants.HISTORY_BY_JOBID_TABLE_BYTES);
+  public JobHistoryByIdService(Configuration hbaseConf) throws IOException {
+    Configuration conf;
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    Connection conn = ConnectionFactory.createConnection(conf);
+    historyByJobIdTable = conn.getTable(
+        TableName.valueOf(Constants.HISTORY_BY_JOBID_TABLE_BYTES));
   }
 
   /**
