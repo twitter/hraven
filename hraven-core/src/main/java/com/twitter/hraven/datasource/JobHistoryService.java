@@ -66,6 +66,7 @@ public class JobHistoryService {
 
   public JobHistoryService(Configuration myConf) throws IOException {
     this.myConf = myConf;
+    // TODO dogpiledays, update HTable references
     this.historyTable = new HTable(myConf, Constants.HISTORY_TABLE_BYTES);
     this.taskTable = new HTable(myConf, Constants.HISTORY_TASK_TABLE_BYTES);
     this.idService = new JobHistoryByIdService(this.myConf);
@@ -453,7 +454,7 @@ public class JobHistoryService {
         if (result != null && !result.isEmpty()) {
           rowCount++;
           colCount += result.size();
-          resultSize += result.getWritableSize();
+     //TODO dogpiledays       resultSize += result.getWritableSize();
           JobKey currentKey = jobKeyConv.fromBytes(result.getRow());
           // empty runId is special cased -- we need to treat each job as it's own flow
           if (currentFlow == null || !currentFlow.contains(currentKey) ||
