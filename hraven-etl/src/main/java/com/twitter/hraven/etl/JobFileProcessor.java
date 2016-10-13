@@ -41,7 +41,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.filecache.DistributedCache;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Scan;
@@ -535,13 +534,8 @@ public class JobFileProcessor extends Configured implements Tool {
   /**
    * @param conf
    *          to be used to connect to HBase
-   * @param cluster
-   *          for which we're finding processRecords.
-   * @param processFileSubstring
-   *          if specified, this string must be part of the processFile path to
-   *          limit which records we want to process.
-   * @return a list of processRecords in {@link ProcessState#LOADED} stqte that
-   *         still need to be processed.
+   * @param processRecords
+   *          Set the list of ProcessRecord to PROCESSED.
    * @throws IOException
    */
   private void updateProcessRecords(Configuration conf,
@@ -581,10 +575,6 @@ public class JobFileProcessor extends Configured implements Tool {
    * @param reprocess
    *          Reprocess those records that may have been processed already.
    *          Otherwise successfully processed job files are skipped.
-   * @param reprocessOnly
-   *          process only those raw records that were marked to be reprocessed.
-   *          When true then reprocess argument is ignored and is assumed to be
-   *          true.
    * @param batchSize
    *          the total number of jobs to process in a batch (a MR job scanning
    *          these many records in the raw table).

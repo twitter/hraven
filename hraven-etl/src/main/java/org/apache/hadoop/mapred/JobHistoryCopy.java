@@ -55,6 +55,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.mapreduce.JobACL;
+import org.apache.hadoop.mapreduce.MRConfig;
 import org.apache.hadoop.security.authorize.AccessControlList;
 import org.apache.hadoop.util.StringUtils;
 
@@ -284,8 +285,7 @@ public class JobHistoryCopy {
 
           jobHistoryFileMap.put(id, new MovedFileInfo(historyFileDonePath,
               System.currentTimeMillis()));
-          jobTracker.historyFileCopied(id, historyFileDonePath);
-          
+
           //purge the job from the cache
           fileManager.purgeJob(id);
         }
@@ -346,7 +346,7 @@ public class JobHistoryCopy {
     jtConf = conf;
 
     // queue and job level security is enabled on the mapreduce cluster or not
-    aclsEnabled = conf.getBoolean(JobConf.MR_ACLS_ENABLED, false);
+    aclsEnabled = conf.getBoolean(MRConfig.MR_ACLS_ENABLED, false);
 
     // initialize the file manager
     fileManager = new JobHistoryFilesManager(conf, jobTracker);
@@ -2140,24 +2140,4 @@ public class JobHistoryCopy {
     }
   }
 
-  /**
-   * Return the TaskLogsUrl of a particular TaskAttempt
-   * 
-   * @param attempt
-   * @return the taskLogsUrl. null if http-port or tracker-name or
-   *         task-attempt-id are unavailable.
-   */
-  public static String getTaskLogsUrl(JobHistoryCopy.TaskAttempt attempt) {
-    if (attempt.get(JobHistoryKeys.HTTP_PORT).equals("")
-        || attempt.get(JobHistoryKeys.TRACKER_NAME).equals("")
-        || attempt.get(JobHistoryKeys.TASK_ATTEMPT_ID).equals("")) {
-      return null;
-    }
-
-    String taskTrackerName =
-      JobInProgress.convertTrackerNameToHostName(
-        attempt.get(JobHistoryKeys.TRACKER_NAME));
-    return TaskLogServlet.getTaskLogUrl(taskTrackerName, attempt
-        .get(JobHistoryKeys.HTTP_PORT), attempt.get(JobHistoryKeys.TASK_ATTEMPT_ID));
-  }
 }
