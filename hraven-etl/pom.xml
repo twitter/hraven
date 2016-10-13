@@ -215,7 +215,7 @@
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-core</artifactId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -243,7 +243,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase</artifactId>
+      <artifactId>hbase-client</artifactId>
       <version>${hbase.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -324,16 +324,17 @@
       <version>${jackson.version}</version>
     </dependency>
 
-    <!-- Test dependencies -->
+    <!-- Test dependencies 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-test</artifactId>
+   #TODO dogpiledays   <artifactId>hadoop-test</artifactId>
       <version>${hadoop.version}</version>
       <scope>test</scope>
     </dependency>
+   --> 
     <dependency>
       <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase</artifactId>
+      <artifactId>hbase-client</artifactId>
       <version>${hbase.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
