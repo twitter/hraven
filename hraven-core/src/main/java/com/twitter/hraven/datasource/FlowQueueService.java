@@ -24,13 +24,16 @@ import com.twitter.hraven.util.ByteUtil;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
@@ -58,10 +61,19 @@ public class FlowQueueService {
   private FlowQueueKeyConverter queueKeyConverter = new FlowQueueKeyConverter();
   private FlowKeyConverter flowKeyConverter = new FlowKeyConverter();
 
-  private HTable flowQueueTable;
+  private Table flowQueueTable;
 
-  public FlowQueueService(Configuration conf) throws IOException {
-    this.flowQueueTable = new HTable(conf, Constants.FLOW_QUEUE_TABLE_BYTES);
+  public FlowQueueService(Configuration hbaseConf) throws IOException {
+    Configuration conf;
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    Connection conn = ConnectionFactory.createConnection(conf);
+
+    this.flowQueueTable = conn.getTable(TableName.valueOf(Constants.FLOW_QUEUE_TABLE_BYTES));
   }
 
   public void updateFlow(FlowQueueKey key, Flow flow) throws IOException {
