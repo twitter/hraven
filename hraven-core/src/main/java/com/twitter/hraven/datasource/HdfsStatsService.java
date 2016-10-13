@@ -61,6 +61,7 @@ public class HdfsStatsService {
 
   public HdfsStatsService(Configuration conf) throws IOException {
     this.myConf = conf;
+    //TODO dogpiledays update HTable calls
     this.hdfsUsageTable = new HTable(myConf, HdfsConstants.HDFS_USAGE_TABLE_BYTES);
     this.defaultScannerCaching = myConf.getInt("hbase.client.scanner.caching", 100);
     LOG.info(" in HdfsStatsService constuctor " + Bytes.toString(hdfsUsageTable.getTableName()));
@@ -159,7 +160,7 @@ public class HdfsStatsService {
       for (Result result : scanner) {
         if (result != null && !result.isEmpty()) {
           colCount += result.size();
-          resultSize += result.getWritableSize();
+      //TODO dogpiledays    resultSize += result.getWritableSize();
           rowCount = populateHdfsStats(result, hdfsStats, checkPath, path, starttime, endtime, rowCount);
           // return if we've already hit the limit
           if (rowCount >= maxCount) {

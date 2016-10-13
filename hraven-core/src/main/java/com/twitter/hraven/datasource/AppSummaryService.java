@@ -69,6 +69,7 @@ public class AppSummaryService {
 
   public AppSummaryService(Configuration hbaseConf) throws IOException {
     this.conf = hbaseConf;
+  //TODO dogpiledays update HTable calls
     this.versionsTable = new HTable(conf, Constants.HISTORY_APP_VERSION_TABLE);
     this.aggDailyTable = new HTable(conf, AggregationConstants.AGG_DAILY_TABLE);
     this.aggWeeklyTable = new HTable(conf, AggregationConstants.AGG_WEEKLY_TABLE);
@@ -152,7 +153,7 @@ public class AppSummaryService {
         if (result != null && !result.isEmpty()) {
           rowCount++;
           colCount += result.size();
-          resultSize += result.getWritableSize();
+     //TODO dogpiledays     resultSize += result.getWritableSize();
           AppKey appKey = getNewAppKeyFromResult(result, startTime, endTime);
           if(appKey != null) {
             newAppsKeys.add(appKey);
@@ -630,7 +631,7 @@ public class AppSummaryService {
         if (result != null && !result.isEmpty()) {
           rowCount++;
           colCount += result.size();
-          resultSize += result.getWritableSize();
+//TODO dogpile days          resultSize += result.getWritableSize();
           apptimer.start();
           byte[] rowKey = result.getRow();
           AppAggregationKey appAggKey = aggConv.fromBytes(rowKey);
