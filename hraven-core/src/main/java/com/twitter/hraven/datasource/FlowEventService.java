@@ -22,11 +22,14 @@ import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.Framework;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -48,12 +51,21 @@ public class FlowEventService {
   public static final String DATA_COL = "data";
   public static final byte[] DATA_COL_BYTES = Bytes.toBytes(DATA_COL);
 
-  private HTable eventTable;
+  private Table eventTable;
   private FlowKeyConverter flowKeyConverter = new FlowKeyConverter();
   private FlowEventKeyConverter keyConverter = new FlowEventKeyConverter();
 
-  public FlowEventService(Configuration conf) throws IOException {
-    this.eventTable = new HTable(conf, Constants.FLOW_EVENT_TABLE_BYTES);
+  public FlowEventService(Configuration hbaseConf) throws IOException {
+    Configuration conf;
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    Connection conn = ConnectionFactory.createConnection(conf);
+
+    this.eventTable = conn.getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE_BYTES));
   }
 
   /**
