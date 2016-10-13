@@ -33,10 +33,13 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -57,18 +60,21 @@ public class TestAppSummaryService {
   private static HBaseTestingUtility UTIL;
   private static JobHistoryByIdService idService;
   private static GenerateFlowTestData flowDataGen ;
-  private static HTable historyTable;
-  private static HTable dailyAggTable;
+  private static Table historyTable;
+  private static Table dailyAggTable;
 
   @BeforeClass
   public static void setupBeforeClass() throws Exception {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
     HRavenTestUtil.createSchema(UTIL);
-    historyTable = new HTable(UTIL.getConfiguration(), Constants.HISTORY_TABLE_BYTES);
+
+    Connection conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
+
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
     idService = new JobHistoryByIdService(UTIL.getConfiguration());
     flowDataGen = new GenerateFlowTestData();
-    dailyAggTable = new HTable(UTIL.getConfiguration(), AggregationConstants.AGG_DAILY_TABLE_BYTES);
+    dailyAggTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE_BYTES));
   }
 
   @Test
