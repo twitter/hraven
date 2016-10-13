@@ -18,8 +18,11 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,7 +39,7 @@ public class TestHdfsStatsService {
   @SuppressWarnings("unused")
   private static Log LOG = LogFactory.getLog(TestHdfsStatsService.class);
   private static HBaseTestingUtility UTIL;
-  private static HTable ht;
+  private static Table ht;
   final int testDataSize = 6;
   private static ArrayList<String> ownerList = new ArrayList<String>();
   private static List<String> pathList = new ArrayList<String>();
@@ -50,7 +53,9 @@ public class TestHdfsStatsService {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
     HRavenTestUtil.createSchema(UTIL);
-    ht = new HTable(UTIL.getConfiguration(), HdfsConstants.HDFS_USAGE_TABLE);
+
+    Connection conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
+    ht = conn.getTable(TableName.valueOf(HdfsConstants.HDFS_USAGE_TABLE));
 
     ownerList.add(0, "user1");
     ownerList.add(1, "user2");
@@ -216,11 +221,11 @@ public class TestHdfsStatsService {
    * @param owner
    * @param sc spaceConsumed
    * @param ac accessCounts
-   * @param htable
+   * @param ht
    * @throws IOException
    */
   private void loadHdfsUsageStats(String cluster1, String path, long encodedRunId, long fc, long dc,
-      String owner, long sc, long ac, HTable ht) throws IOException {
+      String owner, long sc, long ac, Table ht) throws IOException {
     HdfsStatsKey key = new HdfsStatsKey(cluster1, StringUtil.cleanseToken(path), encodedRunId);
 
     HdfsStatsKeyConverter hkc = new HdfsStatsKeyConverter();

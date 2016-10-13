@@ -29,10 +29,13 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FuzzyRowFilter;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
@@ -46,25 +49,31 @@ import com.twitter.hraven.HdfsStatsKey;
 import com.twitter.hraven.QualifiedPathKey;
 import com.twitter.hraven.util.StringUtil;
 
-
 /**
  * Service that accesses the hdfs stats tables and populates the HdfsStats object
  */
 public class HdfsStatsService {
   private static Log LOG = LogFactory.getLog(HdfsStatsService.class);
 
-  private final Configuration myConf;
-  private final HTable hdfsUsageTable;
+  private final Configuration conf;
+  private final Table hdfsUsageTable;
 
   private final int defaultScannerCaching;
   private final HdfsStatsKeyConverter hdfsStatsKeyConv;
 
-  public HdfsStatsService(Configuration conf) throws IOException {
-    this.myConf = conf;
-    //TODO dogpiledays update HTable calls
-    this.hdfsUsageTable = new HTable(myConf, HdfsConstants.HDFS_USAGE_TABLE_BYTES);
-    this.defaultScannerCaching = myConf.getInt("hbase.client.scanner.caching", 100);
-    LOG.info(" in HdfsStatsService constuctor " + Bytes.toString(hdfsUsageTable.getTableName()));
+  public HdfsStatsService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    Connection conn = ConnectionFactory.createConnection(conf);
+
+    this.hdfsUsageTable = conn.getTable(TableName.valueOf(HdfsConstants.HDFS_USAGE_TABLE_BYTES));
+
+    this.defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
+    LOG.info(" in HdfsStatsService constuctor " + hdfsUsageTable.getName().toString());
     hdfsStatsKeyConv = new HdfsStatsKeyConverter();
   }
 
