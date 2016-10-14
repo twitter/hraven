@@ -19,6 +19,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
@@ -68,7 +69,7 @@ public class HRavenTestUtil {
 
   public static HTable createProcessTable(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.JOB_FILE_PROCESS_TABLE_BYTES,
+    return util.createTable(Bytes.toBytes(Constants.JOB_FILE_PROCESS_TABLE),
         Constants.INFO_FAM_BYTES);
   }
 

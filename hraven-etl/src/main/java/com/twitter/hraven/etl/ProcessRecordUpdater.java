@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@ import java.io.IOException;
 import java.util.concurrent.Callable;
 
 import org.apache.hadoop.conf.Configuration;
-
-import com.twitter.hraven.etl.ProcessRecordService;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 
 /**
  * Updates a processRecord to the given status when called.
- * */
+ */
 public class ProcessRecordUpdater implements Callable<Boolean> {
 
   /**
@@ -40,38 +40,43 @@ public class ProcessRecordUpdater implements Callable<Boolean> {
   /**
    * Used to connect to HBase.
    */
-  private final Configuration hBaseconf;
+  private final Configuration hbaseConf;
 
   /**
-   * @param hBaseconf
-   *          used to connect to HBase
+   * @param hBaseconf used to connect to HBase
    * @throws IOException
    */
   public ProcessRecordUpdater(Configuration hBaseconf,
       ProcessRecord processRecord, ProcessState newState) throws IOException {
-    this.hBaseconf = hBaseconf;
+    this.hbaseConf = hBaseconf;
     this.processRecord = processRecord;
     this.newState = newState;
   }
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see java.util.concurrent.Callable#call()
    */
   @Override
   public Boolean call() throws Exception {
 
     ProcessRecord updatedRecord = null;
-    // Connect only when needed.
-    ProcessRecordService processRecordService = new ProcessRecordService(
-        hBaseconf);
+    Connection hbaseConnection = null;
     try {
-      updatedRecord = processRecordService.setProcessState(processRecord,
-          newState);
+      hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
+      // Connect only when needed.
+      ProcessRecordService processRecordService =
+          new ProcessRecordService(hbaseConf, hbaseConnection);
+
+      updatedRecord =
+          processRecordService.setProcessState(processRecord, newState);
     } finally {
-      processRecordService.close();
+      if (hbaseConnection != null) {
+        hbaseConnection.close();
+      }
     }
+
     if ((updatedRecord != null)
         && (updatedRecord.getProcessState() == newState)) {
       return true;
