@@ -32,9 +32,7 @@ public class JobHistoryFileParserFactory {
    * VERSION variable there becomes package-level visible and hence we need a replica
    */
   public static final String HADOOP2_VERSION_STRING = "Avro-Json";
-  public static final String HADOOP1_VERSION_STRING = "Meta VERSION=\"1\" .";
   private static final int HADOOP2_VERSION_LENGTH = 9;
-  private static final int HADOOP1_VERSION_LENGTH = 18;
 
   /**
    * determines the verison of hadoop that the history file belongs to
@@ -55,14 +53,6 @@ public class JobHistoryFileParserFactory {
       String version2Part =  new String(historyFileContents, 0, HADOOP2_VERSION_LENGTH);
       if (StringUtils.equalsIgnoreCase(version2Part, HADOOP2_VERSION_STRING)) {
         return HadoopVersion.TWO;
-      } else {
-        if(historyFileContents.length > HADOOP1_VERSION_LENGTH) {
-          // the first 18 bytes in a hadoop1.0 history file contain Meta VERSION="1" .
-          String version1Part =  new String(historyFileContents, 0, HADOOP1_VERSION_LENGTH);
-          if (StringUtils.equalsIgnoreCase(version1Part, HADOOP1_VERSION_STRING)) {
-            return HadoopVersion.ONE;
-          }
-        }
       }
     }
     // throw an exception if we did not find any matching version
@@ -70,11 +60,10 @@ public class JobHistoryFileParserFactory {
   }
 
   /**
-   * creates an instance of {@link JobHistoryParseHadoop1}
-   * or
-   * {@link JobHistoryParseHadoop2} that can parse post MAPREDUCE-1016 job history files
+   * creates an instance of
+   * {@link JobHistoryFileParserHadoop2} that can parse post MAPREDUCE-1016 job history files
    *
-   * @param historyFile: history file contents
+   * @param historyFileContents: history file contents
    *
    * @return an object that can parse job history files
    * Or return null if either input is null
@@ -90,9 +79,6 @@ public class JobHistoryFileParserFactory {
     HadoopVersion version = getVersion(historyFileContents);
 
     switch (version) {
-    case ONE:
-      return new JobHistoryFileParserHadoop1(jobConf);
-
     case TWO:
       return new JobHistoryFileParserHadoop2(jobConf);
 
@@ -100,13 +86,6 @@ public class JobHistoryFileParserFactory {
       throw new IllegalArgumentException(
           " Unknown format of job history file ");
     }
-  }
-
-  /**
-   * @return HISTORY_FILE_VERSION1
-   */
-  public static HadoopVersion getHistoryFileVersion1() {
-    return HadoopVersion.ONE;
   }
 
   /**
