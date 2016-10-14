@@ -17,11 +17,16 @@ package com.twitter.hraven.datasource;
 
 import java.io.IOException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Table;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.JobKey;
@@ -32,29 +37,67 @@ import com.twitter.hraven.QualifiedJobId;
  * 
  */
 public class JobHistoryByIdService {
+  private static Log LOG = LogFactory.getLog(HdfsStatsService.class);
+
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
   private QualifiedJobIdConverter jobIdConv = new QualifiedJobIdConverter();
 
+  private final Configuration conf;
+  private final Connection conn;
   /**
    * Used to store the job to jobHistoryKey index in.
    */
-  private final HTable historyByJobIdTable;
+  private final Table historyByJobIdTable;
 
-  public JobHistoryByIdService(Configuration myHBaseConf) throws IOException {
-    historyByJobIdTable = new HTable(myHBaseConf,
-        Constants.HISTORY_BY_JOBID_TABLE_BYTES);
+  /**
+   * Opens a new connection to HBase server and opens connections to the tables.
+   *
+   * User is responsible for calling {@link #close()} when finished using this service.
+   *
+   * @param hbaseConf
+   *          configuration of the processing job, not the conf of the files we
+   *          are processing. Used to connect to HBase.
+   * @throws IOException
+   */
+  public JobHistoryByIdService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    conn = ConnectionFactory.createConnection(conf);
+    historyByJobIdTable = conn.getTable(
+        TableName.valueOf(Constants.HISTORY_BY_JOBID_TABLE_BYTES));
   }
 
   /**
-   * Release internal HBase table instances. Must be called when consumer is
-   * done with this service.
-   * 
+   * close open connections to tables and the hbase cluster.
    * @throws IOException
-   *           when bad things happen closing HBase table(s).
    */
   public void close() throws IOException {
-    if (historyByJobIdTable != null) {
-      historyByJobIdTable.close();
+    IOException ret = null;
+
+    try {
+      if (historyByJobIdTable != null) {
+        historyByJobIdTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
     }
   }
 

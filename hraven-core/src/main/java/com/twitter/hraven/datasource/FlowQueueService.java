@@ -22,15 +22,20 @@ import com.twitter.hraven.FlowQueueKey;
 import com.twitter.hraven.rest.PaginatedResult;
 import com.twitter.hraven.util.ByteUtil;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
@@ -45,6 +50,8 @@ import java.util.List;
 /**
  */
 public class FlowQueueService {
+  private static Log LOG = LogFactory.getLog(FlowQueueService.class);
+
   /* Constants for column names */
   public static final String JOB_GRAPH_COL = "dag";
   public static final byte[] JOB_GRAPH_COL_BYTES = Bytes.toBytes(JOB_GRAPH_COL);
@@ -58,10 +65,50 @@ public class FlowQueueService {
   private FlowQueueKeyConverter queueKeyConverter = new FlowQueueKeyConverter();
   private FlowKeyConverter flowKeyConverter = new FlowKeyConverter();
 
-  private HTable flowQueueTable;
+  private Configuration conf;
+  private Connection conn;
+  private Table flowQueueTable;
 
-  public FlowQueueService(Configuration conf) throws IOException {
-    this.flowQueueTable = new HTable(conf, Constants.FLOW_QUEUE_TABLE_BYTES);
+  public FlowQueueService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    conn = ConnectionFactory.createConnection(conf);
+
+    flowQueueTable = conn.getTable(TableName.valueOf(Constants.FLOW_QUEUE_TABLE_BYTES));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (flowQueueTable != null) {
+        flowQueueTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   public void updateFlow(FlowQueueKey key, Flow flow) throws IOException {
@@ -263,11 +310,5 @@ public class FlowQueueService {
       flow.setProgress(Bytes.toInt(result.getValue(Constants.INFO_FAM_BYTES, PROGRESS_COL_BYTES)));
     }
     return flow;
-  }
-
-  public void close() throws IOException {
-    if (this.flowQueueTable != null) {
-      this.flowQueueTable.close();
-    }
   }
 }

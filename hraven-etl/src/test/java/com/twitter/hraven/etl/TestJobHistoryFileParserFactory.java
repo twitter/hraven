@@ -32,33 +32,29 @@ public class TestJobHistoryFileParserFactory {
 	@Test
 	public void testCreateJobHistoryFileParserCorrectCreation() {
 
-		String jHist = "Meta VERSION=\"1\" .\n"
-				+ "Job JOBID=\"job_201301010000_12345\"";
+    String jHist2 = "Avro-Json\n" + "{\"type\":\"record\",\"name\":\"Event\", "
+        + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\"," +
+        "\"fields\":[]\"";
 		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(jHist.getBytes(), null);
+				.createJobHistoryFileParser(jHist2.getBytes(), null);
 
 		assertNotNull(historyFileParser);
 
 		/*
 		 * confirm that we get back an object that can parse hadoop 1.0 files
 		 */
-		assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop1);
+		assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
 
 	}
 
 	/**
-	 * check the versions in history files across hadoop 1 and hadoop 2
+	 * check the version in history files in hadoop 2
 	 */
   @Test
   public void testGetVersion() {
-    String jHist1 = "Meta VERSION=\"1\" .\n" + "Job JOBID=\"job_201301010000_12345\"";
-    HadoopVersion version1 = JobHistoryFileParserFactory.getVersion(jHist1.getBytes());
-    // confirm that we get back hadoop 1.0 version
-    assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion1(), version1);
-
     String jHist2 = "Avro-Json\n"
-            + "{\"type\":\"record\",\"name\":\"Event\", "
-            + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\",\"fields\":[]\"";
+        + "{\"type\":\"record\",\"name\":\"Event\", "
+        + "\"namespace\":\"org.apache.hadoop.mapreduce.jobhistory\",\"fields\":[]\"";
     HadoopVersion version2 = JobHistoryFileParserFactory.getVersion(jHist2.getBytes());
     // confirm that we get back hadoop 2.0 version
     assertEquals(JobHistoryFileParserFactory.getHistoryFileVersion2(), version2);

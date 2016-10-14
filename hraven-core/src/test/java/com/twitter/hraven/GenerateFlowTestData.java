@@ -23,8 +23,8 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
@@ -50,7 +50,7 @@ public class GenerateFlowTestData {
 
   public void loadFlow(String cluster, String user, String app, long runId,
       String version, int jobCount, long baseStats,
-      JobHistoryByIdService idService, HTable historyTable)
+      JobHistoryByIdService idService, Table historyTable)
   throws Exception {
     loadFlow(cluster, user, app, runId, version, jobCount, baseStats, idService, historyTable,
         DEFAULT_CONFIG);
@@ -58,7 +58,7 @@ public class GenerateFlowTestData {
 
   public void loadFlow(String cluster, String user, String app, long runId,
       String version, int jobCount, long baseStats,
-      JobHistoryByIdService idService, HTable historyTable, Map<String,String> config)
+      JobHistoryByIdService idService, Table historyTable, Map<String,String> config)
   throws Exception {
     List<Put> puts = new ArrayList<Put>(jobCount);
     JobKeyConverter keyConv = new JobKeyConverter();

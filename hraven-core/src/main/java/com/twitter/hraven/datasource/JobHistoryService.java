@@ -29,13 +29,16 @@ import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -55,22 +58,87 @@ import com.twitter.hraven.util.HadoopConfUtil;
 public class JobHistoryService {
   private static Log LOG = LogFactory.getLog(JobHistoryService.class);
 
-  private final Configuration myConf;
-  private final HTable historyTable;
-  private final HTable taskTable;
+  private final Configuration conf;
+  private final Connection conn;
+  private final Table historyTable;
+  private final Table taskTable;
   private final JobHistoryByIdService idService;
   private final JobKeyConverter jobKeyConv = new JobKeyConverter();
   private final TaskKeyConverter taskKeyConv = new TaskKeyConverter();
 
   private final int defaultScannerCaching;
 
-  public JobHistoryService(Configuration myConf) throws IOException {
-    this.myConf = myConf;
-    // TODO dogpiledays, update HTable references
-    this.historyTable = new HTable(myConf, Constants.HISTORY_TABLE_BYTES);
-    this.taskTable = new HTable(myConf, Constants.HISTORY_TASK_TABLE_BYTES);
-    this.idService = new JobHistoryByIdService(this.myConf);
-    this.defaultScannerCaching = myConf.getInt("hbase.client.scanner.caching", 100);
+  /**
+   * Opens a new connection to HBase server and opens connections to the tables.
+   *
+   * User is responsible for calling {@link #close()} when finished using this service.
+   *
+   * @param hbaseConf
+   *          configuration of the processing job, not the conf of the files we
+   *          are processing. Used to connect to HBase.
+   * @throws IOException
+   */
+  public JobHistoryService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    conn = ConnectionFactory.createConnection(conf);
+
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
+    taskTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TASK_TABLE_BYTES));
+    idService = new JobHistoryByIdService(conf);
+    defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (historyTable != null) {
+        historyTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (taskTable != null) {
+        taskTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (idService != null) {
+        idService.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -791,41 +859,4 @@ public class JobHistoryService {
     }
     return deleteCount;
   }
-
-  /**
-   * Cleans up the internal HBase table instances. This should always be called
-   * when the service instance is being released.
-   * 
-   * @throws IOException
-   */
-  public void close() throws IOException {
-    IOException caught = null;
-    if (this.historyTable != null) {
-      try {
-        this.historyTable.close();
-      } catch (IOException ioe) {
-        caught = ioe;
-      }
-    }
-    if (this.idService != null) {
-      try {
-        this.idService.close();
-      } catch (IOException ioe) {
-        // TODO: don't overwrite a previous exception
-        caught = ioe;
-      }
-    }
-    if (this.taskTable != null) {
-      try {
-        this.taskTable.close();
-      } catch (IOException ioe) {
-        // TODO: don't overwrite a previous exception
-        caught = ioe;
-      }
-    }
-    if (caught != null) {
-      throw caught;
-    }
-  }
-
 }

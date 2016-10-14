@@ -132,33 +132,62 @@ public class TestJobHistoryRawService {
   @Test(expected=IllegalArgumentException.class)
   public void testGetApproxSubmitTimeNull() throws IOException,
         MissingColumnInResultException {
-    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
-    long st = rawService.getApproxSubmitTime(null);
-    assertEquals(0L, st);
+    JobHistoryRawService rawService = null;
+    try {
+      rawService = new JobHistoryRawService(UTIL.getConfiguration());
+      long st = rawService.getApproxSubmitTime(null);
+      assertEquals(0L, st);
+    } finally {
+      try {
+        if (rawService != null) {
+          rawService.close();
+        }
+      } catch (IOException ignore) {
+      }
+    }
   }
 
   @Test(expected=MissingColumnInResultException.class)
   public void testGetApproxSubmitTimeMissingCol() throws IOException,
         MissingColumnInResultException {
-    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
-    Result result = new Result();
-    long st = rawService.getApproxSubmitTime(result);
-    assertEquals(0L, st);
+    JobHistoryRawService rawService = null;
+    try {
+      rawService = new JobHistoryRawService(UTIL.getConfiguration());
+      Result result = new Result();
+      long st = rawService.getApproxSubmitTime(result);
+      assertEquals(0L, st);
+    } finally {
+      try {
+        if (rawService != null) {
+          rawService.close();
+        }
+      } catch (IOException ignore) {
+      }
+    }
   }
 
   @Test
   public void testGetApproxSubmitTime() throws IOException,
       MissingColumnInResultException {
-    JobHistoryRawService rawService = new JobHistoryRawService(UTIL.getConfiguration());
-    KeyValue[] kvs = new KeyValue[1];
-    long modts = 1396550668000L;
-    kvs[0] = new KeyValue(Bytes.toBytes("someRowKey"),
-            Constants.INFO_FAM_BYTES, Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES,
-            Bytes.toBytes(modts));
-    Result result = new Result(kvs);
-    long st = rawService.getApproxSubmitTime(result);
-    long expts = modts - Constants.AVERGAE_JOB_DURATION;
-    assertEquals(expts, st);
+    JobHistoryRawService rawService = null;
+    try {
+      rawService = new JobHistoryRawService(UTIL.getConfiguration());
+      KeyValue[] kvs = new KeyValue[1];
+      long modts = 1396550668000L;
+      kvs[0] = new KeyValue(Bytes.toBytes("someRowKey"),
+              Constants.INFO_FAM_BYTES, Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES,
+              Bytes.toBytes(modts));
+      Result result = new Result(kvs);
+      long st = rawService.getApproxSubmitTime(result);
+      long expts = modts - Constants.AVERGAE_JOB_DURATION;
+      assertEquals(expts, st);
+    } finally {
+      try {
+        if (rawService != null) {
+          rawService.close();
+        }
+      } catch (IOException ignore) {
+      }
+    }
   }
-
 }

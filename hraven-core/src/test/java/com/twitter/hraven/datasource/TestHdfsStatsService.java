@@ -18,8 +18,11 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,7 +39,8 @@ public class TestHdfsStatsService {
   @SuppressWarnings("unused")
   private static Log LOG = LogFactory.getLog(TestHdfsStatsService.class);
   private static HBaseTestingUtility UTIL;
-  private static HTable ht;
+  private static Connection conn;
+  private static Table ht;
   final int testDataSize = 6;
   private static ArrayList<String> ownerList = new ArrayList<String>();
   private static List<String> pathList = new ArrayList<String>();
@@ -50,7 +54,9 @@ public class TestHdfsStatsService {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
     HRavenTestUtil.createSchema(UTIL);
-    ht = new HTable(UTIL.getConfiguration(), HdfsConstants.HDFS_USAGE_TABLE);
+
+    conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
+    ht = conn.getTable(TableName.valueOf(HdfsConstants.HDFS_USAGE_TABLE));
 
     ownerList.add(0, "user1");
     ownerList.add(1, "user2");
@@ -115,40 +121,59 @@ public class TestHdfsStatsService {
     }
   }
 
-
   @Test
   public void TestGetAllDirsPathSpecialChars() throws IOException {
-    HdfsStatsService hs = new HdfsStatsService(UTIL.getConfiguration());
-    long ts = 1392217200L;
-    String cluster1 = "cluster1";
-    String rootPath = "/dirSpecialChars/";
-    String pathPrefix = "dir2 dir2!!! dir3";
-    loadHdfsUsageStats(cluster1, rootPath + pathPrefix, (Long.MAX_VALUE - ts), 10L, 10L,
-      "user1", 1234L, 20L, ht);
-    List<HdfsStats> h1 = hs.getAllDirs(cluster1, rootPath + pathPrefix, 10, ts);
-    assertEquals(h1.size(), 1);
-    HdfsStats h2 = h1.get(0);
-    String path = h2.getHdfsStatsKey().getQualifiedPathKey().getPath();
-    String[] dirs = path.split("/");
-    assertEquals(dirs.length, 3);
-    assertEquals(dirs[2], StringUtil.cleanseToken(pathPrefix));
-    assertEquals(h2.getAccessCountTotal(), 20L);
-    assertEquals(h2.getHdfsStatsKey().getRunId(),  ts - (ts % 3600));
-    assertEquals(h2.getDirCount(), 10L);
-    assertEquals(h2.getFileCount(), 10L);
-    assertEquals(h2.getOwner(), "user1");
-    assertEquals(h2.getSpaceConsumed(), 1234L);
-
+    HdfsStatsService hs = null;
+    try {
+      hs = new HdfsStatsService(UTIL.getConfiguration());
+      long ts = 1392217200L;
+      String cluster1 = "cluster1";
+      String rootPath = "/dirSpecialChars/";
+      String pathPrefix = "dir2 dir2!!! dir3";
+      loadHdfsUsageStats(cluster1, rootPath + pathPrefix, (Long.MAX_VALUE - ts), 10L, 10L,
+          "user1", 1234L, 20L, ht);
+      List<HdfsStats> h1 = hs.getAllDirs(cluster1, rootPath + pathPrefix, 10, ts);
+      assertEquals(h1.size(), 1);
+      HdfsStats h2 = h1.get(0);
+      String path = h2.getHdfsStatsKey().getQualifiedPathKey().getPath();
+      String[] dirs = path.split("/");
+      assertEquals(dirs.length, 3);
+      assertEquals(dirs[2], StringUtil.cleanseToken(pathPrefix));
+      assertEquals(h2.getAccessCountTotal(), 20L);
+      assertEquals(h2.getHdfsStatsKey().getRunId(), ts - (ts % 3600));
+      assertEquals(h2.getDirCount(), 10L);
+      assertEquals(h2.getFileCount(), 10L);
+      assertEquals(h2.getOwner(), "user1");
+      assertEquals(h2.getSpaceConsumed(), 1234L);
+    } finally {
+      try {
+        if (hs != null) {
+          hs.close();
+        }
+      } catch (IOException ignore) {
+      }
+    }
   }
 
   @Test
   public void TestGetAllDirsEmpty() throws IOException {
-    HdfsStatsService hs = new HdfsStatsService(UTIL.getConfiguration());
-    long ts = 1392217200L;
-    String cluster1 = "cluster1";
-    String pathPrefix = "/dir1/";
-    List<HdfsStats> h1 = hs.getAllDirs(cluster1, pathPrefix, 10, (Long.MAX_VALUE - ts));
-    assertEquals(h1.size(), 0);
+    HdfsStatsService hs = null;
+    try {
+      hs = new HdfsStatsService(UTIL.getConfiguration());
+
+      long ts = 1392217200L;
+      String cluster1 = "cluster1";
+      String pathPrefix = "/dir1/";
+      List<HdfsStats> h1 = hs.getAllDirs(cluster1, pathPrefix, 10, (Long.MAX_VALUE - ts));
+      assertEquals(h1.size(), 0);
+    } finally {
+      try {
+        if (hs != null) {
+          hs.close();
+        }
+      } catch (IOException ignore) {
+      }
+    }
   }
 
   private void loadHdfsData(long runId, String cluster1, String pathPrefix) throws IOException {
@@ -180,31 +205,40 @@ public class TestHdfsStatsService {
 
   @Test
   public void TestGetAllDirs() throws IOException {
-    HdfsStatsService hs = new HdfsStatsService(UTIL.getConfiguration());
-    long ts = 1392217200L;
-    String cluster1 = "getAllDirsCluster1";
-    String pathPrefix = "/all_dirs_dir1/";
-    long encodedRunId = (Long.MAX_VALUE - ts);
-    loadHdfsData(encodedRunId, cluster1, pathPrefix);
-    List<HdfsStats> h1 = hs.getAllDirs(cluster1, pathPrefix, 10, ts);
-    assertEquals(h1.size(), testDataSize);
-    for (int i = 0; i < h1.size(); i++) {
-      HdfsStats h2 = h1.get(i);
-      assertHdfsStats(h2, cluster1, ts);
+    HdfsStatsService hs = null;
+    try {
+      hs = new HdfsStatsService(UTIL.getConfiguration());
+      long ts = 1392217200L;
+      String cluster1 = "getAllDirsCluster1";
+      String pathPrefix = "/all_dirs_dir1/";
+      long encodedRunId = (Long.MAX_VALUE - ts);
+      loadHdfsData(encodedRunId, cluster1, pathPrefix);
+      List<HdfsStats> h1 = hs.getAllDirs(cluster1, pathPrefix, 10, ts);
+      assertEquals(h1.size(), testDataSize);
+      for (int i = 0; i < h1.size(); i++) {
+        HdfsStats h2 = h1.get(i);
+        assertHdfsStats(h2, cluster1, ts);
+      }
+
+      /**
+       * limit the size of response returned
+       */
+      List<HdfsStats> h2 = hs.getAllDirs(cluster1, pathPrefix, 2, ts);
+      assertEquals(h2.size(), 2);
+
+      /**
+       * check for a non existent path
+       */
+      List<HdfsStats> h3 = hs.getAllDirs(cluster1, "nonexistentpath", 100, ts);
+      assertEquals(h3.size(), 0);
+    } finally {
+      try {
+        if (hs != null) {
+          hs.close();
+        }
+      } catch (IOException ignore) {
+      }
     }
-
-    /**
-     * limit the size of response returned 
-     */
-    List<HdfsStats> h2 = hs.getAllDirs(cluster1, pathPrefix, 2, ts);
-    assertEquals(h2.size(), 2);
-
-    /**
-     * check for a non existent path
-     */
-    List<HdfsStats> h3 = hs.getAllDirs(cluster1, "nonexistentpath", 100, ts);
-    assertEquals(h3.size(), 0);
-
   }
 
   /**
@@ -216,11 +250,11 @@ public class TestHdfsStatsService {
    * @param owner
    * @param sc spaceConsumed
    * @param ac accessCounts
-   * @param htable
+   * @param ht
    * @throws IOException
    */
   private void loadHdfsUsageStats(String cluster1, String path, long encodedRunId, long fc, long dc,
-      String owner, long sc, long ac, HTable ht) throws IOException {
+      String owner, long sc, long ac, Table ht) throws IOException {
     HdfsStatsKey key = new HdfsStatsKey(cluster1, StringUtil.cleanseToken(path), encodedRunId);
 
     HdfsStatsKeyConverter hkc = new HdfsStatsKeyConverter();
@@ -274,21 +308,42 @@ public class TestHdfsStatsService {
     int numberStatsExpected3 = 5;
     long endts3 = loadTimeSeries(cluster3, pathPrefix3, numberStatsExpected3, startts);
 
-    HdfsStatsService hs = new HdfsStatsService(UTIL.getConfiguration());
-    List<HdfsStats> h3 = hs.getHdfsTimeSeriesStats(cluster1, pathPrefix,
-          Integer.MAX_VALUE, startts + 7200*3 + 1, startts - 3600);
-    assertEquals(4, h3.size());
+    HdfsStatsService hs = null;
+    try {
+      hs = new HdfsStatsService(UTIL.getConfiguration());
+      List<HdfsStats> h3 = hs.getHdfsTimeSeriesStats(cluster1, pathPrefix,
+            Integer.MAX_VALUE, startts + 7200*3 + 1, startts - 3600);
+      assertEquals(4, h3.size());
 
-    HdfsStatsService hs2 = new HdfsStatsService(UTIL.getConfiguration());
+      HdfsStatsService hs2 = new HdfsStatsService(UTIL.getConfiguration());
 
-   List<HdfsStats> h5 = hs2.getHdfsTimeSeriesStats(cluster3, pathPrefix3,
-      Integer.MAX_VALUE, endts3, startts - 3600);
-    assertEquals(numberStatsExpected3, h5.size());
-
+     List<HdfsStats> h5 = hs2.getHdfsTimeSeriesStats(cluster3, pathPrefix3,
+        Integer.MAX_VALUE, endts3, startts - 3600);
+      assertEquals(numberStatsExpected3, h5.size());
+    } finally {
+      try {
+        if (hs != null) {
+          hs.close();
+        }
+      } catch (IOException ignore) {
+      }
+    }
   }
 
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
+    try {
+      if (ht != null) {
+        ht.close();
+      }
+    } catch (IOException ignore) {
+    }
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ignore) {
+    }
     UTIL.shutdownMiniCluster();
   }
 }

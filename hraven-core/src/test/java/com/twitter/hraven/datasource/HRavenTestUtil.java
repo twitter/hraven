@@ -18,8 +18,8 @@ package com.twitter.hraven.datasource;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Table;
 
 import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
@@ -43,69 +43,102 @@ public class HRavenTestUtil {
     createWeeklyAggTable(util);
   }
 
-  public static HTable createHistoryTable(HBaseTestingUtility util)
+  public static Table createHistoryTable(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.HISTORY_TABLE_BYTES,
+    return util.createTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES),
+        Constants.INFO_FAM_BYTES);
+    // return util.createTable(Constants.HISTORY_TABLE_BYTES,
+    // Constants.INFO_FAM_BYTES);
+  }
+
+  public static Table createTaskTable(HBaseTestingUtility util)
+      throws IOException {
+    return util.createTable(
+        TableName.valueOf(Constants.HISTORY_TASK_TABLE_BYTES),
+        Constants.INFO_FAM_BYTES);
+    // return util.createTable(Constants.HISTORY_TASK_TABLE_BYTES,
+    // Constants.INFO_FAM_BYTES);
+  }
+
+  public static Table createHistoryByJobIdTable(HBaseTestingUtility util)
+      throws IOException {
+    return util.createTable(
+        TableName.valueOf(Constants.HISTORY_BY_JOBID_TABLE_BYTES),
+        Constants.INFO_FAM_BYTES);
+    // return util.createTable(Constants.HISTORY_BY_JOBID_TABLE_BYTES,
+    // Constants.INFO_FAM_BYTES);
+  }
+
+  public static Table createRawTable(HBaseTestingUtility util)
+      throws IOException {
+    return util.createTable(
+        TableName.valueOf(Constants.HISTORY_RAW_TABLE_BYTES),
+        new byte[][] { Constants.INFO_FAM_BYTES, Constants.RAW_FAM_BYTES });
+    // return util.createTable(Constants.HISTORY_RAW_TABLE_BYTES,
+    // new byte[][]{Constants.INFO_FAM_BYTES, Constants.RAW_FAM_BYTES});
+  }
+
+  public static Table createProcessTable(HBaseTestingUtility util)
+      throws IOException {
+    return util.createTable(TableName.valueOf(Constants.JOB_FILE_PROCESS_TABLE),
         Constants.INFO_FAM_BYTES);
   }
 
-  public static HTable createTaskTable(HBaseTestingUtility util)
+  public static Table createAppVersionTable(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.HISTORY_TASK_TABLE_BYTES,
+    return util.createTable(
+        TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE_BYTES),
         Constants.INFO_FAM_BYTES);
+    // return util.createTable(Constants.HISTORY_APP_VERSION_TABLE_BYTES,
+    // Constants.INFO_FAM_BYTES);
   }
 
-  public static HTable createHistoryByJobIdTable(HBaseTestingUtility util)
+  public static Table createFlowQueueTable(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.HISTORY_BY_JOBID_TABLE_BYTES,
+    return util.createTable(TableName.valueOf(Constants.FLOW_QUEUE_TABLE_BYTES),
         Constants.INFO_FAM_BYTES);
+    // return util.createTable(Constants.FLOW_QUEUE_TABLE_BYTES,
+    // Constants.INFO_FAM_BYTES);
   }
 
-  public static HTable createRawTable(HBaseTestingUtility util)
+  public static Table createFlowEventTable(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.HISTORY_RAW_TABLE_BYTES,
-        new byte[][]{Constants.INFO_FAM_BYTES, Constants.RAW_FAM_BYTES});
-  }
-
-  public static HTable createProcessTable(HBaseTestingUtility util)
-      throws IOException {
-    return util.createTable(Bytes.toBytes(Constants.JOB_FILE_PROCESS_TABLE),
+    return util.createTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE_BYTES),
         Constants.INFO_FAM_BYTES);
+    // return util.createTable(Constants.FLOW_EVENT_TABLE_BYTES,
+    // Constants.INFO_FAM_BYTES);
   }
 
-  public static HTable createAppVersionTable(HBaseTestingUtility util)
+  private static Table createHdfsStatsTables(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.HISTORY_APP_VERSION_TABLE_BYTES,
-        Constants.INFO_FAM_BYTES);
+    return util.createTable(
+        TableName.valueOf(HdfsConstants.HDFS_USAGE_TABLE_BYTES),
+        new byte[][] { HdfsConstants.DISK_INFO_FAM_BYTES,
+            HdfsConstants.ACCESS_INFO_FAM_BYTES });
+    // return util.createTable(HdfsConstants.HDFS_USAGE_TABLE_BYTES,
+    // new byte[][]{HdfsConstants.DISK_INFO_FAM_BYTES,
+    // HdfsConstants.ACCESS_INFO_FAM_BYTES});
   }
 
-  public static HTable createFlowQueueTable(HBaseTestingUtility util)
+  public static Table createDailyAggTable(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.FLOW_QUEUE_TABLE_BYTES, Constants.INFO_FAM_BYTES);
+    return util.createTable(
+        TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE_BYTES),
+        new byte[][] { AggregationConstants.INFO_FAM_BYTES,
+            AggregationConstants.SCRATCH_FAM_BYTES });
+    // return util.createTable(AggregationConstants.AGG_DAILY_TABLE_BYTES,
+    // new byte[][]{AggregationConstants.INFO_FAM_BYTES,
+    // AggregationConstants.SCRATCH_FAM_BYTES});
   }
 
-  public static HTable createFlowEventTable(HBaseTestingUtility util)
+  public static Table createWeeklyAggTable(HBaseTestingUtility util)
       throws IOException {
-    return util.createTable(Constants.FLOW_EVENT_TABLE_BYTES, Constants.INFO_FAM_BYTES);
-  }
-
-  private static HTable createHdfsStatsTables(HBaseTestingUtility util)
-      throws IOException {
-    return util.createTable(HdfsConstants.HDFS_USAGE_TABLE_BYTES,
-      new byte[][]{HdfsConstants.DISK_INFO_FAM_BYTES, HdfsConstants.ACCESS_INFO_FAM_BYTES});
-  }
-
-  public static HTable createDailyAggTable(HBaseTestingUtility util)
-      throws IOException {
-    return util.createTable(AggregationConstants.AGG_DAILY_TABLE_BYTES,
-        new byte[][]{AggregationConstants.INFO_FAM_BYTES,
-          AggregationConstants.SCRATCH_FAM_BYTES});
-  }
-
-  public static HTable createWeeklyAggTable(HBaseTestingUtility util)
-      throws IOException {
-    return util.createTable(AggregationConstants.AGG_WEEKLY_TABLE_BYTES,
-        new byte[][]{AggregationConstants.INFO_FAM_BYTES,
-          AggregationConstants.SCRATCH_FAM_BYTES});
+    return util.createTable(
+        TableName.valueOf(AggregationConstants.AGG_WEEKLY_TABLE_BYTES),
+        new byte[][] { AggregationConstants.INFO_FAM_BYTES,
+            AggregationConstants.SCRATCH_FAM_BYTES });
+    // return util.createTable(AggregationConstants.AGG_WEEKLY_TABLE_BYTES,
+    // new byte[][]{AggregationConstants.INFO_FAM_BYTES,
+    // AggregationConstants.SCRATCH_FAM_BYTES});
   }
 }

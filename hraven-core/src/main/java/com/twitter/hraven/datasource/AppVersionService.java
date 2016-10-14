@@ -23,12 +23,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Lists;
@@ -39,16 +42,63 @@ import com.twitter.hraven.Constants;
  * to version numbers.
  */
 public class AppVersionService {
-
   private static Log LOG = LogFactory.getLog(AppVersionService.class);
 
   @SuppressWarnings("unused")
   private final Configuration conf;
-  private final HTable versionsTable;
+  private final Connection conn;
+  private final Table versionsTable;
 
-  public AppVersionService(Configuration conf) throws IOException {
-    this.conf = conf;
-    this.versionsTable = new HTable(conf, Constants.HISTORY_APP_VERSION_TABLE);
+  /**
+   * Opens a new connection to HBase server and opens connections to the tables.
+   *
+   * User is responsible for calling {@link #close()} when finished using this service.
+   *
+   * @param hbaseConf
+   *          configuration of the processing job, not the conf of the files we
+   *          are processing. Used to connect to HBase.
+   * @throws IOException
+   */
+  public AppVersionService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    conn = ConnectionFactory.createConnection(conf);
+
+    versionsTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (versionsTable != null) {
+        versionsTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -190,16 +240,6 @@ public class AppVersionService {
     }
 
     return updated;
-  }
-
-  /**
-   * Close the underlying HTable reference to free resources
-   * @throws IOException
-   */
-  public void close() throws IOException {
-    if (this.versionsTable != null) {
-      this.versionsTable.close();
-    }
   }
 
   private byte[] getRowKey(String cluster, String user, String appId) {
