@@ -59,6 +59,7 @@ public class JobHistoryService {
   private static Log LOG = LogFactory.getLog(JobHistoryService.class);
 
   private final Configuration conf;
+  private final Connection conn;
   private final Table historyTable;
   private final Table taskTable;
   private final JobHistoryByIdService idService;
@@ -74,15 +75,61 @@ public class JobHistoryService {
       conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
 
-    this.historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
-    this.taskTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TASK_TABLE_BYTES));
-    this.idService = new JobHistoryByIdService(conf);
-    this.defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
+    taskTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TASK_TABLE_BYTES));
+    idService = new JobHistoryByIdService(conf);
+    defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
   }
 
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
 
+    try {
+      if (historyTable != null) {
+        historyTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (taskTable != null) {
+        taskTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (idService != null) {
+        idService.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
+  }
 
   /**
    * Returns the most recent flow by application ID. This version will only
@@ -802,41 +849,4 @@ public class JobHistoryService {
     }
     return deleteCount;
   }
-
-  /**
-   * Cleans up the internal HBase table instances. This should always be called
-   * when the service instance is being released.
-   * 
-   * @throws IOException
-   */
-  public void close() throws IOException {
-    IOException caught = null;
-    if (this.historyTable != null) {
-      try {
-        this.historyTable.close();
-      } catch (IOException ioe) {
-        caught = ioe;
-      }
-    }
-    if (this.idService != null) {
-      try {
-        this.idService.close();
-      } catch (IOException ioe) {
-        // TODO: don't overwrite a previous exception
-        caught = ioe;
-      }
-    }
-    if (this.taskTable != null) {
-      try {
-        this.taskTable.close();
-      } catch (IOException ioe) {
-        // TODO: don't overwrite a previous exception
-        caught = ioe;
-      }
-    }
-    if (caught != null) {
-      throw caught;
-    }
-  }
-
 }

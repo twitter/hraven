@@ -42,23 +42,53 @@ import com.twitter.hraven.Constants;
  * to version numbers.
  */
 public class AppVersionService {
-
   private static Log LOG = LogFactory.getLog(AppVersionService.class);
 
   @SuppressWarnings("unused")
   private final Configuration conf;
+  private final Connection conn;
   private final Table versionsTable;
 
   public AppVersionService(Configuration hbaseConf) throws IOException {
     if (hbaseConf == null) {
-      this.conf = new Configuration();
+      conf = new Configuration();
     } else {
-      this.conf = hbaseConf;
+      conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
 
-    this.versionsTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
+    versionsTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (versionsTable != null) {
+        versionsTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -200,16 +230,6 @@ public class AppVersionService {
     }
 
     return updated;
-  }
-
-  /**
-   * Close the underlying Table reference to free resources
-   * @throws IOException
-   */
-  public void close() throws IOException {
-    if (this.versionsTable != null) {
-      this.versionsTable.close();
-    }
   }
 
   private byte[] getRowKey(String cluster, String user, String appId) {

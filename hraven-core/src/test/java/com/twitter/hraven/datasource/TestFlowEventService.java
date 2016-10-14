@@ -21,10 +21,12 @@ import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.Framework;
 import com.twitter.hraven.datasource.FlowEventService;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.client.Table;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +45,7 @@ public class TestFlowEventService {
   @BeforeClass
   public static void setupBeforeClass() throws Exception {
     UTIL.startMiniCluster();
-    HRavenTestUtil.createFlowEventTable(UTIL);
+    Table t = HRavenTestUtil.createFlowEventTable(UTIL);
   }
 
   @AfterClass
@@ -53,27 +55,38 @@ public class TestFlowEventService {
 
   @Test
   public void testFlowEventReadWrite() throws Exception {
-    FlowEventService service = new FlowEventService(UTIL.getConfiguration());
-    // setup some test data for a couple flows
-    long flow1Run = System.currentTimeMillis();
-    FlowKey flow1Key = new FlowKey(TEST_CLUSTER, TEST_USER, TEST_APP, flow1Run);
-    List<FlowEvent> flow1Events = generateEvents(flow1Key, 5);
-    service.addEvents(flow1Events);
+    FlowEventService service = null;
+    try {
+      service = new FlowEventService(UTIL.getConfiguration());
 
-    long flow2Run = flow1Run + 10;
-    FlowKey flow2Key = new FlowKey(TEST_CLUSTER, TEST_USER, TEST_APP, flow2Run);
-    List<FlowEvent> flow2Events = generateEvents(flow2Key, 10);
-    service.addEvents(flow2Events);
+      // setup some test data for a couple flows
+      long flow1Run = System.currentTimeMillis();
+      FlowKey flow1Key = new FlowKey(TEST_CLUSTER, TEST_USER, TEST_APP, flow1Run);
+      List<FlowEvent> flow1Events = generateEvents(flow1Key, 5);
+      service.addEvents(flow1Events);
 
-    // verify we get the right events back for each
-    List<FlowEvent> flow1Results = service.getFlowEvents(flow1Key);
-    assertEvents(flow1Events, flow1Results);
-    List<FlowEvent> flow2Results = service.getFlowEvents(flow2Key);
-    assertEvents(flow2Events, flow2Results);
-    // check partial results
-    FlowEventKey flow2Last = flow2Events.get(4).getFlowEventKey();
-    List<FlowEvent> flow2PartialResults = service.getFlowEventsSince(flow2Last);
-    assertEvents(flow2Events.subList(5, flow2Events.size()), flow2PartialResults);
+      long flow2Run = flow1Run + 10;
+      FlowKey flow2Key = new FlowKey(TEST_CLUSTER, TEST_USER, TEST_APP, flow2Run);
+      List<FlowEvent> flow2Events = generateEvents(flow2Key, 10);
+      service.addEvents(flow2Events);
+
+      // verify we get the right events back for each
+      List<FlowEvent> flow1Results = service.getFlowEvents(flow1Key);
+      assertEvents(flow1Events, flow1Results);
+      List<FlowEvent> flow2Results = service.getFlowEvents(flow2Key);
+      assertEvents(flow2Events, flow2Results);
+      // check partial results
+      FlowEventKey flow2Last = flow2Events.get(4).getFlowEventKey();
+      List<FlowEvent> flow2PartialResults = service.getFlowEventsSince(flow2Last);
+      assertEvents(flow2Events.subList(5, flow2Events.size()), flow2PartialResults);
+    } finally {
+      try {
+        if (service != null) {
+          service.close();
+        }
+      } catch (IOException ignore) {
+      }
+    }
   }
 
   private List<FlowEvent> generateEvents(FlowKey flowKey, int count) {

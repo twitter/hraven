@@ -61,9 +61,10 @@ import com.twitter.hraven.util.ByteUtil;
  * Reads and writes information about applications
  */
 public class AppSummaryService {
-
   private static final Log LOG = LogFactory.getLog(AppSummaryService.class);
+
   private final Configuration conf;
+  private final Connection conn;
   private final Table versionsTable;
   private final Table aggDailyTable;
   private final Table aggWeeklyTable;
@@ -77,11 +78,59 @@ public class AppSummaryService {
       conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
 
-    this.versionsTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
-    this.aggDailyTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE));
-    this.aggWeeklyTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_WEEKLY_TABLE));
+    versionsTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
+    aggDailyTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE));
+    aggWeeklyTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_WEEKLY_TABLE));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (versionsTable != null) {
+        versionsTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (aggDailyTable != null) {
+        aggDailyTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (aggWeeklyTable != null) {
+        aggWeeklyTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**

@@ -17,6 +17,8 @@ package com.twitter.hraven.datasource;
 
 import java.io.IOException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
@@ -35,37 +37,57 @@ import com.twitter.hraven.QualifiedJobId;
  * 
  */
 public class JobHistoryByIdService {
+  private static Log LOG = LogFactory.getLog(HdfsStatsService.class);
+
   private JobKeyConverter jobKeyConv = new JobKeyConverter();
   private QualifiedJobIdConverter jobIdConv = new QualifiedJobIdConverter();
 
+  private final Configuration conf;
+  private final Connection conn;
   /**
    * Used to store the job to jobHistoryKey index in.
    */
   private final Table historyByJobIdTable;
 
   public JobHistoryByIdService(Configuration hbaseConf) throws IOException {
-    Configuration conf;
     if (hbaseConf == null) {
       conf = new Configuration();
     } else {
       conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
     historyByJobIdTable = conn.getTable(
         TableName.valueOf(Constants.HISTORY_BY_JOBID_TABLE_BYTES));
   }
 
   /**
-   * Release internal HBase table instances. Must be called when consumer is
-   * done with this service.
-   * 
+   * close open connections to tables and the hbase cluster.
    * @throws IOException
-   *           when bad things happen closing HBase table(s).
    */
   public void close() throws IOException {
-    if (historyByJobIdTable != null) {
-      historyByJobIdTable.close();
+    IOException ret = null;
+
+    try {
+      if (historyByJobIdTable != null) {
+        historyByJobIdTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
     }
   }
 

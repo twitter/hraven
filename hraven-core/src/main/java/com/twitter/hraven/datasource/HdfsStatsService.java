@@ -56,6 +56,7 @@ public class HdfsStatsService {
   private static Log LOG = LogFactory.getLog(HdfsStatsService.class);
 
   private final Configuration conf;
+  private final Connection conn;
   private final Table hdfsUsageTable;
 
   private final int defaultScannerCaching;
@@ -68,13 +69,43 @@ public class HdfsStatsService {
       conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
 
-    this.hdfsUsageTable = conn.getTable(TableName.valueOf(HdfsConstants.HDFS_USAGE_TABLE_BYTES));
+    hdfsUsageTable = conn.getTable(TableName.valueOf(HdfsConstants.HDFS_USAGE_TABLE_BYTES));
 
-    this.defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
+    defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
     LOG.info(" in HdfsStatsService constuctor " + hdfsUsageTable.getName().toString());
     hdfsStatsKeyConv = new HdfsStatsKeyConverter();
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (hdfsUsageTable != null) {
+        hdfsUsageTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**

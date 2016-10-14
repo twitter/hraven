@@ -21,6 +21,8 @@ import com.twitter.hraven.FlowEventKey;
 import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.Framework;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
@@ -42,6 +44,8 @@ import java.util.List;
  * Service for reading and writing rows in the {@link Constants#FLOW_EVENT_TABLE} table
  */
 public class FlowEventService {
+  private static Log LOG = LogFactory.getLog(FlowEventService.class);
+
   public static final String TIMESTAMP_COL = "ts";
   public static final byte[] TIMESTAMP_COL_BYTES = Bytes.toBytes(TIMESTAMP_COL);
 
@@ -51,21 +55,52 @@ public class FlowEventService {
   public static final String DATA_COL = "data";
   public static final byte[] DATA_COL_BYTES = Bytes.toBytes(DATA_COL);
 
+  private final Configuration conf;
+  private final Connection conn;
   private Table eventTable;
   private FlowKeyConverter flowKeyConverter = new FlowKeyConverter();
   private FlowEventKeyConverter keyConverter = new FlowEventKeyConverter();
 
   public FlowEventService(Configuration hbaseConf) throws IOException {
-    Configuration conf;
     if (hbaseConf == null) {
       conf = new Configuration();
     } else {
       conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
 
-    this.eventTable = conn.getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE_BYTES));
+    eventTable = conn.getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE_BYTES));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (eventTable != null) {
+        eventTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -192,9 +227,5 @@ public class FlowEventService {
           result.getValue(Constants.INFO_FAM_BYTES, DATA_COL_BYTES)));
     }
     return event;
-  }
-
-  public void close() throws IOException {
-    this.eventTable.close();
   }
 }

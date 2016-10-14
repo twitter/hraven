@@ -51,6 +51,8 @@ public class JobHistoryRawService {
 
   private QualifiedJobIdConverter idConv = new QualifiedJobIdConverter();
 
+  private final Configuration conf;
+  private final Connection conn;
   /**
    * Used to store the processRecords in HBase
    */
@@ -67,15 +69,44 @@ public class JobHistoryRawService {
    *           in case we have problems connecting to HBase.
    */
   public JobHistoryRawService(Configuration hbaseConf) throws IOException {
-    Configuration conf;
     if (hbaseConf == null) {
       conf = new Configuration();
     } else {
       conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
     rawTable = conn.getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE_BYTES));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (rawTable != null) {
+        rawTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -445,19 +476,6 @@ public class JobHistoryRawService {
 
     InputStream is = new ByteArrayInputStream(getJobHistoryRawFromResult(result));
     return is;
-  }
-
-  /**
-   * Release internal HBase table instances. Must be called when consumer is
-   * done with this service.
-   * 
-   * @throws IOException
-   *           when bad things happen closing HBase table(s).
-   */
-  public void close() throws IOException {
-    if (rawTable != null) {
-      rawTable.close();
-    }
   }
 
   /**

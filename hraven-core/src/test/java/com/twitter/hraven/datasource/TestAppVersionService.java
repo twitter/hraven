@@ -20,6 +20,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 
@@ -55,23 +56,27 @@ public class TestAppVersionService {
   public static void setupBeforeClass() throws Exception {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
-    HRavenTestUtil.createAppVersionTable(UTIL);
+    Table t = HRavenTestUtil.createAppVersionTable(UTIL);
   }
 
   @Test
   public void testAddVersion() throws Exception {
     Configuration c = UTIL.getConfiguration();
-    AppVersionService service = new AppVersionService(c);
     String appId = "addVersion";
     byte[] appIdBytes = Bytes.toBytes(appId);
 
     byte[] appRow = Bytes.add(Bytes.add(clusterBytes, Constants.SEP_BYTES),
         Bytes.add(userBytes, Constants.SEP_BYTES),
         appIdBytes);
-    Connection conn = ConnectionFactory.createConnection(c);
-    Table versionTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
 
+    AppVersionService service = null;
+    Connection conn = null;
+    Table versionTable = null;
     try {
+      service = new AppVersionService(c);
+      conn = ConnectionFactory.createConnection(c);
+      versionTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
+
       service.addVersion(cluster, user, appId, "v1", 1);
       Result r = versionTable.get(new Get(appRow));
       assertNotNull(r);
@@ -111,12 +116,22 @@ public class TestAppVersionService {
           Bytes.toBytes(1L));
     } finally {
       try {
-        service.close();
-      } catch (Exception ignore) {
+        if (service != null) {
+          service.close();
+        }
+      } catch (IOException ignore) {
       }
       try {
-        versionTable.close();
-      } catch (Exception ignore) {
+        if (versionTable != null) {
+          versionTable.close();
+        }
+      } catch (IOException ignore) {
+      }
+      try {
+        if (conn != null) {
+          conn.close();
+        }
+      } catch (IOException ignore) {
       }
     }
   }
@@ -127,8 +142,9 @@ public class TestAppVersionService {
 
     String appId = "getLatestVersion";
 
-    AppVersionService service = new AppVersionService(c);
+    AppVersionService service = null;
     try {
+      service = new AppVersionService(c);
       // check adding versions in order
       service.addVersion(cluster, user, appId, "v1", 10);
       String latest = service.getLatestVersion(cluster, user, appId);
@@ -144,7 +160,12 @@ public class TestAppVersionService {
       latest = service.getLatestVersion(cluster, user, appId);
       assertEquals("v3", latest);
     } finally {
-      service.close();
+      try {
+        if (service != null) {
+          service.close();
+        }
+      } catch (IOException ignore) {
+      }
     }
   }
 
@@ -157,10 +178,21 @@ public class TestAppVersionService {
        */
 
       String appId = "getDistinctVersions";
-      AppVersionService service = new AppVersionService(c);
-      List<VersionInfo> latest = service.getDistinctVersions(cluster, user, appId);
-      // expecting nothing (0 versions)
-      assertEquals(latest.size(), 0);
+      AppVersionService service = null;
+      try {
+        service = new AppVersionService(c);
+
+        List<VersionInfo> latest = service.getDistinctVersions(cluster, user, appId);
+        // expecting nothing (0 versions)
+        assertEquals(latest.size(), 0);
+      } finally {
+        try {
+          if (service != null) {
+            service.close();
+          }
+        } catch (IOException ignore) {
+        }
+      }
     }
 
     { /*
@@ -168,8 +200,9 @@ public class TestAppVersionService {
        * Versions Exist
        */
       String appId = "getDistinctVersions";
-      AppVersionService service = new AppVersionService(c);
+      AppVersionService service = null;
       try {
+        service = new AppVersionService(c);
         service.addVersion(cluster, user, appId, "v1", 10);
         service.addVersion(cluster, user, appId, "v2", 30);
         service.addVersion(cluster, user, appId, "v1", 8390);
@@ -187,7 +220,12 @@ public class TestAppVersionService {
         }
 
       } finally {
-        service.close();
+        try {
+          if (service != null) {
+            service.close();
+          }
+        } catch (IOException ignore) {
+        }
       }
     }
   }

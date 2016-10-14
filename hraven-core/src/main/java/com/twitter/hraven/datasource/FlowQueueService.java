@@ -22,6 +22,8 @@ import com.twitter.hraven.FlowQueueKey;
 import com.twitter.hraven.rest.PaginatedResult;
 import com.twitter.hraven.util.ByteUtil;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
@@ -48,6 +50,8 @@ import java.util.List;
 /**
  */
 public class FlowQueueService {
+  private static Log LOG = LogFactory.getLog(FlowQueueService.class);
+
   /* Constants for column names */
   public static final String JOB_GRAPH_COL = "dag";
   public static final byte[] JOB_GRAPH_COL_BYTES = Bytes.toBytes(JOB_GRAPH_COL);
@@ -61,19 +65,50 @@ public class FlowQueueService {
   private FlowQueueKeyConverter queueKeyConverter = new FlowQueueKeyConverter();
   private FlowKeyConverter flowKeyConverter = new FlowKeyConverter();
 
+  private Configuration conf;
+  private Connection conn;
   private Table flowQueueTable;
 
   public FlowQueueService(Configuration hbaseConf) throws IOException {
-    Configuration conf;
     if (hbaseConf == null) {
       conf = new Configuration();
     } else {
       conf = hbaseConf;
     }
 
-    Connection conn = ConnectionFactory.createConnection(conf);
+    conn = ConnectionFactory.createConnection(conf);
 
-    this.flowQueueTable = conn.getTable(TableName.valueOf(Constants.FLOW_QUEUE_TABLE_BYTES));
+    flowQueueTable = conn.getTable(TableName.valueOf(Constants.FLOW_QUEUE_TABLE_BYTES));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (flowQueueTable != null) {
+        flowQueueTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   public void updateFlow(FlowQueueKey key, Flow flow) throws IOException {
@@ -275,11 +310,5 @@ public class FlowQueueService {
       flow.setProgress(Bytes.toInt(result.getValue(Constants.INFO_FAM_BYTES, PROGRESS_COL_BYTES)));
     }
     return flow;
-  }
-
-  public void close() throws IOException {
-    if (this.flowQueueTable != null) {
-      this.flowQueueTable.close();
-    }
   }
 }
