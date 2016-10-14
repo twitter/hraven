@@ -62,6 +62,16 @@ public class HdfsStatsService {
   private final int defaultScannerCaching;
   private final HdfsStatsKeyConverter hdfsStatsKeyConv;
 
+  /**
+   * Opens a new connection to HBase server and opens connections to the tables.
+   *
+   * User is responsible for calling {@link #close()} when finished using this service.
+   *
+   * @param hbaseConf
+   *          configuration of the processing job, not the conf of the files we
+   *          are processing. Used to connect to HBase.
+   * @throws IOException
+   */
   public HdfsStatsService(Configuration hbaseConf) throws IOException {
     if (hbaseConf == null) {
       conf = new Configuration();
