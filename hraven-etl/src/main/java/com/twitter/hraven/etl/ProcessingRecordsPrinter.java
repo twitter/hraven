@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,17 +30,17 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import com.twitter.hraven.etl.ProcessRecordService;
-
 /**
  * Small utility used to print all processing records given a cluster.
- * 
+ *
  */
 public class ProcessingRecordsPrinter extends Configured implements Tool {
 
@@ -55,7 +55,7 @@ public class ProcessingRecordsPrinter extends Configured implements Tool {
 
   /**
    * Used for injecting confs while unit testing
-   * 
+   *
    * @param conf
    */
   public ProcessingRecordsPrinter(Configuration conf) {
@@ -64,9 +64,8 @@ public class ProcessingRecordsPrinter extends Configured implements Tool {
 
   /**
    * Parse command-line arguments.
-   * 
-   * @param args
-   *          command line arguments passed to program.
+   *
+   * @param args command line arguments passed to program.
    * @return parsed command line.
    * @throws ParseException
    */
@@ -80,15 +79,13 @@ public class ProcessingRecordsPrinter extends Configured implements Tool {
     o.setRequired(false);
     options.addOption(o);
 
-    o = new Option("c", "cluster", true, "cluster for which jobs are processed");
+    o = new Option("c", "cluster", true,
+        "cluster for which jobs are processed");
     o.setArgName("cluster");
     o.setRequired(true);
     options.addOption(o);
 
-    o = new Option(
-        "p",
-        "processFileSubstring",
-        true,
+    o = new Option("p", "processFileSubstring", true,
         "use only those process records where the process file path contains the provided string.");
     o.setArgName("processFileSubstring");
     o.setRequired(false);
@@ -119,7 +116,7 @@ public class ProcessingRecordsPrinter extends Configured implements Tool {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.apache.hadoop.util.Tool#run(java.lang.String[])
    */
   public int run(String[] args) throws Exception {
@@ -127,8 +124,8 @@ public class ProcessingRecordsPrinter extends Configured implements Tool {
     Configuration hbaseConf = HBaseConfiguration.create(getConf());
 
     // Grab input args and allow for -Dxyz style arguments
-    String[] otherArgs = new GenericOptionsParser(hbaseConf, args)
-        .getRemainingArgs();
+    String[] otherArgs =
+        new GenericOptionsParser(hbaseConf, args).getRemainingArgs();
 
     // Grab the arguments we're looking for.
     CommandLine commandLine = parseArgs(otherArgs);
@@ -156,59 +153,65 @@ public class ProcessingRecordsPrinter extends Configured implements Tool {
       }
     }
 
-    boolean success = printProcessRecordsFromHBase(hbaseConf, cluster,
-        maxCount, processFileSubstring);
+    boolean success = true;
+    Connection hbaseConnection = null;
+    try {
+      hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
+      success = printProcessRecordsFromHBase(hbaseConf, hbaseConnection,
+          cluster, maxCount, processFileSubstring);
+    } finally {
+      if (hbaseConnection == null) {
+        success = false;
+      } else {
+        hbaseConnection.close();
+      }
+    }
 
     // Return the status
     return success ? 0 : 1;
   }
 
   /**
-   * @param conf
-   *          used to contact HBase and to run jobs against
-   * @param cluster
-   *          for which to process records.
-   * @param processFileSubstring
-   *          return rows where the process file path contains this string. If
-   *          <code>null</code> or empty string, then no filtering is applied.
+   * @param conf used to contact HBase and to run jobs against
+   * @param hbaseConnection
+   * @param cluster for which to process records.
+   * @param processFileSubstring return rows where the process file path
+   *          contains this string. If <code>null</code> or empty string, then
+   *          no filtering is applied.
    * @return whether all job files for all processRecords were properly Printed.
    * @throws IOException
    */
   private boolean printProcessRecordsFromHBase(Configuration conf,
-      String cluster, int maxCount, String processFileSubstring)
-      throws IOException {
-    ProcessRecordService processRecordService = new ProcessRecordService(conf);
+      Connection hbaseConnection, String cluster, int maxCount,
+      String processFileSubstring) throws IOException {
+    ProcessRecordService processRecordService =
+        new ProcessRecordService(conf, hbaseConnection);
     List<ProcessRecord> processRecords = processRecordService
         .getProcessRecords(cluster, maxCount, processFileSubstring);
-    try {
 
-      int jobFileCount = 0;
+    int jobFileCount = 0;
 
-      System.out.println("ProcessRecords for " + cluster + ": "
-          + processRecords.size());
+    System.out.println(
+        "ProcessRecords for " + cluster + ": " + processRecords.size());
 
-      // Iterate over 0 based list in reverse order
-      for (int j = processRecords.size() - 1; j >= 0; j--) {
-        ProcessRecord processRecord = processRecords.get(j);
+    // Iterate over 0 based list in reverse order
+    for (int j = processRecords.size() - 1; j >= 0; j--) {
+      ProcessRecord processRecord = processRecords.get(j);
 
-        // Print the whole thing.
-        System.out.println(processRecord);
-        jobFileCount += processRecord.getProcessedJobFiles();
-      }
-      System.out.println("Printed " + processRecords.size()
-          + " records with a total of " + jobFileCount + " files.");
-    } finally {
-      processRecordService.close();
+      // Print the whole thing.
+      System.out.println(processRecord);
+      jobFileCount += processRecord.getProcessedJobFiles();
     }
+    System.out.println("Printed " + processRecords.size()
+        + " records with a total of " + jobFileCount + " files.");
 
     return true;
   }
 
   /**
    * DoIt.
-   * 
-   * @param args
-   *          the arguments to do it with
+   *
+   * @param args the arguments to do it with
    */
   public static void main(String[] args) {
     try {
