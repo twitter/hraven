@@ -29,13 +29,16 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
@@ -58,21 +61,86 @@ import com.twitter.hraven.util.ByteUtil;
  * Reads and writes information about applications
  */
 public class AppSummaryService {
-
   private static final Log LOG = LogFactory.getLog(AppSummaryService.class);
+
   private final Configuration conf;
-  private final HTable versionsTable;
-  private final HTable aggDailyTable;
-  private final HTable aggWeeklyTable;
+  private final Connection conn;
+  private final Table versionsTable;
+  private final Table aggDailyTable;
+  private final Table aggWeeklyTable;
 
   private AppAggregationKeyConverter aggConv = new AppAggregationKeyConverter();
 
+  /**
+   * Opens a new connection to HBase server and opens connections to the tables.
+   *
+   * User is responsible for calling {@link #close()} when finished using this service.
+   *
+   * @param hbaseConf
+   *          configuration of the processing job, not the conf of the files we
+   *          are processing. Used to connect to HBase.
+   * @throws IOException
+   */
   public AppSummaryService(Configuration hbaseConf) throws IOException {
-    this.conf = hbaseConf;
-  //TODO dogpiledays update HTable calls
-    this.versionsTable = new HTable(conf, Constants.HISTORY_APP_VERSION_TABLE);
-    this.aggDailyTable = new HTable(conf, AggregationConstants.AGG_DAILY_TABLE);
-    this.aggWeeklyTable = new HTable(conf, AggregationConstants.AGG_WEEKLY_TABLE);
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    conn = ConnectionFactory.createConnection(conf);
+
+    versionsTable = conn.getTable(TableName.valueOf(Constants.HISTORY_APP_VERSION_TABLE));
+    aggDailyTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE));
+    aggWeeklyTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_WEEKLY_TABLE));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (versionsTable != null) {
+        versionsTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (aggDailyTable != null) {
+        aggDailyTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (aggWeeklyTable != null) {
+        aggWeeklyTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -217,7 +285,7 @@ public class AppSummaryService {
    */
   public boolean aggregateJobDetails(JobDetails jobDetails,
       AggregationConstants.AGGREGATION_TYPE aggType) {
-    HTable aggTable = aggDailyTable;
+    Table aggTable = aggDailyTable;
     switch (aggType) {
     case DAILY:
       aggTable = aggDailyTable;
@@ -356,7 +424,7 @@ public class AppSummaryService {
    * @return {@link Put}
    * @throws IOException
    */
-  boolean updateMoreAggInfo(HTable aggTable, AppAggregationKey appAggKey,
+  boolean updateMoreAggInfo(Table aggTable, AppAggregationKey appAggKey,
         JobDetails jobDetails) throws IOException {
 
     int attempts = 0;
@@ -394,7 +462,7 @@ public class AppSummaryService {
     return true;
   }
 
-  private boolean updateCost(AppAggregationKey appAggKey, HTable aggTable,
+  private boolean updateCost(AppAggregationKey appAggKey, Table aggTable,
       JobDetails jobDetails) throws IOException {
     byte[] rowKey = aggConv.toBytes(appAggKey);
 
@@ -428,7 +496,7 @@ public class AppSummaryService {
    * updates the queue list for this app aggregation
    * @throws IOException
    */
-  boolean updateQueue(AppAggregationKey appAggKey, HTable aggTable, JobDetails jobDetails)
+  boolean updateQueue(AppAggregationKey appAggKey, Table aggTable, JobDetails jobDetails)
       throws IOException {
     byte[] rowKey = aggConv.toBytes(appAggKey);
 
@@ -471,7 +539,7 @@ public class AppSummaryService {
    * @return whether or not the check and put was successful after retries
    * @throws IOException
    */
-  boolean executeCheckAndPut(HTable aggTable, byte[] rowKey, byte[] existingValueBytes,
+  boolean executeCheckAndPut(Table aggTable, byte[] rowKey, byte[] existingValueBytes,
       byte[] newValueBytes, byte[] famBytes, byte[] colBytes) throws IOException {
 
     Put put = new Put(rowKey);
@@ -486,7 +554,7 @@ public class AppSummaryService {
 
   }
 
-  byte[] getCurrentValue(HTable aggTable, byte[] rowKey, byte[] famBytes,
+  byte[] getCurrentValue(Table aggTable, byte[] rowKey, byte[] famBytes,
       byte[] colBytes) throws IOException {
     Get g = new Get(rowKey);
     g.addColumn(famBytes, colBytes);
@@ -494,7 +562,7 @@ public class AppSummaryService {
    return r.getValue(famBytes, colBytes);
   }
 
-  private boolean updateNumberRuns(AppAggregationKey appAggKey, HTable aggTable,
+  private boolean updateNumberRuns(AppAggregationKey appAggKey, Table aggTable,
       JobDetails jobDetails) throws IOException {
 
     byte[] rowKey = aggConv.toBytes(appAggKey);
@@ -535,13 +603,13 @@ public class AppSummaryService {
    * map task may have updated it in the mean time
    * @throws IOException
    */
-  boolean incrNumberRuns(List<KeyValue> column, HTable aggTable, AppAggregationKey appAggKey)
+  boolean incrNumberRuns(List<KeyValue> column, Table aggTable, AppAggregationKey appAggKey)
       throws IOException {
 
     /*
      * check if this is the very first insert for numbers for this app in that case,
      * there will no existing column/value for number of run in info col family
-     * null signifies non existence of the column for {@link HTable.checkAndPut}
+     * null signifies non existence of the column for {@link Table.checkAndPut}
      */
     long expectedValueBeforePut = 0L;
     if (column.size() > 0) {

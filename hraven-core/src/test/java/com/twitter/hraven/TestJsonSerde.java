@@ -31,7 +31,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Table;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.SerializationConfig;
@@ -59,7 +62,7 @@ public class TestJsonSerde {
   @SuppressWarnings("unused")
 private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
   private static HBaseTestingUtility UTIL;
-  private static HTable historyTable;
+  private static Table historyTable;
   private static JobHistoryByIdService idService;
 
   @BeforeClass
@@ -67,7 +70,9 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
     HRavenTestUtil.createSchema(UTIL);
-    historyTable = new HTable(UTIL.getConfiguration(), Constants.HISTORY_TABLE_BYTES);
+
+    Connection conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
     idService = new JobHistoryByIdService(UTIL.getConfiguration());
   }
 

@@ -21,12 +21,17 @@ import com.twitter.hraven.FlowEventKey;
 import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.Framework;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -39,6 +44,8 @@ import java.util.List;
  * Service for reading and writing rows in the {@link Constants#FLOW_EVENT_TABLE} table
  */
 public class FlowEventService {
+  private static Log LOG = LogFactory.getLog(FlowEventService.class);
+
   public static final String TIMESTAMP_COL = "ts";
   public static final byte[] TIMESTAMP_COL_BYTES = Bytes.toBytes(TIMESTAMP_COL);
 
@@ -48,12 +55,62 @@ public class FlowEventService {
   public static final String DATA_COL = "data";
   public static final byte[] DATA_COL_BYTES = Bytes.toBytes(DATA_COL);
 
-  private HTable eventTable;
+  private final Configuration conf;
+  private final Connection conn;
+  private Table eventTable;
   private FlowKeyConverter flowKeyConverter = new FlowKeyConverter();
   private FlowEventKeyConverter keyConverter = new FlowEventKeyConverter();
 
-  public FlowEventService(Configuration conf) throws IOException {
-    this.eventTable = new HTable(conf, Constants.FLOW_EVENT_TABLE_BYTES);
+  /**
+   * Opens a new connection to HBase server and opens connections to the tables.
+   *
+   * User is responsible for calling {@link #close()} when finished using this service.
+   *
+   * @param hbaseConf
+   *          configuration of the processing job, not the conf of the files we
+   *          are processing. Used to connect to HBase.
+   * @throws IOException
+   */
+  public FlowEventService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    conn = ConnectionFactory.createConnection(conf);
+
+    eventTable = conn.getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE_BYTES));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (eventTable != null) {
+        eventTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -180,9 +237,5 @@ public class FlowEventService {
           result.getValue(Constants.INFO_FAM_BYTES, DATA_COL_BYTES)));
     }
     return event;
-  }
-
-  public void close() throws IOException {
-    this.eventTable.close();
   }
 }

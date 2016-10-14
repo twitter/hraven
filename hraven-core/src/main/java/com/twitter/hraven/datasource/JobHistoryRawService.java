@@ -27,6 +27,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -50,23 +51,62 @@ public class JobHistoryRawService {
 
   private QualifiedJobIdConverter idConv = new QualifiedJobIdConverter();
 
+  private final Configuration conf;
+  private final Connection conn;
   /**
    * Used to store the processRecords in HBase
    */
-  private final HTable rawTable;
+  private final Table rawTable;
 
   /**
-   * Constructor. Note that caller is responsible to {@link #close()} created
-   * instances.
-   * 
-   * @param myHBaseConf
+   * Opens a new connection to HBase server and opens connections to the tables.
+   *
+   * User is responsible for calling {@link #close()} when finished using this service.
+   *
+   * @param hbaseConf
    *          configuration of the processing job, not the conf of the files we
    *          are processing. Used to connect to HBase.
    * @throws IOException
-   *           in case we have problems connecting to HBase.
    */
-  public JobHistoryRawService(Configuration myHBaseConf) throws IOException {
-    rawTable = new HTable(myHBaseConf, Constants.HISTORY_RAW_TABLE_BYTES);
+  public JobHistoryRawService(Configuration hbaseConf) throws IOException {
+    if (hbaseConf == null) {
+      conf = new Configuration();
+    } else {
+      conf = hbaseConf;
+    }
+
+    conn = ConnectionFactory.createConnection(conf);
+    rawTable = conn.getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE_BYTES));
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    IOException ret = null;
+
+    try {
+      if (rawTable != null) {
+        rawTable.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    try {
+      if (conn != null) {
+        conn.close();
+      }
+    } catch (IOException ioe) {
+      LOG.error(ioe);
+      ret = ioe;
+    }
+
+    if (ret != null) {
+      throw ret;
+    }
   }
 
   /**
@@ -88,9 +128,8 @@ public class JobHistoryRawService {
    * @param reprocess
    *          Reprocess those records that may have been processed already.
    *          Otherwise successfully processed jobs are skipped.
-   * @param reloadOnly
-   *          load only those raw records that were marked to be reloaded using
-   *          {@link #markJobForReprocesssing(QualifiedJobId)}
+   * @param batchSize
+   *
    * @return a scan of jobIds between the specified min and max. Retrieves only
    *         one version of each column.
    * @throws IOException
@@ -162,7 +201,7 @@ public class JobHistoryRawService {
    *          return only those raw records that were marked to be reprocessed
    *          using {@link #markJobForReprocesssing(QualifiedJobId)}. Otherwise
    *          successfully processed jobs are skipped.
-   * @param reprocessOnly
+   * @param reprocess
    *          When true then reprocess argument is ignored and is assumed to be
    *          true.
    * @param includeRaw
@@ -343,7 +382,7 @@ public class JobHistoryRawService {
   /**
    * @param result
    *          from the {@link Scan} from
-   *          {@link #getHistoryRawTableScan(String, String, String, boolean, boolean, boolean)}
+   *          {@link getHistoryRawTableScan(String, String, String, boolean, boolean, boolean)}
    * @return the configuration part.
    * @throws MissingColumnInResultException
    *           when the result does not contain {@link Constants#RAW_FAM},
@@ -401,7 +440,7 @@ public class JobHistoryRawService {
 
   /**
    * Given a result from the {@link Scan} obtained by
-   * {@link #getHistoryRawTableScan(String, String, String, boolean, boolean, boolean)}
+   * {@link getHistoryRawTableScan(String, String, String, boolean, boolean, boolean)}
    * . They for puts into the raw table are constructed using
    * {@link #getRowKey(String, String)}
    * 
@@ -440,19 +479,6 @@ public class JobHistoryRawService {
   }
 
   /**
-   * Release internal HBase table instances. Must be called when consumer is
-   * done with this service.
-   * 
-   * @throws IOException
-   *           when bad things happen closing HBase table(s).
-   */
-  public void close() throws IOException {
-    if (rawTable != null) {
-      rawTable.close();
-    }
-  }
-
-  /**
    * @param row
    *          the identifier of the row in the RAW table. Cannot be null.
    * @success whether the job was processed successfully or not
@@ -474,7 +500,7 @@ public class JobHistoryRawService {
   /**
    * attempts to approximately set the job submit time based on the last modification time of the
    * job history file
-   * @param hbase result
+   * @param value result
    * @return approximate job submit time
    * @throws MissingColumnInResultException
    */
@@ -529,7 +555,7 @@ public class JobHistoryRawService {
 
   /**
    * returns the raw byte representation of job history from the result value
-   * @param hbase result
+   * @param value result
    * @return byte array of job history raw
    *
    * @throws MissingColumnInResultException
