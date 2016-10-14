@@ -68,14 +68,14 @@ public class JobFileRawLoaderMapper extends
   /**
    * @return the key class for the job output data.
    */
-  public static Class<? extends Writable> getOutputKeyClass() {
+  public static Class getOutputKeyClass() {
     return ImmutableBytesWritable.class;
   }
 
   /**
    * @return the value class for the job output data.
    */
-  public static Class<? extends Writable> getOutputValueClass() {
+  public static Class getOutputValueClass() {
     return Put.class;
   }
 

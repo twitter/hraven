@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 <!--
-# Copyright 2013 Twitter, Inc.
+# Copyright 2016 Twitter, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,9 +24,7 @@
     <version>0.9.17-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
-  <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven-core</artifactId>
-  <version>0.9.17-SNAPSHOT</version>
   <name>hRaven - core</name>
   <description>Core components of hRaven, including model classes and data access layer</description>
  
@@ -170,7 +168,7 @@
     <dependency>
       <groupId>com.twitter.common</groupId>
       <artifactId>application</artifactId>
-      <version>0.0.96</version>
+      <version>0.0.99</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common</groupId>
@@ -184,23 +182,41 @@
     </dependency>
     <dependency>
       <groupId>com.twitter.common</groupId>
-      <artifactId>application-module-applauncher</artifactId>
-      <version>0.0.65</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter.common</groupId>
       <artifactId>application-module-log</artifactId>
       <version>0.0.73</version>
     </dependency>
+    <!-- Adding explicit dependency because the com.twitter.common.net-http-handlers 0.0.92 pom is broken and refers to non-existent version 20150609164129-0513299  -->
     <dependency>
-      <groupId>com.twitter.common</groupId>
-      <artifactId>net-http</artifactId>
-      <version>0.0.49</version>
+      <groupId>com.twitter</groupId>
+      <artifactId>util-registry_2.10</artifactId>
+      <version>6.34.0</version>
+    </dependency>
+    <!-- Adding explicit dependency because the com.twitter.common.application-module-http has broken dependencies -->
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>util-core_2.10</artifactId>
+      <version>6.34.0</version>
+    </dependency>
+    <!-- Adding explicit dependency because the com.twitter.common.application-module-http has broken dependencies -->
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>util-jvm_2.10</artifactId>
+      <version>6.34.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.inject</groupId>
+      <artifactId>guice</artifactId>
+      <version>4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.inject</groupId>
+      <artifactId>javax.inject</artifactId>
+      <version>1</version>
     </dependency>
     <dependency>
       <groupId>commons-logging</groupId>

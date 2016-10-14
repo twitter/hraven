@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -63,7 +64,7 @@ public class TestJobHistoryListener {
 		// check hadoop version
 		boolean foundVersion1 = false;
 		for (Put p : jobHistoryListener.getJobPuts()) {
-		  List<KeyValue> kv2 = p.get(Constants.INFO_FAM_BYTES,
+		  List<Cell> kv2 = p.get(Constants.INFO_FAM_BYTES,
 				  Bytes.toBytes(JobHistoryKeys.hadoopversion.toString()));
 		  if (kv2.size() == 0) {
 			// we are interested in hadoop version put only
