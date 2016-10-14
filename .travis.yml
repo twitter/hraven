@@ -1,7 +1,7 @@
 language: java
 sudo: false
-script: umask 0022 && mvn test
+script: umask 0022 && mvn clean test
 jdk:
-  - openjdk7
+  - openjdk8
 after_success:
   - mvn clean cobertura:cobertura coveralls:cobertura
