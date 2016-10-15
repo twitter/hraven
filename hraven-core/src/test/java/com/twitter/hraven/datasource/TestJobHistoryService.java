@@ -18,17 +18,17 @@ package com.twitter.hraven.datasource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -45,9 +45,6 @@ import com.twitter.hraven.GenerateFlowTestData;
 import com.twitter.hraven.HadoopVersion;
 import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
-import com.twitter.hraven.datasource.JobHistoryByIdService;
-import com.twitter.hraven.datasource.JobHistoryService;
-import com.twitter.hraven.datasource.HRavenTestUtil;
 
 /**
  * Round-trip testing for storage and retrieval of data in job_history table.
@@ -68,7 +65,7 @@ public class TestJobHistoryService {
     HRavenTestUtil.createSchema(UTIL);
 
     conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
-    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
 
     idService = new JobHistoryByIdService(UTIL.getConfiguration());
     flowDataGen = new GenerateFlowTestData();
@@ -79,7 +76,7 @@ public class TestJobHistoryService {
   public void testJobHistoryRead() throws Exception {
     // load some initial data
     // a few runs of the same app
-	 
+
     flowDataGen.loadFlow("c1@local", "buser", "app1", 1234, "a", 3, 10,idService, historyTable);
     flowDataGen.loadFlow("c1@local", "buser", "app1", 1345, "a", 3, 10,idService, historyTable);
     flowDataGen.loadFlow("c1@local", "buser", "app1", 1456, "a", 3, 10,idService, historyTable);
@@ -258,8 +255,8 @@ public class TestJobHistoryService {
       assertEquals( f.getDuration() + GenerateFlowTestData.SUBMIT_LAUCH_DIFF, f.getWallClockTime());
     }
   }
-  
-  
+
+
   @Test
   public void testGetFlowTimeSeriesStats() throws Exception {
 

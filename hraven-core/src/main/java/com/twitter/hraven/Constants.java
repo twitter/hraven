@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,24 +46,15 @@ public class Constants {
 
   /* **** Table names **** */
   public static String HISTORY_TABLE = PREFIX + "job_history";
-  public static byte[] HISTORY_TABLE_BYTES = Bytes.toBytes(HISTORY_TABLE);
 
   public static String HISTORY_TASK_TABLE = HISTORY_TABLE + "_task";
-  public static byte[] HISTORY_TASK_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_TASK_TABLE);
 
   public static String HISTORY_BY_JOBID_TABLE = HISTORY_TABLE + "-by_jobId";
-  public static byte[] HISTORY_BY_JOBID_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_BY_JOBID_TABLE);
 
   public static String HISTORY_APP_VERSION_TABLE = HISTORY_TABLE
       + "_app_version";
-  public static byte[] HISTORY_APP_VERSION_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_APP_VERSION_TABLE);
 
   public static String HISTORY_RAW_TABLE = HISTORY_TABLE + "_raw";
-  public static byte[] HISTORY_RAW_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_RAW_TABLE);
 
   public static final String JOB_FILE_PROCESS_TABLE = PREFIX
       + "job_history_process";

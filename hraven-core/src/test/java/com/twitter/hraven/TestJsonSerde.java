@@ -15,17 +15,15 @@ limitations under the License.
 */
 package com.twitter.hraven;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.twitter.hraven.Flow;
-import com.twitter.hraven.JobDetails;
-import com.twitter.hraven.datasource.HRavenTestUtil;
-import com.twitter.hraven.datasource.JobHistoryByIdService;
-import com.twitter.hraven.datasource.JobHistoryService;
-import com.twitter.hraven.rest.ObjectMapperProvider;
-import com.twitter.hraven.rest.RestJSONResource;
-import com.twitter.hraven.rest.SerializationContext;
-import com.twitter.hraven.util.JSONUtil;
+import static junit.framework.Assert.assertNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,22 +33,22 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Table;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.DeserializationConfig;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
 import org.codehaus.jackson.type.TypeReference;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.List;
-import java.util.Map;
-
-import static junit.framework.Assert.assertNull;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.twitter.hraven.datasource.HRavenTestUtil;
+import com.twitter.hraven.datasource.JobHistoryByIdService;
+import com.twitter.hraven.datasource.JobHistoryService;
+import com.twitter.hraven.rest.ObjectMapperProvider;
+import com.twitter.hraven.rest.RestJSONResource;
+import com.twitter.hraven.rest.SerializationContext;
+import com.twitter.hraven.util.JSONUtil;
 
 /**
  * Tests that we can deserialize json and serialize it again and get the same results. Written so
@@ -72,7 +70,7 @@ private static final Log LOG = LogFactory.getLog(TestJsonSerde.class);
     HRavenTestUtil.createSchema(UTIL);
 
     Connection conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
-    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
     idService = new JobHistoryByIdService(UTIL.getConfiguration());
   }
 

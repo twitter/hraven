@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import com.twitter.hraven.QualifiedJobId;
 
 /**
  * Service to access the {@link Constants#HISTORY_BY_JOBID_TABLE}.
- * 
+ *
  */
 public class JobHistoryByIdService {
   private static Log LOG = LogFactory.getLog(HdfsStatsService.class);
@@ -68,7 +68,7 @@ public class JobHistoryByIdService {
 
     conn = ConnectionFactory.createConnection(conf);
     historyByJobIdTable = conn.getTable(
-        TableName.valueOf(Constants.HISTORY_BY_JOBID_TABLE_BYTES));
+        TableName.valueOf(Constants.HISTORY_BY_JOBID_TABLE));
   }
 
   /**
@@ -125,7 +125,7 @@ public class JobHistoryByIdService {
 
   /**
    * Create the secondary indexes records cluster!jobId->jobKey.
-   * 
+   *
    * @param jobKey
    * @throws IOException
    *           if the entry cannot be written.
