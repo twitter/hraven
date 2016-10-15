@@ -31,7 +31,10 @@ import java.util.Set;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
@@ -221,18 +224,18 @@ public class TestAppSummaryService {
     JobDetails jd = new JobDetails(null);
     jd.setQueue("queue1");
     byte[] qb = Bytes.toBytes("queue2!queue3!");
-    KeyValue existingQueuesKV =
-        new KeyValue(Bytes.toBytes("rowkey"), Constants.INFO_FAM_BYTES,
-            Constants.HRAVEN_QUEUE_BYTES, qb);
+    Cell existingQueuesCell =
+        CellUtil.createCell(Bytes.toBytes("rowkey"), Constants.INFO_FAM_BYTES,
+            Constants.HRAVEN_QUEUE_BYTES, HConstants.LATEST_TIMESTAMP, KeyValue.Type.Put.getCode(), qb);
     AppSummaryService as = new AppSummaryService(null);
     try {
-      String qlist = as.createQueueListValue(jd, Bytes.toString(existingQueuesKV.getValue()));
+      String qlist = as.createQueueListValue(jd, Bytes.toString(CellUtil.cloneValue(existingQueuesCell)));
       assertNotNull(qlist);
       String expQlist = "queue2!queue3!queue1!";
       assertEquals(expQlist, qlist);
 
       jd.setQueue("queue3");
-      qlist = as.createQueueListValue(jd, Bytes.toString(existingQueuesKV.getValue()));
+      qlist = as.createQueueListValue(jd, Bytes.toString(CellUtil.cloneValue(existingQueuesCell)));
       assertNotNull(qlist);
       expQlist = "queue2!queue3!";
       assertEquals(expQlist, qlist);

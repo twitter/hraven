@@ -27,8 +27,9 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -345,19 +346,17 @@ public class TestJobHistoryService {
   private void assertFoundOnce(byte[] column, Put jobPut, int expectedSize,
 		  String expectedValue) {
 	  boolean foundUserName = false;
-/*TODO dogpiledays
-    List<KeyValue> kv1 = jobPut.get(Constants.INFO_FAM_BYTES, column);
-	  assertEquals(expectedSize, kv1.size());
-	  for (KeyValue kv : kv1) {
-		assertEquals(Bytes.toString(kv.getValue()), expectedValue);
-	    // ensure we don't see the same put twice
-		assertFalse(foundUserName);
-		// now set this to true
-		foundUserName = true;
-  	  }
-  */    // ensure that we got the user name
-    // TODO dogpiledays
-    foundUserName = true;
+
+    List<Cell> cells = jobPut.get(Constants.INFO_FAM_BYTES, column);
+	  assertEquals(expectedSize, cells.size());
+	  for (Cell cell : cells) {
+      assertEquals(Bytes.toString(CellUtil.cloneValue(cell)), expectedValue);
+        // ensure we don't see the same put twice
+      assertFalse(foundUserName);
+      // now set this to true
+      foundUserName = true;
+    }
+    // ensure that we got the user name
 	  assertTrue(foundUserName);
   }
 
@@ -390,7 +389,7 @@ public class TestJobHistoryService {
 	  // populate the jobConf with all types of queue name parameters
 	  String expH2QName = "hadoop2queue";
 	  String expH1PoolName = "fairpool";
-	  String capacityH1QName = "capacity1aueue";
+	  String capacityH1QName = "capacity1queue";
 	  jobConf.set(Constants.QUEUENAME_HADOOP2, expH2QName);
 	  jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
 	  jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);

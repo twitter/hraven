@@ -26,7 +26,8 @@ import java.util.TreeSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.filter.CompareFilter;
@@ -395,15 +396,15 @@ public class JobHistoryRawService {
       throw new IllegalArgumentException("Cannot create InputStream from null");
     }
 
-    KeyValue keyValue = result.getColumnLatest(Constants.RAW_FAM_BYTES,
+    Cell cell = result.getColumnLatestCell(Constants.RAW_FAM_BYTES,
         Constants.JOBCONF_COL_BYTES);
 
     // Create a jobConf from the raw input
     Configuration jobConf = new Configuration(false);
 
     byte[] jobConfRawBytes = null;
-    if (keyValue != null) {
-      jobConfRawBytes = keyValue.getValue();
+    if (cell != null) {
+      jobConfRawBytes = CellUtil.cloneValue(cell);
     }
     if (jobConfRawBytes == null || jobConfRawBytes.length == 0) {
       throw new MissingColumnInResultException(Constants.RAW_FAM_BYTES,
@@ -510,15 +511,15 @@ public class JobHistoryRawService {
           + "a null hbase result");
     }
 
-    KeyValue keyValue = value.getColumnLatest(Constants.INFO_FAM_BYTES,
+    Cell cell = value.getColumnLatestCell(Constants.INFO_FAM_BYTES,
           Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
 
-    if (keyValue == null) {
+    if (cell == null) {
       throw new MissingColumnInResultException(Constants.INFO_FAM_BYTES,
           Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
     }
 
-    byte[] lastModTimeBytes = keyValue.getValue();
+    byte[] lastModTimeBytes = CellUtil.cloneValue(cell);
     // we try to approximately set the job submit time based on when the job history file
     // was last modified and an average job duration
     long lastModTime = Bytes.toLong(lastModTimeBytes);
@@ -565,16 +566,16 @@ public class JobHistoryRawService {
       throw new IllegalArgumentException("Cannot create InputStream from null");
     }
 
-    KeyValue keyValue =
-        value.getColumnLatest(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
+    Cell cell =
+        value.getColumnLatestCell(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
 
     // Could be that there is no conf file (only a history file).
-    if (keyValue == null) {
+    if (cell == null) {
       throw new MissingColumnInResultException(Constants.RAW_FAM_BYTES,
           Constants.JOBHISTORY_COL_BYTES);
     }
 
-    byte[] jobHistoryRaw = keyValue.getValue();
+    byte[] jobHistoryRaw = CellUtil.cloneValue(cell);
     return jobHistoryRaw;
   }
 
@@ -607,11 +608,11 @@ public class JobHistoryRawService {
     Get g = new Get(row);
     g.addColumn(Constants.INFO_FAM_BYTES, col);
     Result r = rawTable.get(g);
-    KeyValue kv = r.getColumnLatest(Constants.INFO_FAM_BYTES, col);
+    Cell cell = r.getColumnLatestCell(Constants.INFO_FAM_BYTES, col);
     boolean status = false;
     try {
-      if (kv != null) {
-        status = Bytes.toBoolean(kv.getValue());
+      if (cell != null) {
+        status = Bytes.toBoolean(CellUtil.cloneValue(cell));
       }
     } catch (IllegalArgumentException iae) {
       LOG.error("Caught " + iae);
@@ -620,5 +621,4 @@ public class JobHistoryRawService {
       + " for this job=" + status);
     return status;
   }
-
 }

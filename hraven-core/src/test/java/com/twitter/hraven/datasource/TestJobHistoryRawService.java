@@ -22,7 +22,10 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -172,12 +175,12 @@ public class TestJobHistoryRawService {
     JobHistoryRawService rawService = null;
     try {
       rawService = new JobHistoryRawService(UTIL.getConfiguration());
-      KeyValue[] kvs = new KeyValue[1];
+      Cell[] cells = new Cell[1];
       long modts = 1396550668000L;
-      kvs[0] = new KeyValue(Bytes.toBytes("someRowKey"),
-              Constants.INFO_FAM_BYTES, Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES,
-              Bytes.toBytes(modts));
-      Result result = new Result(kvs);
+      cells[0] = CellUtil.createCell(Bytes.toBytes("someRowKey"), Constants.INFO_FAM_BYTES,
+          Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES, HConstants.LATEST_TIMESTAMP,
+          KeyValue.Type.Put.getCode(), Bytes.toBytes(modts));
+      Result result = Result.create(cells);
       long st = rawService.getApproxSubmitTime(result);
       long expts = modts - Constants.AVERGAE_JOB_DURATION;
       assertEquals(expts, st);
