@@ -21,7 +21,7 @@
   <parent>
     <groupId>com.twitter.hraven</groupId>
     <artifactId>hraven</artifactId>
-    <version>0.9.17-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
   <artifactId>hraven-core</artifactId>
