@@ -389,20 +389,24 @@ public class TestJobHistoryService {
 	  String expH2QName = "hadoop2queue";
 	  String expH1PoolName = "fairpool";
 	  String capacityH1QName = "capacity1queue";
-	  jobConf.set(Constants.QUEUENAME_HADOOP2, expH2QName);
-	  jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
-	  jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
+    jobConf.set(Constants.QUEUENAME_HADOOP2, expH2QName);
 
 	  // now check queuename is correctly set as hadoop2 queue name
 	  // even when the fairscheduler and capacity scheduler are set
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
+    jobConf.set(Constants.QUEUENAME_HADOOP2, expH2QName);
 	  JobHistoryService.setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
 	  assertEquals(jobPut.size(), 1);
-	  // TODO dogpiledays_hbase1 this still returns the values for hadoop 1
-    //assertFoundOnce(column, jobPut, 1, expH2QName);
+    assertFoundOnce(column, jobPut, 1, expH2QName);
 
 	  // now unset hadoop2 queuename, expect fairscheduler name to be used as queuename
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
 	  jobConf.set(Constants.QUEUENAME_HADOOP2, "");
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
@@ -412,15 +416,18 @@ public class TestJobHistoryService {
 
 	  // now unset fairscheduler name, expect capacity scheduler to be used as queuename
 	  jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, "");
+    jobConf.set(Constants.QUEUENAME_HADOOP2, "");
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
 	  JobHistoryService.setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
 	  assertEquals(jobPut.size(), 1);
-	  // TODO dogpiledays_hbase1 this still returns values for hadoop 1
-    //assertFoundOnce(column, jobPut, 1, capacityH1QName);
+    assertFoundOnce(column, jobPut, 1, capacityH1QName);
 
 	  // now unset capacity scheduler, expect default_queue to be used as queuename
 	  jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, "");
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, "");
+    jobConf.set(Constants.QUEUENAME_HADOOP2, "");
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
 	  JobHistoryService.setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
