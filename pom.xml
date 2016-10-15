@@ -16,7 +16,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven</artifactId>
-  <version>0.9.17-SNAPSHOT</version>
+  <version>1.0.0-SNAPSHOT</version>
   <name>hRaven Project</name>
   <url>https://github.com/twitter/hraven</url>
   <description>
@@ -57,7 +57,8 @@
   <developers>
     <developer>
       <name>Gary Helmling</name>
-      <email>ghelmling@twitter.com</email>
+      <!-- Formerly at Twitter. -->
+      <email>ghelmling@fb.com</email>
     </developer>
     <developer>
       <name>Chris Trezzo</name>
@@ -70,6 +71,10 @@
     <developer>
       <name>Vrushali Channapattan</name>
       <email>vchannapattan@twitter.com</email>
+    </developer>
+    <developer>
+      <name>Sangjin Lee</name>
+      <email>sjlee@twitter.com</email>
     </developer>
   </developers>
 
@@ -124,6 +129,7 @@
   <properties>
     <compileSource>1.8</compileSource>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <hraven.version>1.0.0-SNAPSHOT</hraven.version>
     <hbase.version>1.1.3</hbase.version>
     <hadoop.version>2.6.0</hadoop.version>
     
