@@ -18,6 +18,7 @@ Requirements
 * Apache Hadoop - hRaven current supports collection of job data on specific
   versions of Hadoop:
   * Hadoop 2.6+ post hRaven 1.0.0 Hadoop 1 will no longer be supported
+* JRE 8 - As of hRaven 1.0.0 Java 8 jars are generated. Use hRaven 0.9.x for Java 7 runtimes.
 
 Quick start
 --------------------
