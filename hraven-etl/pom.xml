@@ -160,13 +160,13 @@
     <dependency>
       <groupId>com.twitter.hraven</groupId>
       <artifactId>hraven-core</artifactId>
-      <version>{hraven.version}</version>
+      <version>${hraven.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.twitter.hraven</groupId>
       <artifactId>hraven-core</artifactId>
-      <version>{hraven.version}</version>
+      <version>${hraven.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
