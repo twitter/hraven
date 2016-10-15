@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
 import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
 import org.apache.hadoop.mapreduce.Job;
@@ -45,6 +47,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.mapreduce.JobFileRawLoaderMapper;
 
@@ -52,15 +55,15 @@ import com.twitter.hraven.mapreduce.JobFileRawLoaderMapper;
  * Used to load the job files from an HDFS directory to an HBase table. This is
  * just the raw loading part of the process. A process table is used to record
  * the lowest job_id encountered during this load.
- * 
+ *
  */
 public class JobFileRawLoader extends Configured implements Tool {
 
   final static String NAME = JobFileRawLoader.class.getSimpleName();
   private static Log LOG = LogFactory.getLog(JobFileRawLoader.class);
 
-  private final String startTimestamp = Constants.TIMESTAMP_FORMAT
-      .format(new Date(System.currentTimeMillis()));
+  private final String startTimestamp =
+      Constants.TIMESTAMP_FORMAT.format(new Date(System.currentTimeMillis()));
 
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
@@ -77,7 +80,7 @@ public class JobFileRawLoader extends Configured implements Tool {
 
   /**
    * Used for injecting confs while unit testing
-   * 
+   *
    * @param conf
    */
   public JobFileRawLoader(Configuration conf) {
@@ -87,9 +90,8 @@ public class JobFileRawLoader extends Configured implements Tool {
 
   /**
    * Parse command-line arguments.
-   * 
-   * @param args
-   *          command line arguments passed to program.
+   *
+   * @param args command line arguments passed to program.
    * @return parsed command line.
    * @throws ParseException
    */
@@ -103,10 +105,7 @@ public class JobFileRawLoader extends Configured implements Tool {
     o.setRequired(true);
     options.addOption(o);
 
-    o = new Option(
-        "p",
-        "processFileSubstring",
-        true,
+    o = new Option("p", "processFileSubstring", true,
         "use only those process records where the process file path contains the provided string. Useful when processing production jobs in parallel to historic loads.");
     o.setArgName("processFileSubstring");
     o.setRequired(false);
@@ -143,18 +142,18 @@ public class JobFileRawLoader extends Configured implements Tool {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.apache.hadoop.util.Tool#run(java.lang.String[])
    */
   public int run(String[] args) throws ParseException, IOException,
       ClassNotFoundException, InterruptedException {
 
-    Configuration myHBaseConf = HBaseConfiguration.create(getConf());
-    hdfs = FileSystem.get(myHBaseConf);
+    Configuration hbaseConf = HBaseConfiguration.create(getConf());
+    hdfs = FileSystem.get(hbaseConf);
 
     // Grab input args and allow for -Dxyz style arguments
-    String[] otherArgs = new GenericOptionsParser(myHBaseConf, args)
-        .getRemainingArgs();
+    String[] otherArgs =
+        new GenericOptionsParser(hbaseConf, args).getRemainingArgs();
 
     // Grab the arguments we're looking for.
     CommandLine commandLine = parseArgs(otherArgs);
@@ -184,98 +183,101 @@ public class JobFileRawLoader extends Configured implements Tool {
 
     // hbase.client.keyvalue.maxsize somehow defaults to 10 MB and we have
     // history files exceeding that. Disable limit.
-    myHBaseConf.setInt("hbase.client.keyvalue.maxsize", 0);
+    hbaseConf.setInt("hbase.client.keyvalue.maxsize", 0);
 
     // Shove this into the jobConf so that we can get it out on the task side.
-    myHBaseConf.setStrings(Constants.CLUSTER_JOB_CONF_KEY, cluster);
+    hbaseConf.setStrings(Constants.CLUSTER_JOB_CONF_KEY, cluster);
 
-    boolean success = processRecordsFromHBase(myHBaseConf, cluster,
-        processFileSubstring, forceReprocess);
+    boolean success = true;
+    Connection hbaseConnection = null;
+    try {
+      hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
+      success = processRecordsFromHBase(hbaseConf, hbaseConnection, cluster,
+          processFileSubstring, forceReprocess);
+    } finally {
+      if (hbaseConnection == null) {
+        success = false;
+      } else {
+        hbaseConnection.close();
+      }
+    }
 
     // Return the status
     return success ? 0 : 1;
   }
 
   /**
-   * @param myHBaseConf
-   *          used to contact HBase and to run jobs against. Should be an HBase
-   *          configuration.
-   * @param cluster
-   *          for which to process records.
-   * @param processFileSubstring
-   *          return rows where the process file path contains this string. If
-   *          <code>null</code> or empty string, then no filtering is applied.
-   * @param forceReprocess
-   *          whether all jobs for which a file is loaded needs to be
-   *          reprocessed.
+   * @param myHBaseConf used to contact HBase and to run jobs against. Should be
+   *          an HBase configuration.
+   * @param hbaseConnection
+   * @param cluster for which to process records.
+   * @param processFileSubstring return rows where the process file path
+   *          contains this string. If <code>null</code> or empty string, then
+   *          no filtering is applied.
+   * @param forceReprocess whether all jobs for which a file is loaded needs to
+   *          be reprocessed.
    * @return whether all job files for all processRecords were properly
    *         processed.
    * @throws IOException
-   * @throws ClassNotFoundException
-   *           when problems occur setting up the job.
+   * @throws ClassNotFoundException when problems occur setting up the job.
    * @throws InterruptedException
    */
   private boolean processRecordsFromHBase(Configuration myHBaseConf,
-      String cluster, String processFileSubstring, boolean forceReprocess)
+      Connection hbaseConnection, String cluster, String processFileSubstring,
+      boolean forceReprocess)
       throws IOException, InterruptedException, ClassNotFoundException {
 
     int failures = 0;
 
-    ProcessRecordService processRecordService = new ProcessRecordService(
-        myHBaseConf);
+    ProcessRecordService processRecordService =
+        new ProcessRecordService(myHBaseConf, hbaseConnection);
     // Grab all records.
-    List<ProcessRecord> processRecords = processRecordService
-        .getProcessRecords(cluster, PREPROCESSED, Integer.MAX_VALUE,
-            processFileSubstring);
-    try {
+    List<ProcessRecord> processRecords = processRecordService.getProcessRecords(
+        cluster, PREPROCESSED, Integer.MAX_VALUE, processFileSubstring);
 
-      LOG.info("ProcessRecords for " + cluster + ": " + processRecords.size());
+    LOG.info("ProcessRecords for " + cluster + ": " + processRecords.size());
 
-      // Bind all MR jobs together with one runID.
-      long now = System.currentTimeMillis();
-      myHBaseConf.setLong(Constants.MR_RUN_CONF_KEY, now);
-      
-      myHBaseConf.setBoolean(Constants.FORCE_REPROCESS_CONF_KEY, forceReprocess);
+    // Bind all MR jobs together with one runID.
+    long now = System.currentTimeMillis();
+    myHBaseConf.setLong(Constants.MR_RUN_CONF_KEY, now);
 
-      // Iterate over 0 based list in reverse order
-      for (int j = processRecords.size() - 1; j >= 0; j--) {
-        ProcessRecord processRecord = processRecords.get(j);
+    myHBaseConf.setBoolean(Constants.FORCE_REPROCESS_CONF_KEY, forceReprocess);
 
-        LOG.info("Processing " + processRecord);
+    // Iterate over 0 based list in reverse order
+    for (int j = processRecords.size() - 1; j >= 0; j--) {
+      ProcessRecord processRecord = processRecords.get(j);
 
-        boolean success = runRawLoaderJob(myHBaseConf,
-            processRecord.getProcessFile(), processRecords.size());
-        // Bail out on first failure.
-        if (success) {
-          processRecordService.setProcessState(processRecord,
-              ProcessState.LOADED);
-        } else {
-          failures++;
-        }
+      LOG.info("Processing " + processRecord);
 
+      boolean success = runRawLoaderJob(myHBaseConf,
+          processRecord.getProcessFile(), processRecords.size());
+      // Bail out on first failure.
+      if (success) {
+        processRecordService.setProcessState(processRecord,
+            ProcessState.LOADED);
+      } else {
+        failures++;
       }
-    } finally {
-      processRecordService.close();
+
     }
 
     return (failures == 0);
   }
 
   /**
-   * @param conf
-   *          to use to create and run the job. Should be an HBase
+   * @param conf to use to create and run the job. Should be an HBase
    *          configuration.
-   * @param input
-   *          path to the processFile * @param totalJobCount the total number of
-   *          jobs that need to be run in this batch. Used in job name.
+   * @param input path to the processFile * @param totalJobCount the total
+   *          number of jobs that need to be run in this batch. Used in job
+   *          name.
    * @return whether all job confs were loaded properly.
    * @throws IOException
    * @throws InterruptedException
    * @throws ClassNotFoundException
    */
   private boolean runRawLoaderJob(Configuration myHBaseConf, String input,
-      int totalJobCount) throws IOException, InterruptedException,
-      ClassNotFoundException {
+      int totalJobCount)
+      throws IOException, InterruptedException, ClassNotFoundException {
     boolean success;
 
     // Turn off speculative execution.
@@ -322,9 +324,8 @@ public class JobFileRawLoader extends Configured implements Tool {
   }
 
   /**
-   * @param totalJobCount
-   *          how many jobs there will be in total. Used as indicator in the
-   *          name how far along this job is.
+   * @param totalJobCount how many jobs there will be in total. Used as
+   *          indicator in the name how far along this job is.
    * @return the name to use for each consecutive Hadoop job to launch.
    */
   private synchronized String getJobName(int totalJobCount) {
@@ -335,10 +336,9 @@ public class JobFileRawLoader extends Configured implements Tool {
 
   /**
    * DoIt.
-   * 
-   * @param args
-   *          the arguments to do it with
-   * @throws Exception 
+   *
+   * @param args the arguments to do it with
+   * @throws Exception
    */
   public static void main(String[] args) throws Exception {
     ToolRunner.run(new JobFileRawLoader(), args);

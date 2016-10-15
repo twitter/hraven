@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,9 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.google.common.base.Stopwatch;
-import com.google.common.util.concurrent.AtomicDouble;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -39,17 +36,31 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
+import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.twitter.hraven.*;
+import com.google.common.base.Stopwatch;
+import com.google.common.util.concurrent.AtomicDouble;
+import com.twitter.hraven.Constants;
+import com.twitter.hraven.Counter;
+import com.twitter.hraven.CounterMap;
+import com.twitter.hraven.Flow;
+import com.twitter.hraven.FlowKey;
+import com.twitter.hraven.HravenResponseMetrics;
+import com.twitter.hraven.JobDesc;
+import com.twitter.hraven.JobDetails;
+import com.twitter.hraven.JobHistoryKeys;
+import com.twitter.hraven.JobKey;
+import com.twitter.hraven.QualifiedJobId;
+import com.twitter.hraven.TaskDetails;
+import com.twitter.hraven.TaskKey;
 import com.twitter.hraven.util.ByteUtil;
 import com.twitter.hraven.util.HadoopConfUtil;
 
@@ -87,8 +98,8 @@ public class JobHistoryService {
 
     conn = ConnectionFactory.createConnection(conf);
 
-    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
-    taskTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TASK_TABLE_BYTES));
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
+    taskTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TASK_TABLE));
     idService = new JobHistoryByIdService(conf);
     defaultScannerCaching = conf.getInt("hbase.client.scanner.caching", 100);
   }
@@ -146,7 +157,7 @@ public class JobHistoryService {
    * populate job-level details not task information. To include task details
    * use
    * {@link JobHistoryService#getLatestFlow(String, String, String, boolean)}.
-   * 
+   *
    * @param cluster the cluster identifier
    * @param user the user running the jobs
    * @param appId the application description
@@ -160,7 +171,7 @@ public class JobHistoryService {
   /**
    * Returns the most recent flow by application ID. This version will populate
    * both job-level for all jobs in the flow, and task-level data for each job.
-   * 
+   *
    * @param cluster the cluster identifier
    * @param user the user running the jobs
    * @param appId the application description
@@ -182,7 +193,7 @@ public class JobHistoryService {
    * include task details use
    * {@link JobHistoryService#getFlowSeries(String, String, String, String, boolean, int)}
    * .
-   * 
+   *
    * @param cluster the cluster identifier
    * @param user the user running the jobs
    * @param appId the application description
@@ -229,7 +240,7 @@ public class JobHistoryService {
 
   /**
    * Returns the {@link Flow} instance containing the given job ID.
-   * 
+   *
    * @param cluster the cluster identifier
    * @param jobId the job identifier
    * @return
@@ -500,7 +511,7 @@ public class JobHistoryService {
    * Returns a list of {@link Flow} instances generated from the given results.
    * For the moment, this assumes that the given scanner provides results
    * ordered first by flow ID.
-   * 
+   *
    * @param scan
    *          the Scan instance setup for retrieval
    * @return
@@ -545,13 +556,13 @@ public class JobHistoryService {
       timer.stop();
       LOG.info("Fetched from hbase " + rowCount + " rows, " + colCount + " columns, "
           + flows.size() + " flows and " + jobCount + " jobs taking up "
-          + resultSize + " bytes ( " + (double) resultSize / (1024.0 * 1024.0)
+          + resultSize + " bytes ( " + resultSize / (1024.0 * 1024.0)
           + " atomic double: " + new AtomicDouble(resultSize / (1024.0 * 1024.0))
           + ") MB, in total time of " + timer + " with  " + timerJob
           + " spent inJobDetails & Flow population");
 
       // export the size of data fetched from hbase as a metric
-      HravenResponseMetrics.FLOW_HBASE_RESULT_SIZE_VALUE.set((double) (resultSize / (1024.0 * 1024.0)));
+      HravenResponseMetrics.FLOW_HBASE_RESULT_SIZE_VALUE.set(resultSize / (1024.0 * 1024.0));
     } finally {
       if (scanner != null) {
         scanner.close();
@@ -569,7 +580,7 @@ public class JobHistoryService {
    * Populate the task details for the jobs in the given flows. <strong>Note
    * that all flows are expected to share the same cluster, user, and
    * appId.</strong>
-   * 
+   *
    * @param flows
    */
   private void populateTasks(List<Flow> flows) throws IOException {
@@ -686,7 +697,7 @@ public class JobHistoryService {
   /**
    * Converts serialized configuration properties back in to a Configuration
    * object.
-   * 
+   *
    * @param keyValues
    * @return
    */
@@ -708,7 +719,7 @@ public class JobHistoryService {
 
   /**
    * Converts encoded key values back into counter objects.
-   * 
+   *
    * @param keyValues
    * @return
    */
@@ -822,9 +833,9 @@ public class JobHistoryService {
    */
   public int removeJob(JobKey key) throws IOException {
     byte[] jobRow = jobKeyConv.toBytes(key);
-     
+
     historyTable.delete(new Delete(jobRow));
-    
+
     int deleteCount = 1;
 
     // delete all task rows

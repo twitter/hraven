@@ -1,5 +1,5 @@
 /*
-Copyright 2014 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -54,7 +54,6 @@ import com.twitter.hraven.Constants;
 import com.twitter.hraven.GenerateFlowTestData;
 import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobKey;
-import com.twitter.hraven.datasource.HRavenTestUtil;
 import com.twitter.hraven.util.ByteUtil;
 
 public class TestAppSummaryService {
@@ -75,10 +74,10 @@ public class TestAppSummaryService {
 
     conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
 
-    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE_BYTES));
+    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
     idService = new JobHistoryByIdService(UTIL.getConfiguration());
     flowDataGen = new GenerateFlowTestData();
-    dailyAggTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE_BYTES));
+    dailyAggTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE));
   }
 
   @Test
