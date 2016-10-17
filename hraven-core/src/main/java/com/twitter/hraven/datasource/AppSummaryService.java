@@ -28,7 +28,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -472,11 +473,11 @@ public class AppSummaryService {
     Result r = aggTable.get(g);
     double existingCost = 0.0;
     byte[] existingCostBytes = null;
-    KeyValue columnLatest = r.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+    Cell columnLatest = r.getColumnLatestCell(AggregationConstants.INFO_FAM_BYTES,
           AggregationConstants.JOBCOST_BYTES);
 
     if (columnLatest != null) {
-      existingCost = Bytes.toDouble(columnLatest.getValue());
+      existingCost = Bytes.toDouble(CellUtil.cloneValue(columnLatest));
       existingCostBytes = Bytes.toBytes(existingCost);
     }
 
@@ -505,13 +506,13 @@ public class AppSummaryService {
         AggregationConstants.HRAVEN_QUEUE_BYTES);
     Result r = aggTable.get(g);
 
-    KeyValue existingQueuesKV =
-        r.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+    Cell existingQueuesCell =
+        r.getColumnLatestCell(AggregationConstants.INFO_FAM_BYTES,
           AggregationConstants.HRAVEN_QUEUE_BYTES);
     String existingQueues = null;
     byte[] existingQueuesBytes = null;
-    if (existingQueuesKV != null) {
-      existingQueues = Bytes.toString(existingQueuesKV.getValue());
+    if (existingQueuesCell != null) {
+      existingQueues = Bytes.toString(CellUtil.cloneValue(existingQueuesCell));
       existingQueuesBytes = Bytes.toBytes(existingQueues);
     }
 
@@ -586,7 +587,7 @@ public class AppSummaryService {
       // it is possible that some other map task inserted
       // the first run id for a job in this flow
       // hence we check and put the number of runs in info col family
-      return incrNumberRuns(r.getColumn
+      return incrNumberRuns(r.getColumnCells
             (AggregationConstants.INFO_FAM_BYTES,
             AggregationConstants.NUMBER_RUNS_BYTES),
             aggTable, appAggKey);
@@ -603,7 +604,7 @@ public class AppSummaryService {
    * map task may have updated it in the mean time
    * @throws IOException
    */
-  boolean incrNumberRuns(List<KeyValue> column, Table aggTable, AppAggregationKey appAggKey)
+  boolean incrNumberRuns(List<Cell> column, Table aggTable, AppAggregationKey appAggKey)
       throws IOException {
 
     /*

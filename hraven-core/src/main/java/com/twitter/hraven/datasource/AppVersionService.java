@@ -22,7 +22,8 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -116,9 +117,11 @@ public class AppVersionService {
     List<VersionInfo> versions = Lists.newArrayList();
     Result r = this.versionsTable.get(get);
     if (r != null && !r.isEmpty()) {
-      for (KeyValue kv : r.list()) {
+      for (Cell c : r.listCells()) {
         versions.add(
-            new VersionInfo(Bytes.toString(kv.getQualifier()), Bytes.toLong(kv.getValue())) );
+            new VersionInfo(
+                Bytes.toString(CellUtil.cloneQualifier(c)),
+                Bytes.toLong(CellUtil.cloneValue(c))));
       }
     }
 
@@ -148,12 +151,12 @@ public class AppVersionService {
     Long ts = 0L;
     Result r = this.versionsTable.get(get);
     if (r != null && !r.isEmpty()) {
-      for (KeyValue kv : r.list()) {
+      for (Cell c : r.listCells()) {
         ts = 0L;
         try {
-          ts = Bytes.toLong(kv.getValue());
+          ts = Bytes.toLong(CellUtil.cloneValue(c));
           versions.add(
-              new VersionInfo(Bytes.toString(kv.getQualifier()), ts) );
+              new VersionInfo(Bytes.toString(CellUtil.cloneQualifier(c)), ts) );
         }
         catch (IllegalArgumentException e1 ) {
           // Bytes.toLong may throw IllegalArgumentException, although unlikely.

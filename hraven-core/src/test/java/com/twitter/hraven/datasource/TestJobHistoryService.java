@@ -16,6 +16,7 @@ limitations under the License.
 package com.twitter.hraven.datasource;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -28,6 +29,8 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
@@ -342,19 +345,17 @@ public class TestJobHistoryService {
   private void assertFoundOnce(byte[] column, Put jobPut, int expectedSize,
 		  String expectedValue) {
 	  boolean foundUserName = false;
-/*TODO dogpiledays
-    List<KeyValue> kv1 = jobPut.get(Constants.INFO_FAM_BYTES, column);
-	  assertEquals(expectedSize, kv1.size());
-	  for (KeyValue kv : kv1) {
-		assertEquals(Bytes.toString(kv.getValue()), expectedValue);
-	    // ensure we don't see the same put twice
-		assertFalse(foundUserName);
-		// now set this to true
-		foundUserName = true;
-  	  }
-  */    // ensure that we got the user name
-    // TODO dogpiledays
-    foundUserName = true;
+
+    List<Cell> cells = jobPut.get(Constants.INFO_FAM_BYTES, column);
+	  assertEquals(expectedSize, cells.size());
+	  for (Cell cell : cells) {
+      assertEquals(expectedValue, Bytes.toString(CellUtil.cloneValue(cell)));
+        // ensure we don't see the same put twice
+      assertFalse(foundUserName);
+      // now set this to true
+      foundUserName = true;
+    }
+    // ensure that we got the user name
 	  assertTrue(foundUserName);
   }
 
@@ -387,20 +388,25 @@ public class TestJobHistoryService {
 	  // populate the jobConf with all types of queue name parameters
 	  String expH2QName = "hadoop2queue";
 	  String expH1PoolName = "fairpool";
-	  String capacityH1QName = "capacity1aueue";
-	  jobConf.set(Constants.QUEUENAME_HADOOP2, expH2QName);
-	  jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
-	  jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+	  String capacityH1QName = "capacity1queue";
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
+    jobConf.set(Constants.QUEUENAME_HADOOP2, expH2QName);
 
 	  // now check queuename is correctly set as hadoop2 queue name
 	  // even when the fairscheduler and capacity scheduler are set
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
+    jobConf.set(Constants.QUEUENAME_HADOOP2, expH2QName);
 	  JobHistoryService.setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
 	  assertEquals(jobPut.size(), 1);
-	  assertFoundOnce(column, jobPut, 1, expH2QName);
+    assertFoundOnce(column, jobPut, 1, expH2QName);
 
 	  // now unset hadoop2 queuename, expect fairscheduler name to be used as queuename
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, expH1PoolName);
 	  jobConf.set(Constants.QUEUENAME_HADOOP2, "");
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
@@ -410,14 +416,18 @@ public class TestJobHistoryService {
 
 	  // now unset fairscheduler name, expect capacity scheduler to be used as queuename
 	  jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, "");
+    jobConf.set(Constants.QUEUENAME_HADOOP2, "");
+    jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, capacityH1QName);
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
 	  JobHistoryService.setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);
 	  assertEquals(jobPut.size(), 1);
-	  assertFoundOnce(column, jobPut, 1, capacityH1QName);
+    assertFoundOnce(column, jobPut, 1, capacityH1QName);
 
 	  // now unset capacity scheduler, expect default_queue to be used as queuename
 	  jobConf.set(Constants.CAPACITY_SCHEDULER_QUEUENAME_HADOOP1, "");
+    jobConf.set(Constants.FAIR_SCHEDULER_POOLNAME_HADOOP1, "");
+    jobConf.set(Constants.QUEUENAME_HADOOP2, "");
 	  jobPut = new Put(jobKeyBytes);
 	  assertEquals(jobPut.size(), 0);
 	  JobHistoryService.setHravenQueueNamePut(jobConf, jobPut, jobKey, jobConfColumnPrefix);

@@ -25,7 +25,8 @@ import com.twitter.hraven.util.ByteUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -117,7 +118,7 @@ public class FlowQueueService {
   }
 
   /**
-   * Moves a flow_queue record from one row key to another.  All KeyValues in the existing row
+   * Moves a flow_queue record from one row key to another.  All Cells in the existing row
    * will be written to the new row.  This would primarily be used for transitioning a flow's
    * data from one status to another.
    *
@@ -136,8 +137,8 @@ public class FlowQueueService {
     }
     // copy the existing row to the new key
     Put p = new Put(queueKeyConverter.toBytes(newKey));
-    for (KeyValue kv : result.raw()) {
-      p.add(kv.getFamily(), kv.getQualifier(), kv.getValue());
+    for (Cell c : result.rawCells()) {
+      p.add(CellUtil.cloneFamily(c), CellUtil.cloneQualifier(c), CellUtil.cloneValue(c));
     }
     flowQueueTable.put(p);
     // delete the old row
