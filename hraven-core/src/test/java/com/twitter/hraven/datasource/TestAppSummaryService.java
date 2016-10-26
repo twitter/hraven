@@ -62,7 +62,7 @@ public class TestAppSummaryService {
   private static HBaseTestingUtility UTIL;
   private static JobHistoryByIdService idService;
   private static GenerateFlowTestData flowDataGen;
-  private static Connection conn;
+  private static Connection hbaseConnection;
   private static Table historyTable;
   private static Table dailyAggTable;
 
@@ -72,86 +72,75 @@ public class TestAppSummaryService {
     UTIL.startMiniCluster();
     HRavenTestUtil.createSchema(UTIL);
 
-    conn = ConnectionFactory.createConnection(UTIL.getConfiguration());
+    hbaseConnection =
+        ConnectionFactory.createConnection(UTIL.getConfiguration());
 
-    historyTable = conn.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
-    idService = new JobHistoryByIdService(UTIL.getConfiguration());
+    historyTable =
+        hbaseConnection.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
+    idService = new JobHistoryByIdService(hbaseConnection);
     flowDataGen = new GenerateFlowTestData();
-    dailyAggTable = conn.getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE));
+    dailyAggTable = hbaseConnection
+        .getTable(TableName.valueOf(AggregationConstants.AGG_DAILY_TABLE));
   }
 
   @Test
   public void testNewJobs() throws Exception {
 
-    Configuration c = UTIL.getConfiguration();
+    Configuration hbaseConfiguration = UTIL.getConfiguration();
 
     String cluster1 = "newJobsClusterName";
     String appId = "getNewJobs";
     String appId2 = "getNewJobs2";
     String user = "testuser";
 
-    JobHistoryService jhs = null;
-    AppVersionService service = null;
-    AppSummaryService as = null;
-    try {
-      jhs = new JobHistoryService(UTIL.getConfiguration());
-      service = new AppVersionService(c);
-      as = new AppSummaryService(c);
+    JobHistoryService jhs =
+        new JobHistoryService(hbaseConfiguration, hbaseConnection);
+    AppVersionService appVersionService =
+        new AppVersionService(hbaseConnection);
+    AppSummaryService appSummaryService =
+        new AppSummaryService(hbaseConnection);
 
-      // check adding versions in order
-      service.addVersion(cluster1, user, appId, "v1", 10L);
-      flowDataGen.loadFlow(cluster1, user, appId, 10L, "v1", 3, 10, idService, historyTable);
-      service.addVersion(cluster1, user, appId, "v2", 20L);
-      flowDataGen.loadFlow(cluster1, user, appId, 20L, "v2", 3, 10, idService, historyTable);
-      // Since flow has its own unit tests
-      // we don't test the get flow series as part of testing this new jobs call
-      List<AppSummary> fl = as.getNewApps(jhs, cluster1, user, 0L, 15L, 100);
-      assertNotNull(fl);
-      assertEquals(1, fl.size());
-      service.addVersion(cluster1, user, appId, "v3", 30L);
-      flowDataGen.loadFlow(cluster1, user, appId, 30L, "v3", 3, 10, idService, historyTable);
-      service.addVersion(cluster1, user, appId, "v2.5", 25L);
-      flowDataGen.loadFlow(cluster1, user, appId, 25L, "v2.5", 3, 10, idService, historyTable);
-      fl = as.getNewApps(jhs, cluster1, user, 20L, 35L, 100);
-      assertNotNull(fl);
-      // check that nothing is returned since this app first showed up at timestamp 10
-      assertEquals(0, fl.size());
-      service.addVersion(cluster1, user, appId2, "v102", 23L);
-      flowDataGen.loadFlow(cluster1, user, appId, 23L, "v102", 3, 10, idService, historyTable);
-      fl = as.getNewApps(jhs, cluster1, user, 20L, 35L, 5);
-      assertNotNull(fl);
-      // check that appId2 is returned
-      assertEquals(1, fl.size());
-      assertEquals(appId2, fl.get(0).getKey().getAppId());
-      // now check for entire time range
-      fl = as.getNewApps(jhs, cluster1, user, 0L, 35L, 5);
-      assertNotNull(fl);
-      // check that both apps are returned
-      assertEquals(2, fl.size());
-      for (int i = 0; i < fl.size(); i++) {
-        String anAppId = fl.get(i).getKey().getAppId();
-        if(!(appId.equals(anAppId)) && !(appId2.equals(anAppId))) {
-          throw new AssertionError("Could not find the right apps as expected");
-        }
-      }
-    } finally {
-      try {
-        if (as != null) {
-          as.close();
-        }
-      } catch (IOException ignore) {
-      }
-      try {
-        if (service != null) {
-          service.close();
-        }
-      } catch (IOException ignore) {
-      }
-      try {
-        if (jhs != null) {
-          jhs.close();
-        }
-      } catch (IOException ignore) {
+    // check adding versions in order
+    appVersionService.addVersion(cluster1, user, appId, "v1", 10L);
+    flowDataGen.loadFlow(cluster1, user, appId, 10L, "v1", 3, 10, idService,
+        historyTable);
+    appVersionService.addVersion(cluster1, user, appId, "v2", 20L);
+    flowDataGen.loadFlow(cluster1, user, appId, 20L, "v2", 3, 10, idService,
+        historyTable);
+    // Since flow has its own unit tests
+    // we don't test the get flow series as part of testing this new jobs call
+    List<AppSummary> fl =
+        appSummaryService.getNewApps(jhs, cluster1, user, 0L, 15L, 100);
+    assertNotNull(fl);
+    assertEquals(1, fl.size());
+    appVersionService.addVersion(cluster1, user, appId, "v3", 30L);
+    flowDataGen.loadFlow(cluster1, user, appId, 30L, "v3", 3, 10, idService,
+        historyTable);
+    appVersionService.addVersion(cluster1, user, appId, "v2.5", 25L);
+    flowDataGen.loadFlow(cluster1, user, appId, 25L, "v2.5", 3, 10, idService,
+        historyTable);
+    fl = appSummaryService.getNewApps(jhs, cluster1, user, 20L, 35L, 100);
+    assertNotNull(fl);
+    // check that nothing is returned since this app first showed up at
+    // timestamp 10
+    assertEquals(0, fl.size());
+    appVersionService.addVersion(cluster1, user, appId2, "v102", 23L);
+    flowDataGen.loadFlow(cluster1, user, appId, 23L, "v102", 3, 10, idService,
+        historyTable);
+    fl = appSummaryService.getNewApps(jhs, cluster1, user, 20L, 35L, 5);
+    assertNotNull(fl);
+    // check that appId2 is returned
+    assertEquals(1, fl.size());
+    assertEquals(appId2, fl.get(0).getKey().getAppId());
+    // now check for entire time range
+    fl = appSummaryService.getNewApps(jhs, cluster1, user, 0L, 35L, 5);
+    assertNotNull(fl);
+    // check that both apps are returned
+    assertEquals(2, fl.size());
+    for (int i = 0; i < fl.size(); i++) {
+      String anAppId = fl.get(i).getKey().getAppId();
+      if (!(appId.equals(anAppId)) && !(appId2.equals(anAppId))) {
+        throw new AssertionError("Could not find the right apps as expected");
       }
     }
   }
@@ -160,62 +149,35 @@ public class TestAppSummaryService {
   public void testGetDayTimestamp() throws IOException {
     long ts = 1402698420000L;
     long expectedTop = 1402617600000L;
-    AppSummaryService as = null;
-    try {
-      as = new AppSummaryService(UTIL.getConfiguration());
-      assertEquals((Long) expectedTop, (Long) as.getTimestamp(ts,
-          AggregationConstants.AGGREGATION_TYPE.DAILY));
-    } finally {
-      try {
-        if (as != null) {
-          as.close();
-        }
-      } catch (IOException ignore) {
-      }
-    }
+    AppSummaryService appSummaryService =
+        new AppSummaryService(hbaseConnection);
+    assertEquals((Long) expectedTop, (Long) appSummaryService.getTimestamp(ts,
+        AggregationConstants.AGGREGATION_TYPE.DAILY));
   }
 
   @Test
   public void testGetWeekTimestamp() throws IOException {
     long ts = 1402698420000L;
     long expectedTop = 1402185600000L;
-    AppSummaryService as = null;
-    try {
-      as = new AppSummaryService(UTIL.getConfiguration());
-      assertEquals((Long) expectedTop, (Long) as.getTimestamp(ts,
-          AggregationConstants.AGGREGATION_TYPE.WEEKLY));
-    } finally {
-      try {
-        if (as != null) {
-          as.close();
-        }
-      } catch (IOException ignore) {
-      }
-    }
+    AppSummaryService appSummaryService =
+        new AppSummaryService(hbaseConnection);
+    assertEquals((Long) expectedTop, (Long) appSummaryService.getTimestamp(ts,
+        AggregationConstants.AGGREGATION_TYPE.WEEKLY));
   }
 
-  @Test(expected=ProcessingException.class)
+  @Test(expected = ProcessingException.class)
   public void testGetNumberRuns() throws IOException {
     Map<byte[], byte[]> r = new HashMap<byte[], byte[]>();
-    AppSummaryService as = null;
-    try {
-      as = new AppSummaryService(UTIL.getConfiguration());
-      assertEquals(0, as.getNumberRunsScratch(r));
-      byte[] key = Bytes.toBytes("abc");
-      byte[] value = Bytes.toBytes(10L);
-      r.put(key, value);
-      key = Bytes.toBytes("xyz");
-      value = Bytes.toBytes(102L);
-      r.put(key, value);
-      assertEquals(2, as.getNumberRunsScratch(r));
-    } finally {
-      try {
-        if (as != null) {
-          as.close();
-        }
-      } catch (IOException ignore) {
-      }
-    }
+    AppSummaryService appSummaryService =
+        new AppSummaryService(hbaseConnection);
+    assertEquals(0, appSummaryService.getNumberRunsScratch(r));
+    byte[] key = Bytes.toBytes("abc");
+    byte[] value = Bytes.toBytes(10L);
+    r.put(key, value);
+    key = Bytes.toBytes("xyz");
+    value = Bytes.toBytes(102L);
+    r.put(key, value);
+    assertEquals(2, appSummaryService.getNumberRunsScratch(r));
   }
 
   @Test
@@ -223,35 +185,29 @@ public class TestAppSummaryService {
     JobDetails jd = new JobDetails(null);
     jd.setQueue("queue1");
     byte[] qb = Bytes.toBytes("queue2!queue3!");
-    Cell existingQueuesCell =
-        CellUtil.createCell(Bytes.toBytes("rowkey"), Constants.INFO_FAM_BYTES,
-            Constants.HRAVEN_QUEUE_BYTES, HConstants.LATEST_TIMESTAMP, KeyValue.Type.Put.getCode(), qb);
-    AppSummaryService as = new AppSummaryService(null);
-    try {
-      String qlist = as.createQueueListValue(jd, Bytes.toString(CellUtil.cloneValue(existingQueuesCell)));
-      assertNotNull(qlist);
-      String expQlist = "queue2!queue3!queue1!";
-      assertEquals(expQlist, qlist);
+    Cell existingQueuesCell = CellUtil.createCell(Bytes.toBytes("rowkey"),
+        Constants.INFO_FAM_BYTES, Constants.HRAVEN_QUEUE_BYTES,
+        HConstants.LATEST_TIMESTAMP, KeyValue.Type.Put.getCode(), qb);
+    AppSummaryService appSummaryService =
+        new AppSummaryService(hbaseConnection);
 
-      jd.setQueue("queue3");
-      qlist = as.createQueueListValue(jd, Bytes.toString(CellUtil.cloneValue(existingQueuesCell)));
-      assertNotNull(qlist);
-      expQlist = "queue2!queue3!";
-      assertEquals(expQlist, qlist);
-    } finally {
-      try {
-        if (as != null) {
-          as.close();
-        }
-      } catch (IOException ignore) {
-      }
-    }
+    String qlist = appSummaryService.createQueueListValue(jd,
+        Bytes.toString(CellUtil.cloneValue(existingQueuesCell)));
+    assertNotNull(qlist);
+    String expQlist = "queue2!queue3!queue1!";
+    assertEquals(expQlist, qlist);
+
+    jd.setQueue("queue3");
+    qlist = appSummaryService.createQueueListValue(jd,
+        Bytes.toString(CellUtil.cloneValue(existingQueuesCell)));
+    assertNotNull(qlist);
+    expQlist = "queue2!queue3!";
+    assertEquals(expQlist, qlist);
   }
 
   private JobDetails createJobDetails(int mult, long runId) {
-    JobDetails jd =
-        new JobDetails(new JobKey("cluster", "user", "appid", runId, "job_1402359360000_999"
-            + Integer.toString(mult)));
+    JobDetails jd = new JobDetails(new JobKey("cluster", "user", "appid", runId,
+        "job_1402359360000_999" + Integer.toString(mult)));
     jd.setTotalMaps(10L * mult);
     jd.setTotalReduces(10L * mult);
     jd.setMapSlotMillis(20L * mult);
@@ -263,130 +219,132 @@ public class TestAppSummaryService {
   }
 
   /**
-   * inserts job details into aggregation table then scans it and looks for expected columns and
-   * values
+   * inserts job details into aggregation table then scans it and looks for
+   * expected columns and values
    * @throws IOException
    */
   @Test
   public void testAggregateJobDetailsDailyAndGetAllApps() throws IOException {
     JobDetails jd = createJobDetails(1, 1402704960000L);
-    AppSummaryService as = null;
-    try {
-      as = new AppSummaryService(UTIL.getConfiguration());
-      as.aggregateJobDetails(jd, AggregationConstants.AGGREGATION_TYPE.DAILY);
-      jd = createJobDetails(2, 1402712160000L);
-      as.aggregateJobDetails(jd, AggregationConstants.AGGREGATION_TYPE.DAILY);
-      Scan scan = new Scan();
-      long startTime = 1402704000000L;
-      long endTime = 1402704000000L;
-      byte[] startRow =
-          ByteUtil.join(Constants.SEP_BYTES, Bytes.toBytes("cluster"),
-              Bytes.toBytes(Long.MAX_VALUE - endTime - 1));
-      LOG.trace(endTime + " startrow: Long.MAX_VALUE - endTime) " + (Long.MAX_VALUE - endTime)
-          + new Date(endTime));
-      byte[] endRow =
-          ByteUtil.join(Constants.SEP_BYTES, Bytes.toBytes("cluster"),
-              Bytes.toBytes(Long.MAX_VALUE - startTime + 1));
-      LOG.trace(startTime + " endrow: Long.MAX_VALUE - startTime) " + (Long.MAX_VALUE - startTime)
-          + new Date(startTime));
-      scan.setStartRow(startRow);
-      scan.setStopRow(endRow);
-      int rowCount = 0;
-      int colCount = 0;
-      ResultScanner scanner = dailyAggTable.getScanner(scan);
-      for (Result result : scanner) {
-        if (result != null && !result.isEmpty()) {
-          rowCount++;
-          colCount += result.size();
-          byte[] rowKey = result.getRow();
-          byte[][] keyComponents = ByteUtil.split(rowKey, Constants.SEP_BYTES);
-          assertEquals(4, keyComponents.length);
-          assertEquals("cluster", Bytes.toString(keyComponents[0]));
-          assertEquals((Long.MAX_VALUE - 1402704000000L), Bytes.toLong(keyComponents[1]));
-          assertEquals("user", Bytes.toString(keyComponents[2]));
-          assertEquals("appid", Bytes.toString(keyComponents[3]));
-          long slotmillismaps =
-              Bytes.toLong(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.SLOTS_MILLIS_MAPS_BYTES).getValue());
-          assertEquals(60L, slotmillismaps);
-          assertEquals(
-              666L,
-              Bytes.toLong(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.SLOTS_MILLIS_REDUCES_BYTES).getValue()));
-          assertEquals(
-              new Double(600.0),
-              (Double) Bytes.toDouble(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.JOBCOST_BYTES).getValue()));
-          assertEquals(
-              99L,
-              Bytes.toLong(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.MEGABYTEMILLIS_BYTES).getValue()));
-          assertEquals(
-              2L,
-              Bytes.toLong(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.NUMBER_RUNS_BYTES).getValue()));
-          assertEquals(
-              "queue_1!queue_2!",
-              Bytes.toString(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.HRAVEN_QUEUE_BYTES).getValue()));
-          assertEquals(
-              2L,
-              Bytes.toLong(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.TOTAL_JOBS_BYTES).getValue()));
-          assertEquals(
-              30L,
-              Bytes.toLong(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.TOTAL_MAPS_BYTES).getValue()));
-          assertEquals(
-              30L,
-              Bytes.toLong(result.getColumnLatest(
-                  AggregationConstants.INFO_FAM_BYTES,
-                  AggregationConstants.TOTAL_REDUCES_BYTES).getValue()));
+    AppSummaryService appSummaryService =
+        new AppSummaryService(hbaseConnection);
+    appSummaryService.aggregateJobDetails(jd,
+        AggregationConstants.AGGREGATION_TYPE.DAILY);
+    jd = createJobDetails(2, 1402712160000L);
+    appSummaryService.aggregateJobDetails(jd,
+        AggregationConstants.AGGREGATION_TYPE.DAILY);
+    Scan scan = new Scan();
+    long startTime = 1402704000000L;
+    long endTime = 1402704000000L;
+    byte[] startRow = ByteUtil.join(Constants.SEP_BYTES,
+        Bytes.toBytes("cluster"), Bytes.toBytes(Long.MAX_VALUE - endTime - 1));
+    LOG.trace(endTime + " startrow: Long.MAX_VALUE - endTime) "
+        + (Long.MAX_VALUE - endTime) + new Date(endTime));
+    byte[] endRow = ByteUtil.join(Constants.SEP_BYTES, Bytes.toBytes("cluster"),
+        Bytes.toBytes(Long.MAX_VALUE - startTime + 1));
+    LOG.trace(startTime + " endrow: Long.MAX_VALUE - startTime) "
+        + (Long.MAX_VALUE - startTime) + new Date(startTime));
+    scan.setStartRow(startRow);
+    scan.setStopRow(endRow);
+    int rowCount = 0;
+    int colCount = 0;
+    ResultScanner scanner = dailyAggTable.getScanner(scan);
+    for (Result result : scanner) {
+      if (result != null && !result.isEmpty()) {
+        rowCount++;
+        colCount += result.size();
+        byte[] rowKey = result.getRow();
+        byte[][] keyComponents = ByteUtil.split(rowKey, Constants.SEP_BYTES);
+        assertEquals(4, keyComponents.length);
+        assertEquals("cluster", Bytes.toString(keyComponents[0]));
+        assertEquals((Long.MAX_VALUE - 1402704000000L),
+            Bytes.toLong(keyComponents[1]));
+        assertEquals("user", Bytes.toString(keyComponents[2]));
+        assertEquals("appid", Bytes.toString(keyComponents[3]));
+        long slotmillismaps =
+            Bytes
+                .toLong(result
+                    .getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                        AggregationConstants.SLOTS_MILLIS_MAPS_BYTES)
+                    .getValue());
+        assertEquals(60L, slotmillismaps);
+        assertEquals(666L,
+            Bytes.toLong(result
+                .getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                    AggregationConstants.SLOTS_MILLIS_REDUCES_BYTES)
+                .getValue()));
+        assertEquals(new Double(600.0),
+            (Double) Bytes.toDouble(
+                result.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                    AggregationConstants.JOBCOST_BYTES).getValue()));
+        assertEquals(99L,
+            Bytes
+                .toLong(
+                    result
+                        .getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                            AggregationConstants.MEGABYTEMILLIS_BYTES)
+                        .getValue()));
+        assertEquals(2L,
+            Bytes
+                .toLong(
+                    result
+                        .getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                            AggregationConstants.NUMBER_RUNS_BYTES)
+                        .getValue()));
+        assertEquals("queue_1!queue_2!",
+            Bytes
+                .toString(
+                    result
+                        .getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                            AggregationConstants.HRAVEN_QUEUE_BYTES)
+                        .getValue()));
+        assertEquals(2L,
+            Bytes.toLong(
+                result.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                    AggregationConstants.TOTAL_JOBS_BYTES).getValue()));
+        assertEquals(30L,
+            Bytes.toLong(
+                result.getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                    AggregationConstants.TOTAL_MAPS_BYTES).getValue()));
+        assertEquals(30L,
+            Bytes
+                .toLong(
+                    result
+                        .getColumnLatest(AggregationConstants.INFO_FAM_BYTES,
+                            AggregationConstants.TOTAL_REDUCES_BYTES)
+                        .getValue()));
 
-          Map<byte[], byte[]> valueMap = result.getFamilyMap(
-              AggregationConstants.SCRATCH_FAM_BYTES);
-          assertEquals(2, valueMap.size());
-          assertTrue(valueMap.containsKey(Bytes.toBytes(1402704960000L)));
-          assertTrue(valueMap.containsKey(Bytes.toBytes(1402712160000L)));
-          assertEquals(1, Bytes.toLong(valueMap.get(Bytes.toBytes(1402704960000L))));
-          assertEquals(1, Bytes.toLong(valueMap.get(Bytes.toBytes(1402712160000L))));
-        }
-      }
-      assertEquals(1, rowCount);
-      assertEquals(13, colCount);
-
-      Set<String> qSet = new HashSet<String>();
-      qSet.add("queue_1");
-      qSet.add("queue_2");
-      List<AppSummary> a = as.getAllApps("cluster", "", 1402704960000L, 1402712160000L, 100);
-      assertNotNull(a);
-      assertEquals(1, a.size());
-      assertEquals("appid", a.get(0).getKey().getAppId());
-      assertEquals(60L, a.get(0).getMapSlotMillis());
-      assertEquals(666L, a.get(0).getReduceSlotMillis());
-      assertEquals(new Double(600.0), (Double) a.get(0).getCost());
-      assertEquals(99L, a.get(0).getMbMillis());
-      assertEquals(2L, a.get(0).getNumberRuns());
-      assertEquals(qSet, a.get(0).getQueue());
-      assertEquals(2L, a.get(0).getJobCount());
-      assertEquals(30L, a.get(0).getTotalMaps());
-      assertEquals(30L, a.get(0).getTotalReduces());
-    } finally {
-      try {
-        if (as != null) {
-          as.close();
-        }
-      } catch (IOException ignore) {
+        Map<byte[], byte[]> valueMap =
+            result.getFamilyMap(AggregationConstants.SCRATCH_FAM_BYTES);
+        assertEquals(2, valueMap.size());
+        assertTrue(valueMap.containsKey(Bytes.toBytes(1402704960000L)));
+        assertTrue(valueMap.containsKey(Bytes.toBytes(1402712160000L)));
+        assertEquals(1,
+            Bytes.toLong(valueMap.get(Bytes.toBytes(1402704960000L))));
+        assertEquals(1,
+            Bytes.toLong(valueMap.get(Bytes.toBytes(1402712160000L))));
       }
     }
+    assertEquals(1, rowCount);
+    assertEquals(13, colCount);
+
+    Set<String> qSet = new HashSet<String>();
+    qSet.add("queue_1");
+    qSet.add("queue_2");
+    List<AppSummary> a = appSummaryService.getAllApps("cluster", "",
+        1402704960000L, 1402712160000L, 100);
+    assertNotNull(a);
+    assertEquals(1, a.size());
+    assertEquals("appid", a.get(0).getKey().getAppId());
+    assertEquals(60L, a.get(0).getMapSlotMillis());
+    assertEquals(666L, a.get(0).getReduceSlotMillis());
+    assertEquals(new Double(600.0), (Double) a.get(0).getCost());
+    assertEquals(99L, a.get(0).getMbMillis());
+    assertEquals(2L, a.get(0).getNumberRuns());
+    assertEquals(qSet, a.get(0).getQueue());
+    assertEquals(2L, a.get(0).getJobCount());
+    assertEquals(30L, a.get(0).getTotalMaps());
+    assertEquals(30L, a.get(0).getTotalReduces());
   }
 
   @AfterClass
@@ -400,14 +358,9 @@ public class TestAppSummaryService {
     } catch (Exception ignore) {
     }
     try {
-      idService.close();
-    } catch (Exception ignore) {
+      hbaseConnection.close();
+    } finally {
+      UTIL.shutdownMiniCluster();
     }
-    try {
-      conn.close();
-    } catch (Exception ignore) {
-    }
-    UTIL.shutdownMiniCluster();
   }
 }
-

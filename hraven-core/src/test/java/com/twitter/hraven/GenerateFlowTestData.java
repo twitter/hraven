@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
-import com.twitter.hraven.JobHistoryKeys;
+
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobKeyConverter;
 
@@ -48,6 +48,7 @@ public class GenerateFlowTestData {
   private int jobIdCnt;
   public static int SUBMIT_LAUCH_DIFF = 500 ;
 
+  // TODO: change method signature to get rid of table and pass a connection instead
   public void loadFlow(String cluster, String user, String app, long runId,
       String version, int jobCount, long baseStats,
       JobHistoryByIdService idService, Table historyTable)
@@ -68,48 +69,48 @@ public class GenerateFlowTestData {
       String jobId = String.format("job_20120101000000_%04d", jobIdCnt++);
       JobKey key = new JobKey(cluster, user, app, runId, jobId);
       Put p = new Put(keyConv.toBytes(key));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOBID),
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOBID),
           Bytes.toBytes(jobId));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOB_STATUS),
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.JOB_STATUS),
           Bytes.toBytes("SUCCESS"));
-      p.add(Constants.INFO_FAM_BYTES, Constants.VERSION_COLUMN_BYTES, Bytes.toBytes(version));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.hadoopversion),
+      p.addColumn(Constants.INFO_FAM_BYTES, Constants.VERSION_COLUMN_BYTES, Bytes.toBytes(version));
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.hadoopversion),
         Bytes.toBytes(HadoopVersion.ONE.toString()));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_MAPS),
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_MAPS),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_REDUCES),
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TOTAL_REDUCES),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.SUBMIT_TIME),
+      p.addColumn(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES, Bytes.toBytes(baseStats));
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.SUBMIT_TIME),
         Bytes.toBytes(submitTime));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.LAUNCH_TIME),
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.LAUNCH_TIME),
           Bytes.toBytes(curTime));
-      p.add(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISH_TIME),
+      p.addColumn(Constants.INFO_FAM_BYTES, JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.FINISH_TIME),
           Bytes.toBytes( 1000 + curTime));
-      p.add(Constants.INFO_FAM_BYTES, Bytes.toBytes("g!FileSystemCounters!HDFS_BYTES_WRITTEN"),
+      p.addColumn(Constants.INFO_FAM_BYTES, Bytes.toBytes("g!FileSystemCounters!HDFS_BYTES_WRITTEN"),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES, Bytes.toBytes("g!FileSystemCounters!HDFS_BYTES_READ"),
+      p.addColumn(Constants.INFO_FAM_BYTES, Bytes.toBytes("g!FileSystemCounters!HDFS_BYTES_READ"),
           Bytes.toBytes(baseStats) );
-      p.add(Constants.INFO_FAM_BYTES, Bytes.toBytes("gr!FileSystemCounters!FILE_BYTES_READ"),
+      p.addColumn(Constants.INFO_FAM_BYTES, Bytes.toBytes("gr!FileSystemCounters!FILE_BYTES_READ"),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES,
+      p.addColumn(Constants.INFO_FAM_BYTES,
           Bytes.toBytes("gr!org.apache.hadoop.mapred.Task$Counter!REDUCE_SHUFFLE_BYTES"),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES, Bytes.toBytes("gm!FileSystemCounters!FILE_BYTES_READ"),
+      p.addColumn(Constants.INFO_FAM_BYTES, Bytes.toBytes("gm!FileSystemCounters!FILE_BYTES_READ"),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES, Bytes.toBytes("gm!FileSystemCounters!FILE_BYTES_WRITTEN"),
+      p.addColumn(Constants.INFO_FAM_BYTES, Bytes.toBytes("gm!FileSystemCounters!FILE_BYTES_WRITTEN"),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES,
+      p.addColumn(Constants.INFO_FAM_BYTES,
           Bytes.toBytes("g!org.apache.hadoop.mapred.JobInProgress$Counter!SLOTS_MILLIS_MAPS"),
           Bytes.toBytes(baseStats));
-      p.add(Constants.INFO_FAM_BYTES,
+      p.addColumn(Constants.INFO_FAM_BYTES,
           Bytes.toBytes("g!org.apache.hadoop.mapred.JobInProgress$Counter!SLOTS_MILLIS_REDUCES"),
           Bytes.toBytes(baseStats));
 
       // add some config properties
       if (config != null) {
         for (Map.Entry<String,String> entry : config.entrySet()) {
-          p.add(Constants.INFO_FAM_BYTES,
+          p.addColumn(Constants.INFO_FAM_BYTES,
               Bytes.toBytes(Constants.JOB_CONF_COLUMN_PREFIX + Constants.SEP + entry.getKey()),
               Bytes.toBytes(entry.getValue()));
         }

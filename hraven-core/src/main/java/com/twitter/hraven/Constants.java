@@ -60,10 +60,8 @@ public class Constants {
       + "job_history_process";
 
   public static final String FLOW_QUEUE_TABLE = PREFIX + "flow_queue";
-  public static final byte[] FLOW_QUEUE_TABLE_BYTES = Bytes.toBytes(FLOW_QUEUE_TABLE);
 
   public static final String FLOW_EVENT_TABLE = PREFIX + "flow_event";
-  public static final byte[] FLOW_EVENT_TABLE_BYTES = Bytes.toBytes(FLOW_EVENT_TABLE);
 
   public static final String INFO_FAM = "i";
   public static final byte[] INFO_FAM_BYTES = Bytes.toBytes(INFO_FAM);
