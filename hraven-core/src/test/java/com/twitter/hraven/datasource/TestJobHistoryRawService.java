@@ -27,8 +27,11 @@ import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -40,12 +43,15 @@ import com.twitter.hraven.util.BatchUtil;
 public class TestJobHistoryRawService {
 
   private static HBaseTestingUtility UTIL;
+  private static Connection hbaseConnection;
 
   @BeforeClass
   public static void setupBeforeClass() throws Exception {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
     HRavenTestUtil.createSchema(UTIL);
+    hbaseConnection =
+        ConnectionFactory.createConnection(UTIL.getConfiguration());
   }
 
   /**
@@ -62,12 +68,12 @@ public class TestJobHistoryRawService {
     JobId aTwo = new JobId(aEpoch, 2);
     JobId aThree = new JobId(aEpoch, 3);
     JobId aSeven = new JobId(aEpoch, 7);
-    
+
     JobId aThirteen = new JobId(aEpoch, 13);
     JobId aHundredOne = new JobId(aEpoch, 101);
     JobId bOne = new JobId(bEpoch, 1);
     JobId bTwo = new JobId(bEpoch, 2);
-    
+
     JobId bThree = new JobId(bEpoch, 3);
     JobId bSeven = new JobId(bEpoch, 7);
     JobId bThirteen = new JobId(bEpoch, 13);
@@ -91,7 +97,7 @@ public class TestJobHistoryRawService {
     // And for good measure add these again, set should take them out.
     orderedJobIds.add(aTwo);
     orderedJobIds.add(bTwo);
-    
+
     assertEquals(12, orderedJobIds.size());
 
     List<Range<JobId>> ranges = BatchUtil.getRanges(orderedJobIds, 4);
@@ -100,22 +106,22 @@ public class TestJobHistoryRawService {
     assertEquals(7, ranges.get(0).getMax().getJobSequence());
     assertEquals(aEpoch, ranges.get(0).getMin().getJobEpoch());
     assertEquals(aEpoch, ranges.get(0).getMax().getJobEpoch());
-    
+
     assertEquals(13, ranges.get(1).getMin().getJobSequence());
     assertEquals(2, ranges.get(1).getMax().getJobSequence());
     assertEquals(aEpoch, ranges.get(1).getMin().getJobEpoch());
     assertEquals(bEpoch, ranges.get(1).getMax().getJobEpoch());
-    
+
     assertEquals(3, ranges.get(2).getMin().getJobSequence());
     assertEquals(101, ranges.get(2).getMax().getJobSequence());
     assertEquals(bEpoch, ranges.get(2).getMin().getJobEpoch());
     assertEquals(bEpoch, ranges.get(2).getMax().getJobEpoch());
-    
+
     long cEpoch = 345678;
     long triangular = 1000405;
     JobId cTriangular = new JobId(cEpoch, triangular);
     orderedJobIds.add(cTriangular);
-    
+
     assertEquals(13, orderedJobIds.size());
     ranges = BatchUtil.getRanges(orderedJobIds, 4);
     assertEquals(4, ranges.size());
@@ -123,7 +129,7 @@ public class TestJobHistoryRawService {
     assertEquals(triangular, ranges.get(3).getMax().getJobSequence());
     assertEquals(cEpoch, ranges.get(3).getMin().getJobEpoch());
     assertEquals(cEpoch, ranges.get(3).getMax().getJobEpoch());
-    
+
     ranges = BatchUtil.getRanges(orderedJobIds, 1000);
     assertEquals(1, ranges.size());
     assertEquals(1, ranges.get(0).getMin().getJobSequence());
@@ -132,65 +138,53 @@ public class TestJobHistoryRawService {
     assertEquals(cEpoch, ranges.get(0).getMax().getJobEpoch());
   }
 
-  @Test(expected=IllegalArgumentException.class)
-  public void testGetApproxSubmitTimeNull() throws IOException,
-        MissingColumnInResultException {
-    JobHistoryRawService rawService = null;
-    try {
-      rawService = new JobHistoryRawService(UTIL.getConfiguration());
-      long st = rawService.getApproxSubmitTime(null);
-      assertEquals(0L, st);
-    } finally {
-      try {
-        if (rawService != null) {
-          rawService.close();
-        }
-      } catch (IOException ignore) {
-      }
-    }
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetApproxSubmitTimeNull()
+      throws IOException, MissingColumnInResultException {
+    JobHistoryRawService rawService = new JobHistoryRawService(hbaseConnection);
+    long st = rawService.getApproxSubmitTime(null);
+    assertEquals(0L, st);
   }
 
-  @Test(expected=MissingColumnInResultException.class)
-  public void testGetApproxSubmitTimeMissingCol() throws IOException,
-        MissingColumnInResultException {
-    JobHistoryRawService rawService = null;
-    try {
-      rawService = new JobHistoryRawService(UTIL.getConfiguration());
-      Result result = new Result();
-      long st = rawService.getApproxSubmitTime(result);
-      assertEquals(0L, st);
-    } finally {
-      try {
-        if (rawService != null) {
-          rawService.close();
-        }
-      } catch (IOException ignore) {
-      }
-    }
+  @Test(expected = MissingColumnInResultException.class)
+  public void testGetApproxSubmitTimeMissingCol()
+      throws IOException, MissingColumnInResultException {
+    JobHistoryRawService rawService = new JobHistoryRawService(hbaseConnection);
+    Result result = new Result();
+    long st = rawService.getApproxSubmitTime(result);
+    assertEquals(0L, st);
+
   }
 
   @Test
-  public void testGetApproxSubmitTime() throws IOException,
-      MissingColumnInResultException {
-    JobHistoryRawService rawService = null;
+  public void testGetApproxSubmitTime()
+      throws IOException, MissingColumnInResultException {
+    JobHistoryRawService rawService = new JobHistoryRawService(hbaseConnection);
+    Cell[] cells = new Cell[1];
+    long modts = 1396550668000L;
+    cells[0] = CellUtil.createCell(Bytes.toBytes("someRowKey"),
+        Constants.INFO_FAM_BYTES, Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES,
+        HConstants.LATEST_TIMESTAMP, KeyValue.Type.Put.getCode(),
+        Bytes.toBytes(modts));
+    Result result = Result.create(cells);
+    long st = rawService.getApproxSubmitTime(result);
+    long expts = modts - Constants.AVERGAE_JOB_DURATION;
+    assertEquals(expts, st);
+  }
+
+  /**
+   * Clean up after unit tests.
+   *
+   * @throws Exception
+   */
+  @AfterClass
+  public static void tearDownAfterClass() throws Exception {
     try {
-      rawService = new JobHistoryRawService(UTIL.getConfiguration());
-      Cell[] cells = new Cell[1];
-      long modts = 1396550668000L;
-      cells[0] = CellUtil.createCell(Bytes.toBytes("someRowKey"), Constants.INFO_FAM_BYTES,
-          Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES, HConstants.LATEST_TIMESTAMP,
-          KeyValue.Type.Put.getCode(), Bytes.toBytes(modts));
-      Result result = Result.create(cells);
-      long st = rawService.getApproxSubmitTime(result);
-      long expts = modts - Constants.AVERGAE_JOB_DURATION;
-      assertEquals(expts, st);
-    } finally {
-      try {
-        if (rawService != null) {
-          rawService.close();
-        }
-      } catch (IOException ignore) {
+      if (hbaseConnection != null) {
+        hbaseConnection.close();
       }
+    } finally {
+      UTIL.shutdownMiniCluster();
     }
   }
 }

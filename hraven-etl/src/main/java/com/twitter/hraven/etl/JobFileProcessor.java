@@ -397,7 +397,7 @@ public class JobFileProcessor extends Configured implements Tool {
       minMaxJobFileTracker.track(processRecord.getMaxJobId());
     }
 
-    List<JobRunner> jobRunners = getJobRunners(conf, cluster, false, batchSize,
+    List<JobRunner> jobRunners = getJobRunners(conf, hbaseConnection, cluster, false, batchSize,
         minMaxJobFileTracker.getMinJobId(), minMaxJobFileTracker.getMaxJobId());
 
     boolean success = runJobs(threadCount, jobRunners);
@@ -431,7 +431,7 @@ public class JobFileProcessor extends Configured implements Tool {
       ExecutionException, RowKeyParseException {
 
     List<JobRunner> jobRunners =
-        getJobRunners(conf, cluster, true, batchSize, null, null);
+        getJobRunners(conf, hbaseConnection, cluster, true, batchSize, null, null);
 
     boolean success = runJobs(threadCount, jobRunners);
     return success;
@@ -537,7 +537,8 @@ public class JobFileProcessor extends Configured implements Tool {
   }
 
   /**
-   * @param conf used to connect to HBAse
+   * @param conf used to communicate arguments to the running jobs.
+   * @param hbaseConnection used to create Table references connecting to HBase.
    * @param cluster for which we are processing
    * @param reprocess Reprocess those records that may have been processed
    *          already. Otherwise successfully processed job files are skipped.
@@ -553,41 +554,28 @@ public class JobFileProcessor extends Configured implements Tool {
    * @throws ExecutionException
    * @throws RowKeyParseException
    */
-  private List<JobRunner> getJobRunners(Configuration conf, String cluster,
+  private List<JobRunner> getJobRunners(Configuration conf, Connection hbaseConnection, String cluster,
       boolean reprocess, int batchSize, String minJobId, String maxJobId)
       throws IOException, InterruptedException, ClassNotFoundException,
       RowKeyParseException {
     List<JobRunner> jobRunners = new LinkedList<JobRunner>();
 
-    JobHistoryRawService jobHistoryRawService = new JobHistoryRawService(conf);
-    try {
+    JobHistoryRawService jobHistoryRawService = new JobHistoryRawService(hbaseConnection);
 
-      // Bind all MR jobs together with one runID.
-      long now = System.currentTimeMillis();
-      conf.setLong(Constants.MR_RUN_CONF_KEY, now);
+    // Bind all MR jobs together with one runID.
+    long now = System.currentTimeMillis();
+    conf.setLong(Constants.MR_RUN_CONF_KEY, now);
 
-      List<Scan> scanList = jobHistoryRawService.getHistoryRawTableScans(
-          cluster, minJobId, maxJobId, reprocess, batchSize);
+    List<Scan> scanList = jobHistoryRawService.getHistoryRawTableScans(cluster,
+        minJobId, maxJobId, reprocess, batchSize);
 
-      for (Scan scan : scanList) {
-        Job job = getProcessingJob(conf, scan, scanList.size());
+    for (Scan scan : scanList) {
+      Job job = getProcessingJob(conf, scan, scanList.size());
 
-        JobRunner jobRunner = new JobRunner(job, null);
-        jobRunners.add(jobRunner);
-      }
-
-    } finally {
-      IOException caught = null;
-      try {
-        jobHistoryRawService.close();
-      } catch (IOException ioe) {
-        caught = ioe;
-      }
-
-      if (caught != null) {
-        throw caught;
-      }
+      JobRunner jobRunner = new JobRunner(job, null);
+      jobRunners.add(jobRunner);
     }
+
     return jobRunners;
 
   }

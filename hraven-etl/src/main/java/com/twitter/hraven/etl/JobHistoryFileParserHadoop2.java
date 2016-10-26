@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Twitter, Inc. Licensed under the Apache License, Version 2.0 (the "License"); you
+ * Copyright 2016 Twitter, Inc. Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You may obtain a copy of the License
  * at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in
  * writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -33,7 +33,6 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
-import com.twitter.hraven.mapreduce.RecordTypes;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -44,10 +43,11 @@ import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.JobHistoryKeys;
 import com.twitter.hraven.JobKey;
 import com.twitter.hraven.TaskKey;
-import com.twitter.hraven.util.ByteArrayWrapper;
 import com.twitter.hraven.datasource.JobKeyConverter;
 import com.twitter.hraven.datasource.ProcessingException;
 import com.twitter.hraven.datasource.TaskKeyConverter;
+import com.twitter.hraven.mapreduce.RecordTypes;
+import com.twitter.hraven.util.ByteArrayWrapper;
 
 /**
  * Deal with JobHistory file parsing for job history files which are generated after MAPREDUCE-1016
@@ -322,7 +322,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     Put pStatus = new Put(jobKeyBytes);
     byte[] valueBytes = Bytes.toBytes(this.jobStatus);
     byte[] qualifier = Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase());
-    pStatus.add(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
+    pStatus.addColumn(Constants.INFO_FAM_BYTES, qualifier, valueBytes);
     return pStatus;
   }
 
@@ -523,7 +523,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
           getAMKey(AM_ATTEMPT_PREFIX, eventDetails.getString(APPLICATION_ATTEMPTID));
       // generate a new put per AM Attempt
       Put pAM = new Put(amAttemptIdKeyBytes);
-      pAM.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
+      pAM.addColumn(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
         Bytes.toBytes(RecordTypes.Task.toString()));
       iterateAndPreparePuts(eventDetails, pAM, recType);
       taskPuts.add(pAM);
@@ -533,7 +533,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       byte[] taskMAttemptIdKeyBytes =
           getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
       Put pMTaskAttempt = new Put(taskMAttemptIdKeyBytes);
-      pMTaskAttempt.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
+      pMTaskAttempt.addColumn(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
         Bytes.toBytes(RecordTypes.MapAttempt.toString()));
       iterateAndPreparePuts(eventDetails, pMTaskAttempt, recType);
       this.taskPuts.add(pMTaskAttempt);
@@ -543,7 +543,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       byte[] taskRAttemptIdKeyBytes =
           getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
       Put pRTaskAttempt = new Put(taskRAttemptIdKeyBytes);
-      pRTaskAttempt.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
+      pRTaskAttempt.addColumn(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
         Bytes.toBytes(RecordTypes.ReduceAttempt.toString()));
       iterateAndPreparePuts(eventDetails, pRTaskAttempt, recType);
       this.taskPuts.add(pRTaskAttempt);
@@ -555,7 +555,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       byte[] taskAttemptIdKeyBytes =
           getTaskKey(TASK_ATTEMPT_PREFIX, this.jobNumber, eventDetails.getString(ATTEMPTID));
       Put pTaskAttempt = new Put(taskAttemptIdKeyBytes);
-      pTaskAttempt.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
+      pTaskAttempt.addColumn(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
         Bytes.toBytes(RecordTypes.Task.toString()));
       iterateAndPreparePuts(eventDetails, pTaskAttempt, recType);
       taskPuts.add(pTaskAttempt);
@@ -568,7 +568,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       byte[] taskIdKeyBytes =
           getTaskKey(TASK_PREFIX, this.jobNumber, eventDetails.getString(TASKID));
       Put pTask = new Put(taskIdKeyBytes);
-      pTask.add(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
+      pTask.addColumn(Constants.INFO_FAM_BYTES, Constants.RECORD_TYPE_COL_BYTES,
         Bytes.toBytes(RecordTypes.Task.toString()));
       iterateAndPreparePuts(eventDetails, pTask, recType);
       taskPuts.add(pTask);
@@ -613,7 +613,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     byte[] valueBytes = null;
     valueBytes = (value != 0L) ? Bytes.toBytes(value) : Constants.ZERO_LONG_BYTES;
     byte[] qualifier = Bytes.toBytes(getKey(key).toLowerCase());
-    p.add(family, qualifier, valueBytes);
+    p.addColumn(family, qualifier, valueBytes);
   }
 
   /**
@@ -650,7 +650,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     String jobHistoryKey = getKey(key);
     byte[] valueBytes = getValue(jobHistoryKey, value);
     byte[] qualifier = Bytes.toBytes(jobHistoryKey.toLowerCase());
-    p.add(family, qualifier, valueBytes);
+    p.addColumn(family, qualifier, valueBytes);
   }
 
   /**
@@ -664,7 +664,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
     byte[] valueBytes = null;
     valueBytes = Bytes.toBytes(value);
     byte[] qualifier = Bytes.toBytes(getKey(key).toLowerCase());
-    p.add(family, qualifier, valueBytes);
+    p.addColumn(family, qualifier, valueBytes);
   }
 
   /**
@@ -726,7 +726,7 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
       counterValue = getStandardizedCounterValue(counterName, counterValue);
     }
 
-    p.add(family, qualifier, Bytes.toBytes(counterValue));
+    p.addColumn(family, qualifier, Bytes.toBytes(counterValue));
 
   }
 
@@ -848,11 +848,11 @@ public class JobHistoryFileParserHadoop2 extends JobHistoryFileParserBase {
   }
 
   /**
-   * calculate mega byte millis puts as: 
-   * if not uberized: 
+   * calculate mega byte millis puts as:
+   * if not uberized:
    *        map slot millis * mapreduce.map.memory.mb
-   *        + reduce slot millis * mapreduce.reduce.memory.mb 
-   *        + yarn.app.mapreduce.am.resource.mb * job runtime 
+   *        + reduce slot millis * mapreduce.reduce.memory.mb
+   *        + yarn.app.mapreduce.am.resource.mb * job runtime
    * if uberized:
    *        yarn.app.mapreduce.am.resource.mb * job run time
    */

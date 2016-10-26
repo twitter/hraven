@@ -30,7 +30,6 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -59,62 +58,16 @@ public class JobHistoryRawService {
 
   private QualifiedJobIdConverter idConv = new QualifiedJobIdConverter();
 
-  private final Configuration conf;
-  private final Connection conn;
-  /**
-   * Used to store the processRecords in HBase
-   */
-  private final Table rawTable;
+  private final Connection hbaseConnection;
 
   /**
-   * Opens a new connection to HBase server and opens connections to the tables.
+   * Given an HBase connection provides access to the raw table.
+   * @param hbaseConnection used to create HBase table references.
    *
-   * User is responsible for calling {@link #close()} when finished using this
-   * service.
-   *
-   * @param hbaseConf configuration of the processing job, not the conf of the
-   *          files we are processing. Used to connect to HBase.
    * @throws IOException
    */
-  public JobHistoryRawService(Configuration hbaseConf) throws IOException {
-    if (hbaseConf == null) {
-      conf = new Configuration();
-    } else {
-      conf = hbaseConf;
-    }
-
-    conn = ConnectionFactory.createConnection(conf);
-    rawTable = conn.getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE));
-  }
-
-  /**
-   * close open connections to tables and the hbase cluster.
-   * @throws IOException
-   */
-  public void close() throws IOException {
-    IOException ret = null;
-
-    try {
-      if (rawTable != null) {
-        rawTable.close();
-      }
-    } catch (IOException ioe) {
-      LOG.error(ioe);
-      ret = ioe;
-    }
-
-    try {
-      if (conn != null) {
-        conn.close();
-      }
-    } catch (IOException ioe) {
-      LOG.error(ioe);
-      ret = ioe;
-    }
-
-    if (ret != null) {
-      throw ret;
-    }
+  public JobHistoryRawService(Connection hbaseConnection) throws IOException {
+    this.hbaseConnection = hbaseConnection;
   }
 
   /**
@@ -160,7 +113,10 @@ public class JobHistoryRawService {
     SortedSet<JobId> orderedJobIds = new TreeSet<JobId>();
 
     ResultScanner scanner = null;
+    Table rawTable = null;
     try {
+      rawTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE));
       LOG.info("Scanning " + Constants.HISTORY_RAW_TABLE + " table from "
           + minJobId + " to " + maxJobId);
       scanner = rawTable.getScanner(scan);
@@ -169,8 +125,14 @@ public class JobHistoryRawService {
         orderedJobIds.add(qualifiedJobId);
       }
     } finally {
-      if (scanner != null) {
-        scanner.close();
+      try {
+        if (scanner != null) {
+          scanner.close();
+        }
+      } finally {
+        if (rawTable != null) {
+          rawTable.close();
+        }
       }
     }
 
@@ -336,7 +298,10 @@ public class JobHistoryRawService {
     byte[] rowKey = idConv.toBytes(jobId);
     Get get = new Get(rowKey);
     get.addColumn(Constants.RAW_FAM_BYTES, Constants.JOBCONF_COL_BYTES);
+    Table rawTable = null;
     try {
+      rawTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE));
       Result result = rawTable.get(get);
       if (result != null && !result.isEmpty()) {
         conf = createConfigurationFromResult(result);
@@ -344,6 +309,10 @@ public class JobHistoryRawService {
     } catch (MissingColumnInResultException e) {
       LOG.error(
           "Failed to retrieve configuration from row returned for " + jobId, e);
+    } finally {
+      if (rawTable != null) {
+        rawTable.close();
+      }
     }
     return conf;
   }
@@ -360,11 +329,21 @@ public class JobHistoryRawService {
     byte[] rowKey = idConv.toBytes(jobId);
     Get get = new Get(rowKey);
     get.addColumn(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
-    Result result = rawTable.get(get);
-    if (result != null && !result.isEmpty()) {
-      historyData = Bytes.toString(result.getValue(Constants.RAW_FAM_BYTES,
-          Constants.JOBHISTORY_COL_BYTES));
+    Table rawTable = null;
+    try {
+      rawTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE));
+      Result result = rawTable.get(get);
+      if (result != null && !result.isEmpty()) {
+        historyData = Bytes.toString(result.getValue(Constants.RAW_FAM_BYTES,
+            Constants.JOBHISTORY_COL_BYTES));
+      }
+    } finally {
+      if (rawTable != null) {
+        rawTable.close();
+      }
     }
+
     return historyData;
   }
 
@@ -381,10 +360,19 @@ public class JobHistoryRawService {
     byte[] rowKey = idConv.toBytes(jobId);
     Get get = new Get(rowKey);
     get.addColumn(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
-    Result result = rawTable.get(get);
-    if (result != null && !result.isEmpty()) {
-      historyData = result.getValue(Constants.RAW_FAM_BYTES,
-          Constants.JOBHISTORY_COL_BYTES);
+    Table rawTable = null;
+    try {
+      rawTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE));
+      Result result = rawTable.get(get);
+      if (result != null && !result.isEmpty()) {
+        historyData = result.getValue(Constants.RAW_FAM_BYTES,
+            Constants.JOBHISTORY_COL_BYTES);
+      }
+    } finally {
+      if (rawTable != null) {
+        rawTable.close();
+      }
     }
     return historyData;
   }
@@ -491,12 +479,12 @@ public class JobHistoryRawService {
    */
   public Put getJobProcessedSuccessPut(byte[] row, boolean success) {
     Put put = new Put(row);
-    put.add(Constants.INFO_FAM_BYTES, Constants.JOB_PROCESSED_SUCCESS_COL_BYTES,
-        Bytes.toBytes(success));
+    put.addColumn(Constants.INFO_FAM_BYTES,
+        Constants.JOB_PROCESSED_SUCCESS_COL_BYTES, Bytes.toBytes(success));
     if (success) {
       // Make sure we mark that this row does not have to be reloaded, no matter
       // if it is the first time, or it was marked with reload before.
-      put.add(Constants.INFO_FAM_BYTES, Constants.RAW_COL_REPROCESS_BYTES,
+      put.addColumn(Constants.INFO_FAM_BYTES, Constants.RAW_COL_REPROCESS_BYTES,
           Bytes.toBytes(false));
     }
     return put;
@@ -517,7 +505,7 @@ public class JobHistoryRawService {
     }
 
     Cell cell = value.getColumnLatestCell(Constants.INFO_FAM_BYTES,
-          Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
+        Constants.JOBHISTORY_LAST_MODIFIED_COL_BYTES);
 
     if (cell == null) {
       throw new MissingColumnInResultException(Constants.INFO_FAM_BYTES,
@@ -542,7 +530,7 @@ public class JobHistoryRawService {
    */
   public Put getJobSubmitTimePut(byte[] row, long submitTimeMillis) {
     Put put = new Put(row);
-    put.add(Constants.INFO_FAM_BYTES, Constants.SUBMIT_TIME_COL_BYTES,
+    put.addColumn(Constants.INFO_FAM_BYTES, Constants.SUBMIT_TIME_COL_BYTES,
         Bytes.toBytes(submitTimeMillis));
     return put;
   }
@@ -554,10 +542,18 @@ public class JobHistoryRawService {
    */
   public void markJobForReprocesssing(QualifiedJobId jobId) throws IOException {
     Put p = new Put(idConv.toBytes(jobId));
-    p.add(Constants.INFO_FAM_BYTES, Constants.RAW_COL_REPROCESS_BYTES,
+    p.addColumn(Constants.INFO_FAM_BYTES, Constants.RAW_COL_REPROCESS_BYTES,
         Bytes.toBytes(true));
-
-    rawTable.put(p);
+    Table rawTable = null;
+    try {
+      rawTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE));
+      rawTable.put(p);
+    } finally {
+      if (rawTable != null) {
+        rawTable.close();
+      }
+    }
   }
 
   /**
@@ -573,8 +569,8 @@ public class JobHistoryRawService {
       throw new IllegalArgumentException("Cannot create InputStream from null");
     }
 
-    Cell cell =
-        value.getColumnLatestCell(Constants.RAW_FAM_BYTES, Constants.JOBHISTORY_COL_BYTES);
+    Cell cell = value.getColumnLatestCell(Constants.RAW_FAM_BYTES,
+        Constants.JOBHISTORY_COL_BYTES);
 
     // Could be that there is no conf file (only a history file).
     if (cell == null) {
@@ -594,7 +590,7 @@ public class JobHistoryRawService {
    */
   public Put getAggregatedStatusPut(byte[] row, byte[] col, Boolean status) {
     Put put = new Put(row);
-    put.add(Constants.INFO_FAM_BYTES, col, Bytes.toBytes(status));
+    put.addColumn(Constants.INFO_FAM_BYTES, col, Bytes.toBytes(status));
     try {
       LOG.info(" agg status " + status + " and put " + put.toJSON());
     } catch (IOException e) {
@@ -612,8 +608,18 @@ public class JobHistoryRawService {
   public boolean getStatusAgg(byte[] row, byte[] col) throws IOException {
     Get g = new Get(row);
     g.addColumn(Constants.INFO_FAM_BYTES, col);
-    Result r = rawTable.get(g);
-    Cell cell = r.getColumnLatestCell(Constants.INFO_FAM_BYTES, col);
+    Table rawTable = null;
+    Cell cell = null;
+    try {
+      rawTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.HISTORY_RAW_TABLE));
+      Result r = rawTable.get(g);
+      cell = r.getColumnLatestCell(Constants.INFO_FAM_BYTES, col);
+    } finally {
+      if (rawTable != null) {
+        rawTable.close();
+      }
+    }
     boolean status = false;
     try {
       if (cell != null) {

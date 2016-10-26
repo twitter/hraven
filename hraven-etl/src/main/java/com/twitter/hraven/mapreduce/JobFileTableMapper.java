@@ -28,6 +28,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -82,6 +84,11 @@ public class JobFileTableMapper
   private static JobKeyConverter jobKeyConv = new JobKeyConverter();
 
   /**
+   * Used to connect to HBase.
+   */
+  private Connection hbaseConnection = null;
+
+  /**
    * Used to create secondary index.
    */
   private JobHistoryByIdService jobHistoryByIdService = null;
@@ -132,9 +139,10 @@ public class JobFileTableMapper
       Mapper<ImmutableBytesWritable, Result, ImmutableBytesWritable, Put>.Context context)
       throws java.io.IOException, InterruptedException {
     Configuration myConf = context.getConfiguration();
-    jobHistoryByIdService = new JobHistoryByIdService(myConf);
-    appVersionService = new AppVersionService(myConf);
-    rawService = new JobHistoryRawService(myConf);
+    hbaseConnection = ConnectionFactory.createConnection(myConf);
+    jobHistoryByIdService = new JobHistoryByIdService(hbaseConnection);
+    appVersionService = new AppVersionService(hbaseConnection);
+    rawService = new JobHistoryRawService(hbaseConnection);
     // set aggregation to false by default
     aggregationFlag =
         myConf.getBoolean(AggregationConstants.AGGREGATION_FLAG_NAME, false);
@@ -147,7 +155,7 @@ public class JobFileTableMapper
       LOG.info("Re-aggregation is turned ON, will be aggregating stats again "
           + " for jobs even if already aggregated status is true in raw table ");
     }
-    appSummaryService = new AppSummaryService(myConf);
+    appSummaryService = new AppSummaryService(hbaseConnection);
 
     keyCount = 0;
   }
@@ -422,7 +430,7 @@ public class JobFileTableMapper
    */
   private Put getMegaByteMillisPut(Long mbMillis, JobKey jobKey) {
     Put pMb = new Put(jobKeyConv.toBytes(jobKey));
-    pMb.add(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES,
+    pMb.addColumn(Constants.INFO_FAM_BYTES, Constants.MEGABYTEMILLIS_BYTES,
         Bytes.toBytes(mbMillis));
     return pMb;
   }
@@ -527,7 +535,7 @@ public class JobFileTableMapper
    */
   private Put getJobCostPut(Double jobCost, JobKey jobKey) {
     Put pJobCost = new Put(jobKeyConv.toBytes(jobKey));
-    pJobCost.add(Constants.INFO_FAM_BYTES, Constants.JOBCOST_BYTES,
+    pJobCost.addColumn(Constants.INFO_FAM_BYTES, Constants.JOBCOST_BYTES,
         Bytes.toBytes(jobCost));
     return pJobCost;
   }
@@ -537,35 +545,8 @@ public class JobFileTableMapper
       Mapper<ImmutableBytesWritable, Result, ImmutableBytesWritable, Put>.Context context)
       throws java.io.IOException, InterruptedException {
 
-    IOException caught = null;
-
-    if (jobHistoryByIdService != null) {
-      try {
-        jobHistoryByIdService.close();
-      } catch (IOException ioe) {
-        caught = ioe;
-      }
-    }
-    if (appVersionService != null) {
-      try {
-        appVersionService.close();
-      } catch (IOException ioe) {
-        // TODO: don't overwrite a previous exception
-        caught = ioe;
-      }
-    }
-    if (rawService != null) {
-      try {
-        rawService.close();
-      } catch (IOException ioe) {
-        // TODO: don't overwrite a previous exception
-        caught = ioe;
-      }
-    }
-
-    if (caught != null) {
-      throw caught;
+    if (hbaseConnection != null) {
+      hbaseConnection.close();
     }
   }
-
 }
