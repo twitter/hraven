@@ -18,6 +18,8 @@ package com.twitter.hraven.rest;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.ArrayList;
+
 
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
@@ -136,8 +138,13 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       SerializationContext context = RestJSONResource.serializationContext
           .get();
       Predicate<String> includeFilter = context.getTaskFilter();
+      Predicate<String> includeCounterFilter = context.getCounterFilter();
 
-      if (includeFilter == null) {
+      if(includeCounterFilter !=null && includeFilter == null) {
+        includeFilter = new SerializationContext.FieldNameFilter(new ArrayList<String>());
+      }
+
+      if (includeFilter == null && includeCounterFilter == null) {
         // should generate the json for everything in the task details object
         ObjectMapper om = new ObjectMapper();
         om.registerModule(addJobMappings(createhRavenModule()));
@@ -157,8 +164,8 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
         filteredWrite("taskType", includeFilter, td.getType(), jsonGenerator);
         filteredWrite("status", includeFilter, td.getStatus(), jsonGenerator);
         filteredWrite("splits", includeFilter, td.getSplits(), jsonGenerator);
-        filteredWrite("counters", includeFilter, td.getCounters(),
-            jsonGenerator);
+        filteredCounterWrite("counters", includeFilter, includeCounterFilter,
+            td.getCounters(), jsonGenerator);
         filteredWrite("taskAttemptId", includeFilter, td.getTaskAttemptId(),
             jsonGenerator);
         filteredWrite("trackerName", includeFilter, td.getTrackerName(),
@@ -190,8 +197,13 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       SerializationContext context = RestJSONResource.serializationContext
           .get();
       Predicate<String> includeFilter = context.getJobFilter();
+      Predicate<String> includeCounterFilter = context.getCounterFilter();
 
-      if (includeFilter == null) {
+      if (includeCounterFilter != null && includeFilter == null){
+        includeFilter = new SerializationContext.FieldNameFilter(new ArrayList<String>());
+      }
+
+      if (includeFilter == null && includeCounterFilter == null) {
         ObjectMapper om = new ObjectMapper();
         om.registerModule(addJobMappings(createhRavenModule()));
         om.writeValue(jsonGenerator, jd);
@@ -249,14 +261,14 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
         filteredWrite("megabyteMillis", includeFilter, jd.getMegabyteMillis(),
             jsonGenerator);
         filteredWrite("cost", includeFilter, jd.getCost(), jsonGenerator);
-        filteredWrite("counters", includeFilter, jd.getCounters(),
-            jsonGenerator);
-        filteredWrite("mapCounters", includeFilter, jd.getMapCounters(),
-            jsonGenerator);
-        filteredWrite("reduceCounters", includeFilter, jd.getReduceCounters(),
-            jsonGenerator);
-        filteredWrite("cost", includeFilter, jd.getCost(), jsonGenerator);
         filteredWrite("configuration", includeFilter, jd.getConfiguration(), jsonGenerator);
+
+        filteredCounterWrite("counters", includeFilter, includeCounterFilter,
+            jd.getCounters(), jsonGenerator);
+        filteredCounterWrite("mapCounters", includeFilter, includeCounterFilter,
+            jd.getMapCounters(), jsonGenerator);
+        filteredCounterWrite("reduceCounters", includeFilter, includeCounterFilter,
+            jd.getReduceCounters(), jsonGenerator);
         jsonGenerator.writeEndObject();
       }
     }
@@ -464,6 +476,79 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       jsonGenerator.writeFieldName(member);
       jsonGenerator.writeObject(taskObject);
     }
+  }
+
+  /**
+   * checks if the member is to be filtered out or no if filter itself is
+   * null, writes out that member
+   *
+   * @param member
+   * @param includeFilter
+   * @param taskObject
+   * @param jsonGenerator
+   * @throws JsonGenerationException
+   * @throws IOException
+   */
+  public static void filteredCounterWrite(String member, Predicate<String> includeFilter,
+                                          Predicate<String> includeCounterFilter,
+                                   CounterMap counterMap, JsonGenerator jsonGenerator)
+      throws JsonGenerationException, IOException {
+  //  LOG.info(" in filtered counter write ");
+    if (includeFilter != null && includeCounterFilter == null) {
+      if (includeFilter.apply(member)) {
+        jsonGenerator.writeFieldName(member);
+        jsonGenerator.writeObject(counterMap);
+      }
+    } else {
+      if(includeCounterFilter != null) {
+        // get group name, counter name,
+        // check if it is wanted
+        // if yes print it.
+        boolean startObjectGroup = false;
+        boolean startObjectGroupMap = false;
+        //LOG.info(" wrote field name " + member);
+        jsonGenerator.writeFieldName(member);
+
+        String fullCounterName;
+        jsonGenerator.writeStartObject();
+
+        for (String group : counterMap.getGroups()) {
+          //LOG.info("writing writeStartObject Group ");
+
+
+          Map<String, Counter> groupMap = counterMap.getGroup(group);
+          for (String counterName : groupMap.keySet()) {
+            Counter counter = groupMap.get(counterName);
+            fullCounterName = group + "." + counter.getKey();
+         //   LOG.info("fullCounterName=" + fullCounterName);
+            if(includeCounterFilter.apply(fullCounterName)) {
+
+    //          LOG.info("writing counter " + fullCounterName);
+              if(startObjectGroupMap == false) {
+            //    LOG.info("writing writeStartObject Group Map ");
+                jsonGenerator.writeFieldName(group);
+                jsonGenerator.writeStartObject();
+                startObjectGroupMap = true;
+              }
+           //   LOG.info("writing field name & value for counter " + counter.getKey());
+              jsonGenerator.writeFieldName(counter.getKey());
+              jsonGenerator.writeNumber(counter.getValue());
+            }
+          }
+          if(startObjectGroupMap) {
+        //    LOG.info("writing end for  Group Map ");
+            jsonGenerator.writeEndObject();
+            startObjectGroupMap = false;
+          }
+        }
+//        if(startObjectGroup) {
+       //   LOG.info("writing end object ");
+          jsonGenerator.writeEndObject();
+ //         startObjectGroup = false;
+ //       }
+      }
+    }
+    //LOG.info(" returning from filtered counter write ");
   }
 
   /**

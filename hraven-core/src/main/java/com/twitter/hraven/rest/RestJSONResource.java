@@ -137,7 +137,9 @@ public class RestJSONResource {
   @Produces(MediaType.APPLICATION_JSON)
   public JobDetails getJobById(@PathParam("cluster") String cluster,
                                @PathParam("jobId") String jobId,
-                               @QueryParam("include") List<String> includeFields)
+                               @QueryParam("include") List<String> includeFields,
+                               @QueryParam("includeCounter") List<String>
+                                     includeCounter)
                                    throws IOException {
     LOG.info("Fetching JobDetails for jobId=" + jobId);
     Stopwatch timer = new Stopwatch().start();
@@ -145,6 +147,12 @@ public class RestJSONResource {
     if (includeFields != null && !includeFields.isEmpty()) {
       includeFilter = new SerializationContext.FieldNameFilter(includeFields);
     }
+
+    Predicate<String> includeCounterFilter = null;
+    if (includeCounter != null && !includeCounter.isEmpty()) {
+      includeCounterFilter = new SerializationContext.FieldNameFilter(includeCounter);
+    }
+
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, null, null, includeFilter, null));
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster, jobId);
@@ -174,7 +182,9 @@ public class RestJSONResource {
   @Produces(MediaType.APPLICATION_JSON)
   public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
                                            @PathParam("jobId") String jobId,
-                                           @QueryParam("include") List<String> includeFields)
+                                           @QueryParam("include") List<String> includeFields,
+                                           @QueryParam("includeCounter") List<String>
+                                                 includeCounter)
                                                throws IOException {
     LOG.info("Fetching tasks info for jobId=" + jobId);
     Stopwatch timer = new Stopwatch().start();
@@ -183,9 +193,14 @@ public class RestJSONResource {
     if (includeFields != null && !includeFields.isEmpty()) {
       includeFilter = new SerializationContext.FieldNameFilter(includeFields);
     }
+    Predicate<String> includeCounterFilter = null;
+    if (includeCounter != null && !includeCounter.isEmpty()) {
+      includeCounterFilter = new SerializationContext.FieldNameFilter(includeCounter);
+    }
+
     serializationContext.set(new SerializationContext(
         SerializationContext.DetailLevel.EVERYTHING, null, null, null,
-        includeFilter));
+        includeFilter, includeCounterFilter));
 
     JobDetails jobDetails = getJobHistoryService().getJobByJobID(cluster,
         jobId, true);

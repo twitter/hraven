@@ -428,6 +428,63 @@ public class JobHistoryService {
   }
 
   /**
+   * Returns a specific job's data by job ID
+   * @param cluster the cluster identifier
+   * @param cluster the job ID
+   * @param populateTasks if {@code true} populate the {@link TaskDetails} records for the job
+
+  public JobDetails getTaskMemoryStatsByJobID(String cluster, String jobId)
+      throws IOException {
+    return getTaskMemoryStatsByJobID(new QualifiedJobId(cluster, jobId));
+  }
+*/
+
+  /**
+   * Returns a specific job's data by job ID
+   * @param jobId the fully qualified cluster + job identifier
+   * @param populateTasks if {@code true} populate the {@link TaskDetails} records for the job
+
+  public JobDetails getTaskMemoryStatsByJobID(QualifiedJobId jobId)
+      throws IOException {
+    JobDetails job = null;
+    JobKey key = idService.getJobKeyById(jobId);
+    if (key != null) {
+      byte[] historyKey = jobKeyConv.toBytes(key);
+      Result result = historyTable.get(new Get(historyKey));
+      if (result != null && !result.isEmpty()) {
+        job = new JobDetails(key);
+        job.populate(result);
+        List<TaskDetails> tasks = new ArrayList<TaskDetails>();
+        Scan scan = getTaskScanMemoryCounters(job.getJobKey());
+        ResultScanner scanner = this.taskTable.getScanner(scan);
+        try {
+          // advance through the scanner til we pass keys matching the job
+          for (Result currentResult : scanner) {
+            if (currentResult == null || currentResult.isEmpty()) {
+              break;
+            }
+
+            TaskKey taskKey = taskKeyConv.fromBytes(currentResult.getRow());
+            TaskDetails task = new TaskDetails(taskKey);
+            task.populate(currentResult
+                .getFamilyMap(Constants.INFO_FAM_BYTES));
+          }
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Added " + job.getTasks().size() + " tasks to job "
+                + job.getJobKey().toString());
+          }
+        } finally {
+          scanner.close();
+        }
+      }
+    }
+    // get max, mean for memory
+    LOG.info(" returning from get memory for job tasks ----------- ");
+    return job;
+  }
+*/
+
+  /**
    * Returns a list of {@link Flow} instances generated from the given results.
    * For the moment, this assumes that the given scanner provides results
    * ordered first by flow ID.
@@ -615,6 +672,34 @@ public class JobHistoryService {
   }
 
   /**
+   * Returns a Scan instance to retrieve all the task rows for a given job
+   * from the job_history_task table.
+   * @param jobKey the job key to match for all task rows
+   * @return a {@code Scan} instance for the job_history_task table
+
+  private Scan getTaskScanMemoryCounters(JobKey jobKey) {
+    byte[] startKey = Bytes.add(jobKeyConv.toBytes(jobKey), Constants.SEP_BYTES);
+    Scan scan = new Scan();
+    scan.setStartRow(startKey);
+    // only return tasks for this job
+    scan.setFilter(new WhileMatchFilter(new PrefixFilter(startKey)));
+    // expect a lot of tasks on average
+    scan.setCaching(500);
+    scan.addColumn(Constants.INFO_FAM_BYTES,
+        JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.TASK_TYPE));
+    scan.addColumn(Constants.INFO_FAM_BYTES,
+        Bytes.toBytes("g!org.apache.hadoop.mapreduce.TaskCounter!COMMITTED_HEAP_BYTES"));
+    scan.addColumn(Constants.INFO_FAM_BYTES,
+        Bytes.toBytes("g!org.apache.hadoop.mapreduce.TaskCounter!VIRTUAL_MEMORY_BYTES"));
+    scan.addColumn(Constants.INFO_FAM_BYTES,
+        Bytes.toBytes("g!org.apache.hadoop.mapreduce.TaskCounter!PHYSICAL_MEMORY_BYTES"));
+
+    LOG.info("scan for tasks memory is " + scan.toString());
+    return scan;
+  }
+*/
+
+  /**
    * Converts serialized configuration properties back in to a Configuration
    * object.
    * 
@@ -662,6 +747,7 @@ public class JobHistoryService {
         }
         Counter c = new Counter(Bytes.toString(qualifierFields[0]),
             Bytes.toString(qualifierFields[1]), Bytes.toLong(entry.getValue()));
+     //   LOG.info("adding counter " + c.getKey() + " " + c.getValue());
         counterValues.add(c);
       }
     }
