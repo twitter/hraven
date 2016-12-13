@@ -140,7 +140,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       Predicate<String> includeFilter = context.getTaskFilter();
       Predicate<String> includeCounterFilter = context.getCounterFilter();
 
-      if(includeCounterFilter !=null && includeFilter == null) {
+      if(includeCounterFilter != null && includeFilter == null) {
         includeFilter = new SerializationContext.FieldNameFilter(new ArrayList<String>());
       }
 
@@ -480,6 +480,32 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
 
   /**
    * checks if the member is to be filtered out or no if filter itself is
+   * null, writes out that member as a String
+   *
+   * @param member
+   * @param includeFilter
+   * @param taskObject
+   * @param jsonGenerator
+   * @throws JsonGenerationException
+   * @throws IOException
+   */
+  public static void filteredWrite(String member, Predicate<String> includeFilter,
+      String taskObject, JsonGenerator jsonGenerator)
+      throws JsonGenerationException, IOException {
+    if (includeFilter != null) {
+      if (includeFilter.apply(member)) {
+        jsonGenerator.writeFieldName(member);
+        jsonGenerator.writeString(taskObject);
+      }
+    } else {
+      jsonGenerator.writeFieldName(member);
+      jsonGenerator.writeString(taskObject);
+    }
+  }
+
+
+  /**
+   * checks if the member is to be filtered out or no if filter itself is
    * null, writes out that member
    *
    * @param member
@@ -493,7 +519,6 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
                                           Predicate<String> includeCounterFilter,
                                    CounterMap counterMap, JsonGenerator jsonGenerator)
       throws JsonGenerationException, IOException {
-  //  LOG.info(" in filtered counter write ");
     if (includeFilter != null && includeCounterFilter == null) {
       if (includeFilter.apply(member)) {
         jsonGenerator.writeFieldName(member);
@@ -504,51 +529,35 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
         // get group name, counter name,
         // check if it is wanted
         // if yes print it.
-        boolean startObjectGroup = false;
         boolean startObjectGroupMap = false;
-        //LOG.info(" wrote field name " + member);
         jsonGenerator.writeFieldName(member);
 
         String fullCounterName;
         jsonGenerator.writeStartObject();
 
         for (String group : counterMap.getGroups()) {
-          //LOG.info("writing writeStartObject Group ");
-
-
           Map<String, Counter> groupMap = counterMap.getGroup(group);
           for (String counterName : groupMap.keySet()) {
             Counter counter = groupMap.get(counterName);
             fullCounterName = group + "." + counter.getKey();
-         //   LOG.info("fullCounterName=" + fullCounterName);
             if(includeCounterFilter.apply(fullCounterName)) {
-
-    //          LOG.info("writing counter " + fullCounterName);
               if(startObjectGroupMap == false) {
-            //    LOG.info("writing writeStartObject Group Map ");
                 jsonGenerator.writeFieldName(group);
                 jsonGenerator.writeStartObject();
                 startObjectGroupMap = true;
               }
-           //   LOG.info("writing field name & value for counter " + counter.getKey());
               jsonGenerator.writeFieldName(counter.getKey());
               jsonGenerator.writeNumber(counter.getValue());
             }
           }
           if(startObjectGroupMap) {
-        //    LOG.info("writing end for  Group Map ");
             jsonGenerator.writeEndObject();
             startObjectGroupMap = false;
           }
         }
-//        if(startObjectGroup) {
-       //   LOG.info("writing end object ");
           jsonGenerator.writeEndObject();
- //         startObjectGroup = false;
- //       }
       }
     }
-    //LOG.info(" returning from filtered counter write ");
   }
 
   /**

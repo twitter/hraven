@@ -25,15 +25,11 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.util.ByteUtil;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 /**
  * Captures the details of tasks for a hadoop job
  */
 @JsonSerialize(include=JsonSerialize.Inclusion.NON_NULL)
 public class TaskDetails implements Comparable<TaskDetails> {
-
-  private static Log LOG = LogFactory.getLog(TaskDetails.class);
 
   private TaskKey taskKey;
 
@@ -75,6 +71,7 @@ public class TaskDetails implements Comparable<TaskDetails> {
     this.taskId = taskId;
   }
 
+  @JsonProperty("taskType")
   public String getType() {
     return type;
   }
@@ -257,7 +254,6 @@ public class TaskDetails implements Comparable<TaskDetails> {
       taskValues);
     this.sortFinished = ByteUtil.getValueAsLong(JobHistoryKeys.KEYS_TO_BYTES.get(JobHistoryKeys.SORT_FINISHED),
       taskValues);
-   // LOG.info("in task details populate for " + this.type +" , checking counters ************ ");
     // populate task counters
     this.counters = JobHistoryService.parseCounters(
         Constants.COUNTER_COLUMN_PREFIX_BYTES, taskValues);

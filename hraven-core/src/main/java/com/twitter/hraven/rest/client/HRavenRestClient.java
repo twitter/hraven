@@ -383,7 +383,6 @@ public class HRavenRestClient {
 
     String urlString = String.format("http://%s/api/v1/tasks/%s/%s?%s&%s",
         apiHostname, cluster, jobId, taskFilters, taskCounterFilters);
-    System.out.println("------------------- " + urlString);
     return retrieveTaskDetailsFromUrl(urlString);
   }
 
@@ -402,10 +401,10 @@ public class HRavenRestClient {
   private static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   public static void main(String[] args) throws IOException {
-    String apiHostname = null;
-    String cluster =  null;
-    String username = null;
-    String batchDesc = null;
+    String apiHostname = "hraven.devel.vchannapattan.service.atla.twitter.com"; //null;
+    String cluster = "dw2@smf1";// null;
+    String username = "hraven"; // "bizinsights"; //null;
+    String batchDesc = "hraven_chargeback_hdfs" ;//  "Replicator_%2Fuser%2Fanalytics%2Fbackups%2Fflock"; //null;
     String signature = null;
     int limit = 2;
     boolean useHBaseAPI = false;
@@ -468,7 +467,6 @@ public class HRavenRestClient {
       } else if("-z".equals(args[i])) {
         String taskFilters =  args[++i];
         taskResponseFilters = Arrays.asList(taskFilters.split(","));
-        System.out.println("************* task filters = " + taskResponseFilters.toString());
         continue;
       } else if("-q".equals(args[i])) {
         String taskCounterFilters =  args[++i];
@@ -499,7 +497,6 @@ public class HRavenRestClient {
       System.exit(1);
     }
 
-    System.out.println(" here **** ");
     List<Flow> flows;
     if (useHBaseAPI) {
       JobHistoryService jobHistoryService = new JobHistoryService(HBaseConfiguration.create());
@@ -512,11 +509,11 @@ public class HRavenRestClient {
       flows = client.fetchFlows(cluster, username, batchDesc, signature,
           flowResponseFilters, jobResponseFilters, limit);
       // use this call to call flows with configs
-    //  flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
-     //    limit, flowResponseFilters, jobResponseFilters, configFields );
+      // flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+      //   limit, flowResponseFilters, jobResponseFilters, configFields );
       // use this call to call flows with config patterns
-       //   flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
-      //        limit, flowResponseFilters, jobResponseFilters, configFields );
+      // flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+      //   limit, flowResponseFilters, jobResponseFilters, configFields );
 
       if (hydrateTasks) {
         for (Flow flow : flows) {
@@ -524,27 +521,12 @@ public class HRavenRestClient {
             String jobId = jd.getJobId();
             List<TaskDetails> td = client.fetchTaskDetails(cluster, jobId, taskResponseFilters,
                 taskCounterResponseFilters);
-            for(TaskDetails t1: td) {
-              if (t1.getCounters() != null &&
-                  t1.getCounters().getCounter("org.apache.hadoop.mapreduce.TaskCounter", "COMMITTED_HEAP_BYTES") != null) {
-              System.out.println("task details type:" + t1.getTaskKey().toString() +
-                  " " + t1.getType()
-                 // + " " + t1.getCounters().getGroup("org.apache.hadoop.mapreduce.TaskCounter").size()
-                  + " " 
-                  + t1.getCounters()
-                  .getCounter("org.apache.hadoop.mapreduce.TaskCounter", "COMMITTED_HEAP_BYTES").getKey()
-                  + " " 
-                  + t1.getCounters()
-                  .getCounter("org.apache.hadoop.mapreduce.TaskCounter", "COMMITTED_HEAP_BYTES").getValue());
-              }
-            }
             jd.addTasks(td);
           }
         }
       }
     }
 
-    dumpJson = false;
     if (dumpJson) {
       ObjectMapper om = ObjectMapperProvider.createCustomMapper();
       SimpleModule module = new SimpleModule("hRavenModule", new Version(0, 4,
@@ -554,9 +536,7 @@ public class HRavenRestClient {
       module.addSerializer(TaskDetails.class, new TaskDetailsSerializer());
       om.registerModule(module);
       if (flows.size() > 0) {
-//        System.out.println(om.writeValueAsString(flows.get(0)));
         System.out.println(om.writeValueAsString(flows.get(0)));
-
       }
       return;
     }
