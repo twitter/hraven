@@ -13,6 +13,7 @@ and analysis over time.
 Requirements
 --------------------
 
+Branch hraven_hbase94 works with the following:
 * Apache HBase (0.94+) - a running HBase cluster is required for the hRaven
   data storage
 * Apache Hadoop - hRaven current supports collection of job data on specific
