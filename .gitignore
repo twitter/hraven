@@ -1,7 +1,9 @@
-# Eclude Eclipse files that can be generated with mvn eclipse:eclipse
+# Exclude Eclipse files that can be generated with mvn eclipse:eclipse
 .classpath
 .project
 target/
+hraven-core/.settings/
+hraven-etl/.settings/
 
 # Used as a local build/deploy dev-cycle script
 deploy.sh

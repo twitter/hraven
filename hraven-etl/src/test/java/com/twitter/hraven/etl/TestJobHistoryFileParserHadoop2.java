@@ -15,6 +15,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -74,7 +75,7 @@ public class TestJobHistoryFileParserHadoop2 {
     // check hadoop version
     boolean foundVersion2 = false;
     for (Put p : jobPuts) {
-    	List<KeyValue> kv2 = p.get(Constants.INFO_FAM_BYTES,
+    	List<Cell> kv2 = p.get(Constants.INFO_FAM_BYTES,
     			Bytes.toBytes(JobHistoryKeys.hadoopversion.toString()));
     	if (kv2.size() == 0) {
     	  // we are interested in hadoop version put only
@@ -102,7 +103,7 @@ public class TestJobHistoryFileParserHadoop2 {
     // check job status
     boolean foundJobStatus = false;
     for (Put p : jobPuts) {
-      List<KeyValue> kv2 =
+      List<Cell> kv2 =
           p.get(Constants.INFO_FAM_BYTES,
             Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase()));
       if (kv2.size() == 0) {
@@ -112,7 +113,7 @@ public class TestJobHistoryFileParserHadoop2 {
       }
       assertEquals(1, kv2.size());
 
-      for (KeyValue kv : kv2) {
+      for (Cell kv : kv2) {
         // ensure we have a job status value as the value
         assertEquals(Bytes.toString(kv.getValue()),
           JobHistoryFileParserHadoop2.JOB_STATUS_SUCCEEDED);
@@ -289,7 +290,7 @@ public class TestJobHistoryFileParserHadoop2 {
     // it's part of the JobQueueChange object in the history file
     boolean foundQueue = false;
     for (Put p : jobPuts) {
-      List<KeyValue> kv2 =
+      List<Cell> kv2 =
           p.get(Constants.INFO_FAM_BYTES,
             Bytes.toBytes(JobHistoryKeys.JOB_QUEUE.toString().toLowerCase()));
       if (kv2.size() == 0) {
@@ -297,7 +298,7 @@ public class TestJobHistoryFileParserHadoop2 {
         // hence continue
         continue;
       } else {
-        for (KeyValue kv : kv2) {
+        for (Cell kv : kv2) {
           // ensure we have a hadoop2 version as the value
           assertEquals(Bytes.toString(kv.getValue()), "root.someQueueName");
           // ensure we don't see the same put twice

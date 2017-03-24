@@ -15,7 +15,6 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -24,7 +23,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  * Indicates that the {@link Result} from a {@link Scan} is missing an expected
  * column.
  * <p>
- * Specifically, this exception indicates that the {@link KeyValue} returned by
+ * Specifically, this exception indicates that the {@link Cell} returned by
  * {@link Result#getColumnLatest(byte[], byte[])} is <code>null</code> or the
  * list returned by {@link Result#getColumn(byte[], byte[]) is empty.
  */

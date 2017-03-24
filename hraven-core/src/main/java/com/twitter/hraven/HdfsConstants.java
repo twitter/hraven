@@ -47,7 +47,6 @@ public class HdfsConstants {
 
   /** Hdfs Stats Table names */
   public static final String HDFS_USAGE_TABLE = "chargeback_hdfs_usage";
-  public static final byte[] HDFS_USAGE_TABLE_BYTES = Bytes.toBytes(HDFS_USAGE_TABLE);
 
   public static final String HDFS_USER_ACCESS_TABLE = "chargeback_user_access";
   public static final byte[] HDFS_USER_ACCESS_TABLE_BYTES = Bytes.toBytes(HDFS_USER_ACCESS_TABLE);
