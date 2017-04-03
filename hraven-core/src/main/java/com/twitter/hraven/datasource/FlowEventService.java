@@ -1,5 +1,5 @@
 /*
-Copyright 2013 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,30 +15,36 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.filter.PrefixFilter;
+import org.apache.hadoop.hbase.filter.WhileMatchFilter;
+import org.apache.hadoop.hbase.util.Bytes;
+
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.FlowEvent;
 import com.twitter.hraven.FlowEventKey;
 import com.twitter.hraven.FlowKey;
 import com.twitter.hraven.Framework;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.filter.PrefixFilter;
-import org.apache.hadoop.hbase.filter.WhileMatchFilter;
-import org.apache.hadoop.hbase.util.Bytes;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Service for reading and writing rows in the {@link Constants#FLOW_EVENT_TABLE} table
+ * Service for reading and writing rows in the
+ * {@link Constants#FLOW_EVENT_TABLE} table
  */
 public class FlowEventService {
+  private static Log LOG = LogFactory.getLog(FlowEventService.class);
+
   public static final String TIMESTAMP_COL = "ts";
   public static final byte[] TIMESTAMP_COL_BYTES = Bytes.toBytes(TIMESTAMP_COL);
 
@@ -48,12 +54,25 @@ public class FlowEventService {
   public static final String DATA_COL = "data";
   public static final byte[] DATA_COL_BYTES = Bytes.toBytes(DATA_COL);
 
-  private HTable eventTable;
+  private final Connection hbaseConnection;
   private FlowKeyConverter flowKeyConverter = new FlowKeyConverter();
   private FlowEventKeyConverter keyConverter = new FlowEventKeyConverter();
 
-  public FlowEventService(Configuration conf) throws IOException {
-    this.eventTable = new HTable(conf, Constants.FLOW_EVENT_TABLE_BYTES);
+  /**
+   * Used to add events to the flow event table.
+   *
+   * @param hbaseConnection Used to connect to get references to HBase tables.
+   * @throws IOException
+   */
+  public FlowEventService(Connection hbaseConnection) throws IOException {
+    this.hbaseConnection = hbaseConnection;
+  }
+
+  /**
+   * close open connections to tables and the hbase cluster.
+   * @throws IOException
+   */
+  public void close() throws IOException {
   }
 
   /**
@@ -63,7 +82,16 @@ public class FlowEventService {
    */
   public void addEvent(FlowEvent event) throws IOException {
     Put p = createPutForEvent(event);
-    eventTable.put(p);
+    Table eventTable = null;
+    try {
+      eventTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE));
+      eventTable.put(p);
+    } finally {
+      if (eventTable != null) {
+        eventTable.close();
+      }
+    }
   }
 
   /**
@@ -76,22 +104,36 @@ public class FlowEventService {
     for (FlowEvent e : events) {
       puts.add(createPutForEvent(e));
     }
-    eventTable.put(puts);
+    Table eventTable = null;
+    try {
+      eventTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE));
+      eventTable.put(puts);
+    } finally {
+      if (eventTable != null) {
+        eventTable.close();
+      }
+    }
   }
 
   /**
-   * Retrieves all the event rows matching a single {@link com.twitter.hraven.Flow}.
+   * Retrieves all the event rows matching a single
+   * {@link com.twitter.hraven.Flow}.
    * @param flowKey
    * @return
    */
   public List<FlowEvent> getFlowEvents(FlowKey flowKey) throws IOException {
-    byte[] startKey = Bytes.add(flowKeyConverter.toBytes(flowKey), Constants.SEP_BYTES);
+    byte[] startKey =
+        Bytes.add(flowKeyConverter.toBytes(flowKey), Constants.SEP_BYTES);
     Scan scan = new Scan(startKey);
     scan.setFilter(new WhileMatchFilter(new PrefixFilter(startKey)));
 
     List<FlowEvent> results = new ArrayList<FlowEvent>();
     ResultScanner scanner = null;
+    Table eventTable = null;
     try {
+      eventTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE));
       scanner = eventTable.getScanner(scan);
       for (Result r : scanner) {
         FlowEvent event = createEventFromResult(r);
@@ -100,32 +142,45 @@ public class FlowEventService {
         }
       }
     } finally {
-      if (scanner != null) {
-        scanner.close();
+      try {
+        if (scanner != null) {
+          scanner.close();
+        }
+      } finally {
+        if (eventTable != null) {
+          eventTable.close();
+        }
       }
     }
     return results;
   }
 
   /**
-   * Retrieves all events added after the given event key (with sequence numbers greater than the
-   * given key).  If no new events are found returns an empty list.
+   * Retrieves all events added after the given event key (with sequence numbers
+   * greater than the given key). If no new events are found returns an empty
+   * list.
    * @param lastSeen
    * @return
    */
-  public List<FlowEvent> getFlowEventsSince(FlowEventKey lastSeen) throws IOException {
+  public List<FlowEvent> getFlowEventsSince(FlowEventKey lastSeen)
+      throws IOException {
     // rows must match the FlowKey portion + SEP
-    byte[] keyPrefix = Bytes.add(flowKeyConverter.toBytes(lastSeen), Constants.SEP_BYTES);
+    byte[] keyPrefix =
+        Bytes.add(flowKeyConverter.toBytes(lastSeen), Constants.SEP_BYTES);
     // start at the next following sequence number
-    FlowEventKey nextEvent = new FlowEventKey(lastSeen.getCluster(), lastSeen.getUserName(),
-        lastSeen.getAppId(), lastSeen.getRunId(), lastSeen.getSequence()+1);
+    FlowEventKey nextEvent = new FlowEventKey(lastSeen.getCluster(),
+        lastSeen.getUserName(), lastSeen.getAppId(), lastSeen.getRunId(),
+        lastSeen.getSequence() + 1);
     byte[] startKey = keyConverter.toBytes(nextEvent);
     Scan scan = new Scan(startKey);
     scan.setFilter(new WhileMatchFilter(new PrefixFilter(keyPrefix)));
 
     List<FlowEvent> results = new ArrayList<FlowEvent>();
     ResultScanner scanner = null;
+    Table eventTable = null;
     try {
+      eventTable = hbaseConnection
+          .getTable(TableName.valueOf(Constants.FLOW_EVENT_TABLE));
       scanner = eventTable.getScanner(scan);
       for (Result r : scanner) {
         FlowEvent event = createEventFromResult(r);
@@ -134,8 +189,14 @@ public class FlowEventService {
         }
       }
     } finally {
-      if (scanner != null) {
-        scanner.close();
+      try {
+        if (scanner != null) {
+          scanner.close();
+        }
+      } finally {
+        if (eventTable != null) {
+          eventTable.close();
+        }
       }
     }
     return results;
@@ -143,16 +204,19 @@ public class FlowEventService {
 
   protected Put createPutForEvent(FlowEvent event) {
     Put p = new Put(keyConverter.toBytes(event.getFlowEventKey()));
-    p.add(Constants.INFO_FAM_BYTES, TIMESTAMP_COL_BYTES, Bytes.toBytes(event.getTimestamp()));
+    p.addColumn(Constants.INFO_FAM_BYTES, TIMESTAMP_COL_BYTES,
+        Bytes.toBytes(event.getTimestamp()));
     if (event.getType() != null) {
-      p.add(Constants.INFO_FAM_BYTES, TYPE_COL_BYTES, Bytes.toBytes(event.getType()));
+      p.addColumn(Constants.INFO_FAM_BYTES, TYPE_COL_BYTES,
+          Bytes.toBytes(event.getType()));
     }
     if (event.getFramework() != null) {
-      p.add(Constants.INFO_FAM_BYTES, Constants.FRAMEWORK_COLUMN_BYTES,
+      p.addColumn(Constants.INFO_FAM_BYTES, Constants.FRAMEWORK_COLUMN_BYTES,
           Bytes.toBytes(event.getFramework().getCode()));
     }
     if (event.getEventDataJSON() != null) {
-      p.add(Constants.INFO_FAM_BYTES, DATA_COL_BYTES, Bytes.toBytes(event.getEventDataJSON()));
+      p.addColumn(Constants.INFO_FAM_BYTES, DATA_COL_BYTES,
+          Bytes.toBytes(event.getEventDataJSON()));
     }
     return p;
   }
@@ -168,21 +232,19 @@ public class FlowEventService {
           result.getValue(Constants.INFO_FAM_BYTES, TIMESTAMP_COL_BYTES)));
     }
     if (result.containsColumn(Constants.INFO_FAM_BYTES, TYPE_COL_BYTES)) {
-      event.setType(Bytes.toString(result.getValue(Constants.INFO_FAM_BYTES, TYPE_COL_BYTES)));
+      event.setType(Bytes
+          .toString(result.getValue(Constants.INFO_FAM_BYTES, TYPE_COL_BYTES)));
     }
-    if (result.containsColumn(Constants.INFO_FAM_BYTES, Constants.FRAMEWORK_COLUMN_BYTES)) {
-      String code = Bytes.toString(result.getValue(
-          Constants.INFO_FAM_BYTES, Constants.FRAMEWORK_COLUMN_BYTES));
+    if (result.containsColumn(Constants.INFO_FAM_BYTES,
+        Constants.FRAMEWORK_COLUMN_BYTES)) {
+      String code = Bytes.toString(result.getValue(Constants.INFO_FAM_BYTES,
+          Constants.FRAMEWORK_COLUMN_BYTES));
       event.setFramework(Framework.get(code));
     }
     if (result.containsColumn(Constants.INFO_FAM_BYTES, DATA_COL_BYTES)) {
-      event.setEventDataJSON(Bytes.toString(
-          result.getValue(Constants.INFO_FAM_BYTES, DATA_COL_BYTES)));
+      event.setEventDataJSON(Bytes
+          .toString(result.getValue(Constants.INFO_FAM_BYTES, DATA_COL_BYTES)));
     }
     return event;
-  }
-
-  public void close() throws IOException {
-    this.eventTable.close();
   }
 }

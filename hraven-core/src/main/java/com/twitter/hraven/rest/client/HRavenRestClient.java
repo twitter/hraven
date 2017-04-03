@@ -1,5 +1,5 @@
 /*
-Copyright 2013 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,10 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.module.SimpleModule;
@@ -40,10 +43,9 @@ import com.twitter.hraven.JobDetails;
 import com.twitter.hraven.TaskDetails;
 import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.rest.ObjectMapperProvider;
-import com.twitter.hraven.rest.RestJSONResource;
 import com.twitter.hraven.rest.ObjectMapperProvider.FlowSerializer;
 import com.twitter.hraven.rest.ObjectMapperProvider.JobDetailsSerializer;
-import com.twitter.hraven.rest.ObjectMapperProvider.TaskDetailsSerializer;
+import com.twitter.hraven.rest.RestJSONResource;
 import com.twitter.hraven.util.StringUtil;
 
 /**
@@ -65,26 +67,27 @@ public class HRavenRestClient {
   public static final String EQUAL_TO = "=";
 
   /**
-   * Initializes with the given hostname and a default connect and read timeout of 5 seconds.
+   * Initializes with the given hostname and a default connect and read timeout
+   * of 5 seconds.
    * @param apiHostname the hostname to connect to
    */
   public HRavenRestClient(String apiHostname) {
     this(apiHostname, 5000, 5000);
   }
 
-  public HRavenRestClient(String apiHostname, int connectTimeout, int readTimeout) {
+  public HRavenRestClient(String apiHostname, int connectTimeout,
+      int readTimeout) {
     this.apiHostname = apiHostname;
     this.connectTimeout = connectTimeout;
     this.readTimeout = readTimeout;
     LOG.info(String.format(
-      "Initializing HRavenRestClient with apiHostname=%s, connectTimeout=%d ms, readTimeout=%d ms",
-      apiHostname, connectTimeout, readTimeout));
+        "Initializing HRavenRestClient with apiHostname=%s, connectTimeout=%d ms, readTimeout=%d ms",
+        apiHostname, connectTimeout, readTimeout));
   }
 
   public String getCluster(String hostname) throws IOException {
-    String urlString =
-        String.format("http://%s/api/v1/getCluster?hostname=%s", apiHostname,
-          StringUtil.cleanseToken(hostname));
+    String urlString = String.format("http://%s/api/v1/getCluster?hostname=%s",
+        apiHostname, StringUtil.cleanseToken(hostname));
 
     if (LOG.isInfoEnabled()) {
       LOG.info("Requesting cluster for " + hostname);
@@ -105,34 +108,30 @@ public class HRavenRestClient {
     return cluster;
   }
 
-  public List<Flow> fetchFlows(String cluster,
-                               String username,
-                               String batchDesc,
-                               String signature,
-                               int limit) throws IOException {
-    LOG.info(String.format("Fetching last %d matching jobs for cluster=%s, user.name=%s, " +
-      "batch.desc=%s, pig.logical.plan.signature=%s", limit, cluster, username, batchDesc, signature)); 
+  public List<Flow> fetchFlows(String cluster, String username,
+      String batchDesc, String signature, int limit) throws IOException {
+    LOG.info(String.format(
+        "Fetching last %d matching jobs for cluster=%s, user.name=%s, "
+            + "batch.desc=%s, pig.logical.plan.signature=%s",
+        limit, cluster, username, batchDesc, signature));
 
-    String urlString = signature == null ?
-      String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d",
-        apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), limit) :
-      String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d",
-        apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), signature, limit);
+    String urlString = signature == null
+        ? String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d", apiHostname,
+            cluster, username, StringUtil.cleanseToken(batchDesc), limit)
+        : String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d",
+            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc),
+            signature, limit);
 
     return retrieveFlowsFromURL(urlString);
   }
 
-  public List<Flow> fetchFlows(String cluster,
-                               String username,
-                               String batchDesc,
-                               String signature,
-                               List<String> flowResponseFilters,
-                               List<String> jobResponseFilters,
-                               int limit) throws IOException {
+  public List<Flow> fetchFlows(String cluster, String username,
+      String batchDesc, String signature, List<String> flowResponseFilters,
+      List<String> jobResponseFilters, int limit) throws IOException {
     LOG.info(String.format(
         "Fetching last %d matching jobs for cluster=%s, user.name=%s, "
-            + "batch.desc=%s, pig.logical.plan.signature=%s", limit, cluster,
-        username, batchDesc, signature));
+            + "batch.desc=%s, pig.logical.plan.signature=%s",
+        limit, cluster, username, batchDesc, signature));
 
     StringBuilder urlStringBuilder = buildFlowURL(cluster, username, batchDesc,
         signature, limit, flowResponseFilters, jobResponseFilters);
@@ -143,7 +142,7 @@ public class HRavenRestClient {
   /**
    * Fetches a list of flows that include jobs in that flow that include the
    * specified configuration properties
-   * 
+   *
    * @param cluster
    * @param username
    * @param batchDesc
@@ -153,33 +152,32 @@ public class HRavenRestClient {
    * @return list of flows
    * @throws IOException
    */
-  public List<Flow> fetchFlowsWithConfig(String cluster,
-                                         String username,
-                                         String batchDesc,
-                                         String signature,
-                                         int limit,
-                                         String... configProps) throws IOException {
-    LOG.info(String.format("Fetching last %d matching jobs for cluster=%s, user.name=%s, " +
-        "batch.desc=%s, pig.logical.plan.signature=%s", limit, cluster, username, batchDesc, signature));
+  public List<Flow> fetchFlowsWithConfig(String cluster, String username,
+      String batchDesc, String signature, int limit, String... configProps)
+      throws IOException {
+    LOG.info(String.format(
+        "Fetching last %d matching jobs for cluster=%s, user.name=%s, "
+            + "batch.desc=%s, pig.logical.plan.signature=%s",
+        limit, cluster, username, batchDesc, signature));
 
     String configParam = "";
     if (configProps != null && configProps.length > 0) {
       configParam = StringUtil.buildParam("includeConf", configProps);
     }
-    String urlString = signature == null ?
-        String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d&%s",
-            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), limit, configParam) :
-        String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d&%s",
-            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), signature, limit,
-            configParam);
+    String urlString = signature == null
+        ? String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d&%s",
+            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc),
+            limit, configParam)
+        : String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d&%s",
+            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc),
+            signature, limit, configParam);
 
     return retrieveFlowsFromURL(urlString);
   }
 
   /**
    * Fetches a list of flows that include jobs in that flow that include the
-   * specified flow fields and job fields
-   * specified configuration properties
+   * specified flow fields and job fields specified configuration properties
    * @param cluster
    * @param username
    * @param batchDesc
@@ -191,30 +189,28 @@ public class HRavenRestClient {
    * @return list of flows
    * @throws IOException
    */
-  public List<Flow> fetchFlowsWithConfig(String cluster,
-                                         String username,
-                                         String batchDesc,
-                                         String signature,
-                                         int limit,
-                                         List<String> flowResponseFilters,
-                                         List<String> jobResponseFilters,
-                                         List<String> configPropertyFields) throws IOException {
-    LOG.info(String.format("Fetching last %d matching jobs for cluster=%s, user.name=%s, " +
-        "batch.desc=%s, pig.logical.plan.signature=%s", limit, cluster, username, batchDesc, signature));
+  public List<Flow> fetchFlowsWithConfig(String cluster, String username,
+      String batchDesc, String signature, int limit,
+      List<String> flowResponseFilters, List<String> jobResponseFilters,
+      List<String> configPropertyFields) throws IOException {
+    LOG.info(String.format(
+        "Fetching last %d matching jobs for cluster=%s, user.name=%s, "
+            + "batch.desc=%s, pig.logical.plan.signature=%s",
+        limit, cluster, username, batchDesc, signature));
     StringBuilder urlStringBuilder = buildFlowURL(cluster, username, batchDesc,
         signature, limit, flowResponseFilters, jobResponseFilters);
 
     if ((configPropertyFields != null) && (configPropertyFields.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(StringUtil.buildParam("includeConf",
-           configPropertyFields));
+      urlStringBuilder
+          .append(StringUtil.buildParam("includeConf", configPropertyFields));
     }
     return retrieveFlowsFromURL(urlStringBuilder.toString());
   }
 
   /**
-   * Returns a list of flows that contain config elements
-   * matching a specific pattern.
+   * Returns a list of flows that contain config elements matching a specific
+   * pattern.
    * @param cluster
    * @param username
    * @param batchDesc
@@ -225,49 +221,44 @@ public class HRavenRestClient {
    * @throws IOException
    */
   public List<Flow> fetchFlowsWithConfigPatterns(String cluster,
-                                         String username,
-                                         String batchDesc,
-                                         String signature,
-                                         int limit,
-                                         String... configPatterns) throws IOException {
-    LOG.info(String.format("Fetching last %d matching jobs for cluster=%s, user.name=%s, " +
-        "batch.desc=%s, pig.logical.plan.signature=%s", limit, cluster, username, batchDesc, signature));
+      String username, String batchDesc, String signature, int limit,
+      String... configPatterns) throws IOException {
+    LOG.info(String.format(
+        "Fetching last %d matching jobs for cluster=%s, user.name=%s, "
+            + "batch.desc=%s, pig.logical.plan.signature=%s",
+        limit, cluster, username, batchDesc, signature));
 
     String configParam = "";
     if (configPatterns != null && configPatterns.length > 0) {
       configParam = StringUtil.buildParam("includeConfRegex", configPatterns);
     }
-    String urlString = signature == null ?
-        String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d&%s",
-            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), limit, configParam) :
-        String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d&%s",
-            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc), signature, limit,
-            configParam);
+    String urlString = signature == null
+        ? String.format("http://%s/api/v1/flow/%s/%s/%s?limit=%d&%s",
+            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc),
+            limit, configParam)
+        : String.format("http://%s/api/v1/flow/%s/%s/%s/%s?limit=%d&%s",
+            apiHostname, cluster, username, StringUtil.cleanseToken(batchDesc),
+            signature, limit, configParam);
 
     return retrieveFlowsFromURL(urlString);
   }
 
   public List<Flow> fetchFlowsWithConfigPatterns(String cluster,
-                                                 String username,
-                                                 String batchDesc,
-                                                 String signature,
-                                                 int limit,
-                                                 List<String> flowResponseFilters,
-                                                 List<String> jobResponseFilters,
-                                                 List<String> configPatterns)
-                                                     throws IOException {
+      String username, String batchDesc, String signature, int limit,
+      List<String> flowResponseFilters, List<String> jobResponseFilters,
+      List<String> configPatterns) throws IOException {
     LOG.info(String.format(
         "Fetching last %d matching jobs for cluster=%s, user.name=%s, "
-            + "batch.desc=%s, pig.logical.plan.signature=%s", limit, cluster,
-        username, batchDesc, signature));
+            + "batch.desc=%s, pig.logical.plan.signature=%s",
+        limit, cluster, username, batchDesc, signature));
 
     StringBuilder urlStringBuilder = buildFlowURL(cluster, username, batchDesc,
         signature, limit, flowResponseFilters, jobResponseFilters);
 
     if ((configPatterns != null) && (configPatterns.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(StringUtil.buildParam("includeConfRegex",
-           configPatterns));
+      urlStringBuilder
+          .append(StringUtil.buildParam("includeConfRegex", configPatterns));
     }
     return retrieveFlowsFromURL(urlStringBuilder.toString());
   }
@@ -284,13 +275,10 @@ public class HRavenRestClient {
    * @return
    * @throws IOException
    */
-  private StringBuilder buildFlowURL(String cluster,
-      String username,
-      String batchDesc,
-      String signature,
-      int limit,
-      List<String> flowResponseFilters,
-      List<String> jobResponseFilters) throws IOException {
+  private StringBuilder buildFlowURL(String cluster, String username,
+      String batchDesc, String signature, int limit,
+      List<String> flowResponseFilters, List<String> jobResponseFilters)
+      throws IOException {
     StringBuilder urlStringBuilder = new StringBuilder();
     urlStringBuilder.append("http://");
     urlStringBuilder.append(apiHostname);
@@ -313,28 +301,27 @@ public class HRavenRestClient {
     urlStringBuilder.append(limit);
     if ((flowResponseFilters != null) && (flowResponseFilters.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(StringUtil.buildParam("include",
-          flowResponseFilters));
+      urlStringBuilder
+          .append(StringUtil.buildParam("include", flowResponseFilters));
     }
 
     if ((jobResponseFilters != null) && (jobResponseFilters.size() > 0)) {
       urlStringBuilder.append(AND);
-      urlStringBuilder.append(StringUtil.buildParam("includeJobField",
-          jobResponseFilters));
+      urlStringBuilder
+          .append(StringUtil.buildParam("includeJobField", jobResponseFilters));
     }
 
     return urlStringBuilder;
   }
 
-  private List<Flow> retrieveFlowsFromURL(String endpointURL) throws IOException {
+  private List<Flow> retrieveFlowsFromURL(String endpointURL)
+      throws IOException {
     if (LOG.isInfoEnabled()) {
       LOG.info("Requesting job history from " + endpointURL);
     }
-    return new UrlDataLoader<Flow>(
-        endpointURL,
-        new TypeReference<List<Flow>>() {},
-        connectTimeout,
-        readTimeout).load();
+    return new UrlDataLoader<Flow>(endpointURL,
+        new TypeReference<List<Flow>>() {
+        }, connectTimeout, readTimeout).load();
   }
 
   /**
@@ -343,8 +330,10 @@ public class HRavenRestClient {
    * @param jobId
    * @return
    */
-  public List<TaskDetails> fetchTaskDetails(String cluster, String jobId) throws IOException {
-    String urlString = String.format("http://%s/api/v1/tasks/%s/%s", apiHostname, cluster, jobId);
+  public List<TaskDetails> fetchTaskDetails(String cluster, String jobId)
+      throws IOException {
+    String urlString = String.format("http://%s/api/v1/tasks/%s/%s",
+        apiHostname, cluster, jobId);
     return retrieveTaskDetailsFromUrl(urlString);
   }
 
@@ -357,8 +346,7 @@ public class HRavenRestClient {
    */
   public List<TaskDetails> fetchTaskDetails(String cluster, String jobId,
       List<String> taskResponseFilters) throws IOException {
-    String taskFilters = StringUtil.buildParam("include",
-        taskResponseFilters);
+    String taskFilters = StringUtil.buildParam("include", taskResponseFilters);
     String urlString = String.format("http://%s/api/v1/tasks/%s/%s?%s",
         apiHostname, cluster, jobId, taskFilters);
     return retrieveTaskDetailsFromUrl(urlString);
@@ -388,28 +376,29 @@ public class HRavenRestClient {
 
   private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL)
       throws IOException {
+  private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL)
+      throws IOException {
     if (LOG.isInfoEnabled()) {
       LOG.info("Requesting task history from " + endpointURL);
     }
-    return new UrlDataLoader<TaskDetails>(
-        endpointURL,
-        new TypeReference<List<TaskDetails>>() {},
-        connectTimeout,
-        readTimeout).load();
+    return new UrlDataLoader<TaskDetails>(endpointURL,
+        new TypeReference<List<TaskDetails>>() {
+        }, connectTimeout, readTimeout).load();
   }
 
-  private static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+  private static DateFormat DATE_FORMAT =
+      new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   public static void main(String[] args) throws IOException {
-    String apiHostname = "hraven.devel.vchannapattan.service.atla.twitter.com"; //null;
-    String cluster = "dw2@smf1";// null;
-    String username = "hraven"; // "bizinsights"; //null;
-    String batchDesc = "hraven_chargeback_hdfs" ;//  "Replicator_%2Fuser%2Fanalytics%2Fbackups%2Fflock"; //null;
+    String apiHostname = null;
+    String cluster = null;
+    String username = null;
+    String batchDesc = null;
     String signature = null;
     int limit = 2;
     boolean useHBaseAPI = false;
-    boolean dumpJson = true;
-    boolean hydrateTasks = true;
+    boolean dumpJson = false;
+    boolean hydrateTasks = false;
     List<String> taskResponseFilters = new ArrayList<String>();
     List<String> taskCounterResponseFilters = new ArrayList<String>();
     List<String> jobResponseFilters = new ArrayList<String>();
@@ -437,35 +426,35 @@ public class HRavenRestClient {
     usage.append(" -x - field to be included in flow response");
 
     for (int i = 0; i < args.length; i++) {
-      if("-a".equals(args[i])) {
+      if ("-a".equals(args[i])) {
         apiHostname = args[++i];
         continue;
-      } else if("-c".equals(args[i])) {
+      } else if ("-c".equals(args[i])) {
         cluster = args[++i];
         continue;
-      } else if("-u".equals(args[i])) {
+      } else if ("-u".equals(args[i])) {
         username = args[++i];
         continue;
-      } else if("-f".equals(args[i])) {
+      } else if ("-f".equals(args[i])) {
         batchDesc = args[++i];
         continue;
-      } else if("-s".equals(args[i])) {
+      } else if ("-s".equals(args[i])) {
         signature = args[++i];
         continue;
-      } else if("-l".equals(args[i])) {
+      } else if ("-l".equals(args[i])) {
         limit = Integer.parseInt(args[++i]);
         continue;
-      } else if("-H".equals(args[i])) {
+      } else if ("-H".equals(args[i])) {
         useHBaseAPI = true;
         continue;
-      } else if("-j".equals(args[i])) {
+      } else if ("-j".equals(args[i])) {
         dumpJson = true;
         continue;
-      } else if("-t".equals(args[i])) {
+      } else if ("-t".equals(args[i])) {
         hydrateTasks = true;
         continue;
-      } else if("-z".equals(args[i])) {
-        String taskFilters =  args[++i];
+      } else if ("-z".equals(args[i])) {
+        String taskFilters = args[++i];
         taskResponseFilters = Arrays.asList(taskFilters.split(","));
         continue;
       } else if("-q".equals(args[i])) {
@@ -476,13 +465,13 @@ public class HRavenRestClient {
         String jobFilters =  args[++i];
         jobResponseFilters = Arrays.asList(jobFilters.split(","));
         continue;
-      } else if("-x".equals(args[i])) {
-        String flowFilters =  args[++i];
-        flowResponseFilters =Arrays.asList(flowFilters.split(","));
+      } else if ("-x".equals(args[i])) {
+        String flowFilters = args[++i];
+        flowResponseFilters = Arrays.asList(flowFilters.split(","));
         continue;
-      } else if("-w".equals(args[i])) {
-        String configFilters =  args[++i];
-        configFields =Arrays.asList(configFilters.split(","));
+      } else if ("-w".equals(args[i])) {
+        String configFilters = args[++i];
+        configFields = Arrays.asList(configFilters.split(","));
         continue;
       } else if ("-h".equals(args[i])) {
         System.err.println(usage.toString());
@@ -492,28 +481,42 @@ public class HRavenRestClient {
       }
     }
 
-    if (apiHostname == null || cluster == null || username == null || batchDesc == null) {
+    if (apiHostname == null || cluster == null || username == null
+        || batchDesc == null) {
       System.err.println(usage.toString());
       System.exit(1);
     }
 
     List<Flow> flows;
     if (useHBaseAPI) {
-      JobHistoryService jobHistoryService = new JobHistoryService(HBaseConfiguration.create());
-      flows = jobHistoryService.getFlowSeries(cluster, username, batchDesc,
-          signature, hydrateTasks, limit);
+      Configuration hbaseConfiguration = HBaseConfiguration.create();
+      Connection connection = null;
+      try {
+        connection = ConnectionFactory.createConnection(hbaseConfiguration);
+        JobHistoryService jobHistoryService =
+            new JobHistoryService(hbaseConfiguration, connection);
+        flows = jobHistoryService.getFlowSeries(cluster, username, batchDesc,
+            signature, hydrateTasks, limit);
+      } finally {
+        if (connection != null) {
+          connection.close();
+        }
+      }
     } else {
-      HRavenRestClient client = new HRavenRestClient(apiHostname, 100000, 100000);
+      HRavenRestClient client =
+          new HRavenRestClient(apiHostname, 100000, 100000);
 
       // use this call to call flows without configs
       flows = client.fetchFlows(cluster, username, batchDesc, signature,
           flowResponseFilters, jobResponseFilters, limit);
       // use this call to call flows with configs
-      // flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
-      //   limit, flowResponseFilters, jobResponseFilters, configFields );
+      flows =
+          client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+              limit, flowResponseFilters, jobResponseFilters, configFields);
       // use this call to call flows with config patterns
-      // flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
-      //   limit, flowResponseFilters, jobResponseFilters, configFields );
+      flows =
+          client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+              limit, flowResponseFilters, jobResponseFilters, configFields);
 
       if (hydrateTasks) {
         for (Flow flow : flows) {
@@ -529,8 +532,8 @@ public class HRavenRestClient {
 
     if (dumpJson) {
       ObjectMapper om = ObjectMapperProvider.createCustomMapper();
-      SimpleModule module = new SimpleModule("hRavenModule", new Version(0, 4,
-          0, null));
+      SimpleModule module =
+          new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
       module.addSerializer(Flow.class, new FlowSerializer());
       module.addSerializer(JobDetails.class, new JobDetailsSerializer());
       module.addSerializer(TaskDetails.class, new TaskDetailsSerializer());
@@ -566,7 +569,8 @@ public class HRavenRestClient {
 
       if (minSubmitTime > 0 && maxFinishTime > 0) {
         System.out.println(String.format("Flow #%d: %s - %s", i++,
-          DATE_FORMAT.format(minSubmitTime), DATE_FORMAT.format(maxFinishTime)));
+            DATE_FORMAT.format(minSubmitTime),
+            DATE_FORMAT.format(maxFinishTime)));
       } else {
         System.out.println(String.format("Flow #%d:", i++));
       }
@@ -578,8 +582,12 @@ public class HRavenRestClient {
         sb.append("\t").append(job.getStatus());
         sb.append("\t").append(job.getTotalMaps());
         sb.append("\t").append(job.getTotalReduces());
-        long reduceBytesRead = job.getReduceCounters().getCounter("FileSystemCounters", "FILE_BYTES_READ") != null ?
-          job.getReduceCounters().getCounter("FileSystemCounters", "FILE_BYTES_READ").getValue() : -1;
+        long reduceBytesRead = job.getReduceCounters()
+            .getCounter("FileSystemCounters", "FILE_BYTES_READ") != null
+                ? job.getReduceCounters()
+                    .getCounter("FileSystemCounters", "FILE_BYTES_READ")
+                    .getValue()
+                : -1;
         sb.append("\t").append(reduceBytesRead);
         sb.append("\t").append(job.getConfiguration().get("pig.job.feature"));
         sb.append("\t").append(job.getConfiguration().get("pig.alias"));

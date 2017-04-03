@@ -24,6 +24,9 @@ import java.util.ArrayList;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.JsonGenerator;
@@ -33,9 +36,6 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig.Feature;
 import org.codehaus.jackson.map.SerializerProvider;
 import org.codehaus.jackson.map.module.SimpleModule;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import com.google.common.base.Predicate;
 import com.twitter.hraven.AppSummary;
@@ -107,7 +107,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     @Override
     public void serialize(Configuration conf, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
-      SerializationContext context = RestJSONResource.serializationContext
+      SerializationContext context = RestResource.serializationContext
           .get();
       Predicate<String> configFilter = context.getConfigurationFilter();
       Iterator<Map.Entry<String, String>> keyValueIterator = conf.iterator();
@@ -135,7 +135,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     public void serialize(TaskDetails td, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
 
-      SerializationContext context = RestJSONResource.serializationContext
+      SerializationContext context = RestResource.serializationContext
           .get();
       Predicate<String> includeFilter = context.getTaskFilter();
       Predicate<String> includeCounterFilter = context.getCounterFilter();
@@ -194,7 +194,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     @Override
     public void serialize(JobDetails jd, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
-      SerializationContext context = RestJSONResource.serializationContext
+      SerializationContext context = RestResource.serializationContext
           .get();
       Predicate<String> includeFilter = context.getJobFilter();
       Predicate<String> includeCounterFilter = context.getCounterFilter();
@@ -369,7 +369,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     public void serialize(Flow aFlow, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
 
-      SerializationContext context = RestJSONResource.serializationContext.get();
+      SerializationContext context = RestResource.serializationContext.get();
       SerializationContext.DetailLevel selectedSerialization = context.getLevel();
       Predicate<String> includeFilter = context.getFlowFilter();
       writeFlowDetails(jsonGenerator, aFlow, selectedSerialization, includeFilter);
@@ -385,7 +385,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
     @Override
     public void serialize(AppSummary anApp, JsonGenerator jsonGenerator,
         SerializerProvider serializerProvider) throws IOException {
-      SerializationContext.DetailLevel selectedSerialization = RestJSONResource.serializationContext
+      SerializationContext.DetailLevel selectedSerialization = RestResource.serializationContext
           .get().getLevel();
       if (selectedSerialization == SerializationContext.DetailLevel.EVERYTHING) {
         // should generate the json for everything in the app summary object
@@ -456,7 +456,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   /**
    * checks if the member is to be filtered out or no if filter itself is
    * null, writes out that member
-   * 
+   *
    * @param member
    * @param includeFilter
    * @param taskObject
@@ -565,9 +565,9 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
    *
    * @param jsonGenerator
    * @param aFlow
-   * @param selectedSerialization 
-   * @param includeFilter 
-   * @param includeJobFieldFilter 
+   * @param selectedSerialization
+   * @param includeFilter
+   * @param includeJobFieldFilter
    * @throws JsonGenerationException
    * @throws IOException
    */

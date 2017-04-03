@@ -1,5 +1,5 @@
 /*
-Copyright 2013 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,21 +15,23 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
-import com.twitter.hraven.FlowEvent;
-import com.twitter.hraven.FlowEventKey;
-import com.twitter.hraven.FlowKey;
-import com.twitter.hraven.Framework;
-import com.twitter.hraven.datasource.FlowEventService;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.twitter.hraven.FlowEvent;
+import com.twitter.hraven.FlowEventKey;
+import com.twitter.hraven.FlowKey;
+import com.twitter.hraven.Framework;
 
 /**
  */
@@ -39,21 +41,31 @@ public class TestFlowEventService {
   private static final String TEST_APP = "TestFlowEventService";
 
   private static HBaseTestingUtility UTIL = new HBaseTestingUtility();
+  private static Connection hbaseConnection = null;
 
   @BeforeClass
   public static void setupBeforeClass() throws Exception {
     UTIL.startMiniCluster();
     HRavenTestUtil.createFlowEventTable(UTIL);
+    hbaseConnection =
+        ConnectionFactory.createConnection(UTIL.getConfiguration());
   }
 
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
-    UTIL.shutdownMiniCluster();
+    try {
+      if (hbaseConnection != null) {
+        hbaseConnection.close();
+      }
+    } finally {
+      UTIL.shutdownMiniCluster();
+    }
   }
 
   @Test
   public void testFlowEventReadWrite() throws Exception {
-    FlowEventService service = new FlowEventService(UTIL.getConfiguration());
+    FlowEventService service = new FlowEventService(hbaseConnection);
+
     // setup some test data for a couple flows
     long flow1Run = System.currentTimeMillis();
     FlowKey flow1Key = new FlowKey(TEST_CLUSTER, TEST_USER, TEST_APP, flow1Run);
@@ -73,18 +85,20 @@ public class TestFlowEventService {
     // check partial results
     FlowEventKey flow2Last = flow2Events.get(4).getFlowEventKey();
     List<FlowEvent> flow2PartialResults = service.getFlowEventsSince(flow2Last);
-    assertEvents(flow2Events.subList(5, flow2Events.size()), flow2PartialResults);
+    assertEvents(flow2Events.subList(5, flow2Events.size()),
+        flow2PartialResults);
+
   }
 
   private List<FlowEvent> generateEvents(FlowKey flowKey, int count) {
     List<FlowEvent> events = new ArrayList<FlowEvent>(count);
     long now = System.currentTimeMillis();
-    for (int i=1; i<=count; i++) {
+    for (int i = 1; i <= count; i++) {
       FlowEvent event = new FlowEvent(new FlowEventKey(flowKey, i));
-      event.setTimestamp(now+i);
+      event.setTimestamp(now + i);
       event.setFramework(Framework.PIG);
       event.setType("test");
-      event.setEventDataJSON("event"+i);
+      event.setEventDataJSON("event" + i);
       events.add(event);
     }
     return events;
@@ -93,15 +107,17 @@ public class TestFlowEventService {
   private void assertEvents(List<FlowEvent> expected, List<FlowEvent> actual) {
     assertNotNull(actual);
     assertEquals(expected.size(), actual.size());
-    for (int i=0; i<expected.size(); i++) {
+    for (int i = 0; i < expected.size(); i++) {
       FlowEvent expectedEvent = expected.get(i);
       FlowEvent actualEvent = actual.get(i);
       assertNotNull(actualEvent);
-      assertEquals(expectedEvent.getFlowEventKey(), actualEvent.getFlowEventKey());
+      assertEquals(expectedEvent.getFlowEventKey(),
+          actualEvent.getFlowEventKey());
       assertEquals(expectedEvent.getTimestamp(), actualEvent.getTimestamp());
       assertEquals(expectedEvent.getType(), actualEvent.getType());
       assertEquals(expectedEvent.getFramework(), actualEvent.getFramework());
-      assertEquals(expectedEvent.getEventDataJSON(), actualEvent.getEventDataJSON());
+      assertEquals(expectedEvent.getEventDataJSON(),
+          actualEvent.getEventDataJSON());
     }
   }
 }

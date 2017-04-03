@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 <!--
-# Copyright 2013 Twitter, Inc.
+# Copyright 2016 Twitter, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,12 +21,10 @@
   <parent>
     <groupId>com.twitter.hraven</groupId>
     <artifactId>hraven</artifactId>
-    <version>0.9.19-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
-  <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven-core</artifactId>
-  <version>0.9.19-SNAPSHOT</version>
   <name>hRaven - core</name>
   <description>Core components of hRaven, including model classes and data access layer</description>
  
@@ -165,42 +163,60 @@
     <dependency>
       <groupId>com.twitter.common</groupId>
       <artifactId>stats</artifactId>
-      <version>0.0.98</version>
+      <version>0.0.115</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common</groupId>
       <artifactId>application</artifactId>
-      <version>0.0.45</version>
+      <version>0.0.99</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common</groupId>
       <artifactId>application-module-http</artifactId>
-      <version>0.0.45</version>
+      <version>0.0.95</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common</groupId>
       <artifactId>application-module-stats</artifactId>
-      <version>0.0.44</version>
-    </dependency>
-    <dependency>
-      <groupId>com.twitter.common</groupId>
-      <artifactId>application-module-applauncher</artifactId>
-      <version>0.0.45</version>
+      <version>0.0.55</version>
     </dependency>
     <dependency>
       <groupId>com.twitter.common</groupId>
       <artifactId>application-module-log</artifactId>
-      <version>0.0.45</version>
+      <version>0.0.73</version>
     </dependency>
+    <!-- Adding explicit dependency because the com.twitter.common.net-http-handlers 0.0.92 pom is broken and refers to non-existent version 20150609164129-0513299  -->
     <dependency>
-      <groupId>com.twitter.common</groupId>
-      <artifactId>net-http</artifactId>
-      <version>0.0.45</version>
+      <groupId>com.twitter</groupId>
+      <artifactId>util-registry_2.10</artifactId>
+      <version>6.34.0</version>
+    </dependency>
+    <!-- Adding explicit dependency because the com.twitter.common.application-module-http has broken dependencies -->
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>util-core_2.10</artifactId>
+      <version>6.34.0</version>
+    </dependency>
+    <!-- Adding explicit dependency because the com.twitter.common.application-module-http has broken dependencies -->
+    <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>util-jvm_2.10</artifactId>
+      <version>6.34.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.inject</groupId>
+      <artifactId>guice</artifactId>
+      <version>4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.inject</groupId>
+      <artifactId>javax.inject</artifactId>
+      <version>1</version>
     </dependency>
     <dependency>
       <groupId>commons-logging</groupId>
@@ -253,7 +269,7 @@
 
     <dependency>
        <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-core</artifactId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -281,7 +297,19 @@
     </dependency> 
     <dependency>
       <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase</artifactId>
+      <artifactId>hbase-server</artifactId>
+      <version>${hbase.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-common</artifactId>
+      <version>${hbase.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-client</artifactId>
       <version>${hbase.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -366,15 +394,8 @@
 
     <!-- Test dependencies -->
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-test</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>test</scope>
-    </dependency>
-    
-    <dependency>
       <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase</artifactId>
+      <artifactId>hbase-testing-util</artifactId>
       <version>${hbase.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
