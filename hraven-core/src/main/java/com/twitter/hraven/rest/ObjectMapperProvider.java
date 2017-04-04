@@ -510,7 +510,6 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
    *
    * @param member
    * @param includeFilter
-   * @param taskObject
    * @param jsonGenerator
    * @throws JsonGenerationException
    * @throws IOException
@@ -518,7 +517,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   public static void filteredCounterWrite(String member, Predicate<String> includeFilter,
                                           Predicate<String> includeCounterFilter,
                                    CounterMap counterMap, JsonGenerator jsonGenerator)
-      throws JsonGenerationException, IOException {
+      throws IOException {
     if (includeFilter != null && includeCounterFilter == null) {
       if (includeFilter.apply(member)) {
         jsonGenerator.writeFieldName(member);
