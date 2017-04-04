@@ -40,8 +40,11 @@ import org.codehaus.jackson.type.TypeReference;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import com.twitter.hraven.datasource.HRavenTestUtil;
 import com.twitter.hraven.datasource.JobHistoryByIdService;
 import com.twitter.hraven.datasource.JobHistoryService;
@@ -195,6 +198,117 @@ public class TestJsonSerde {
     assertNull(deserConfig.get("name"));
     assertEquals(fullConfig.get("shortprop"), deserConfig.get("shortprop"));
     assertEquals(fullConfig.get("longprop"), deserConfig.get("longprop"));
+  }
+
+  @Test
+  public void testJobSerializationContextFilters() throws Exception {
+    // load a sample flow
+    final short numJobs = 1;
+
+    GenerateFlowTestData flowDataGen = new GenerateFlowTestData();
+    Table historyTable =
+        hbaseConnection.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
+    flowDataGen.loadFlow("c1@local", "buser", "testJobSerializationContextFilters", 1234,
+        "a", numJobs, 10, idService, historyTable);
+    historyTable.close();
+
+    JobHistoryService service =
+        new JobHistoryService(UTIL.getConfiguration(), hbaseConnection);
+    Flow actualFlow = service.getFlow("c1@local", "buser",
+        "testJobSerializationContextFilters", 1234, false);
+    assertNotNull(actualFlow);
+    assertTrue(actualFlow.getJobCount() == numJobs);
+    JobDetails actualJob = actualFlow.getJobs().get(0);
+
+    // test serialization matching specific property keys
+    // serialize job into json
+    List<String> includeFields = Lists.newArrayList("megabyteMillis", "jobId", "jobKey", "status", "counters");
+    Predicate<String> includeFilter = new SerializationContext.FieldNameFilter(includeFields);
+    SerializationContext serializationContext =
+        new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
+        null, null,
+        includeFilter, null, null);
+    RestResource.serializationContext.set(
+        serializationContext);
+
+    ObjectMapper om = ObjectMapperProvider.createCustomMapper();
+    om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
+    om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+    om.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
+        false);
+    ByteArrayOutputStream f = new ByteArrayOutputStream();
+    om.writeValue(f, actualJob);
+    ByteArrayInputStream is = new ByteArrayInputStream(f.toByteArray());
+    JobDetails deserJob = (JobDetails) JSONUtil.readJson(is, new TypeReference<JobDetails>() {
+    });
+
+    // check the values match
+    assertEquals(actualJob.getJobId(), deserJob.getJobId());
+    assertEquals(actualJob.getJobKey(), deserJob.getJobKey());
+    assertEquals(actualJob.getStatus(), deserJob.getStatus());
+    assertEquals(actualJob.getMegabyteMillis(), deserJob.getMegabyteMillis());
+
+    // check all counters are here
+    assertEquals(actualJob.getCounters().getGroups(), deserJob.getCounters().getGroups());
+    for (String group : actualJob.getCounters().getGroups()) {
+      assertEquals(actualJob.getCounters().getGroup(group), deserJob.getCounters().getGroup(group));
+    }
+  }
+
+  @Test
+  public void testJobSerializationContextCounterFilters() throws Exception {
+    // load a sample flow
+    final short numJobs = 1;
+
+    GenerateFlowTestData flowDataGen = new GenerateFlowTestData();
+    Table historyTable =
+        hbaseConnection.getTable(TableName.valueOf(Constants.HISTORY_TABLE));
+    flowDataGen.loadFlow("c1@local", "buser", "testJobSerializationContextCounterFilters", 1234,
+        "a", numJobs, 10, idService, historyTable);
+    historyTable.close();
+
+    JobHistoryService service =
+        new JobHistoryService(UTIL.getConfiguration(), hbaseConnection);
+    Flow actualFlow = service.getFlow("c1@local", "buser",
+        "testJobSerializationContextCounterFilters", 1234, false);
+    assertNotNull(actualFlow);
+    assertTrue(actualFlow.getJobCount() == numJobs);
+    JobDetails actualJob = actualFlow.getJobs().get(0);
+
+    // test serialization matching specific property keys
+    // serialize job into json
+    List<String> includeFields = Lists.newArrayList("megabyteMillis", "jobId", "jobKey", "status");
+    List<String> includeCounters = Lists.newArrayList("FileSystemCounters.HDFS_BYTES_READ", "FileSystemCounters.HDFS_BYTES_WRITTEN");
+    Predicate<String> includeFilter = new SerializationContext.FieldNameFilter(includeFields);
+    Predicate<String> includeCounterPredicate = new SerializationContext.FieldNameFilter(includeCounters);
+
+    SerializationContext serializationContext =
+        new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
+            null, null,
+            includeFilter, null, includeCounterPredicate);
+    RestResource.serializationContext.set(
+        serializationContext);
+
+    ObjectMapper om = ObjectMapperProvider.createCustomMapper();
+    om.configure(SerializationConfig.Feature.INDENT_OUTPUT, true);
+    om.configure(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS, false);
+    om.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
+        false);
+    ByteArrayOutputStream f = new ByteArrayOutputStream();
+    om.writeValue(f, actualJob);
+    ByteArrayInputStream is = new ByteArrayInputStream(f.toByteArray());
+    JobDetails deserJob = (JobDetails) JSONUtil.readJson(is, new TypeReference<JobDetails>() {
+    });
+
+    // check the values match
+    assertEquals(actualJob.getJobId(), deserJob.getJobId());
+    assertEquals(actualJob.getJobKey(), deserJob.getJobKey());
+    assertEquals(actualJob.getStatus(), deserJob.getStatus());
+    assertEquals(actualJob.getMegabyteMillis(), deserJob.getMegabyteMillis());
+
+    // check all FileSystem counters are here
+    assertEquals(Sets.newHashSet("FileSystemCounters"), deserJob.getCounters().getGroups());
+    assertEquals(actualJob.getCounters().getGroup("FileSystemCounters"), deserJob.getCounters().getGroup("FileSystemCounters"));
   }
 
   private void assertFlowDetails(List<Flow> flow1, List<Flow> flow2) {

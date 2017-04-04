@@ -199,7 +199,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       Predicate<String> includeFilter = context.getJobFilter();
       Predicate<String> includeCounterFilter = context.getCounterFilter();
 
-      if (includeCounterFilter != null && includeFilter == null){
+      if (includeCounterFilter != null && includeFilter == null) {
         includeFilter = new SerializationContext.FieldNameFilter(new ArrayList<String>());
       }
 
@@ -515,8 +515,8 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
    * @throws IOException
    */
   public static void filteredCounterWrite(String member, Predicate<String> includeFilter,
-                                          Predicate<String> includeCounterFilter,
-                                   CounterMap counterMap, JsonGenerator jsonGenerator)
+      Predicate<String> includeCounterFilter,
+      CounterMap counterMap, JsonGenerator jsonGenerator)
       throws IOException {
     if (includeFilter != null && includeCounterFilter == null) {
       if (includeFilter.apply(member)) {
@@ -524,7 +524,7 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
         jsonGenerator.writeObject(counterMap);
       }
     } else {
-      if(includeCounterFilter != null) {
+      if (includeCounterFilter != null) {
         // get group name, counter name,
         // check if it is wanted
         // if yes print it.
@@ -536,11 +536,11 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
 
         for (String group : counterMap.getGroups()) {
           Map<String, Counter> groupMap = counterMap.getGroup(group);
-          for (String counterName : groupMap.keySet()) {
-            Counter counter = groupMap.get(counterName);
+          for (Map.Entry<String, Counter> nameCounterEntry : groupMap.entrySet()) {
+            Counter counter = nameCounterEntry.getValue();
             fullCounterName = group + "." + counter.getKey();
-            if(includeCounterFilter.apply(fullCounterName)) {
-              if(startObjectGroupMap == false) {
+            if (includeCounterFilter.apply(fullCounterName)) {
+              if (startObjectGroupMap == false) {
                 jsonGenerator.writeFieldName(group);
                 jsonGenerator.writeStartObject();
                 startObjectGroupMap = true;
@@ -549,12 +549,12 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
               jsonGenerator.writeNumber(counter.getValue());
             }
           }
-          if(startObjectGroupMap) {
+          if (startObjectGroupMap) {
             jsonGenerator.writeEndObject();
             startObjectGroupMap = false;
           }
         }
-          jsonGenerator.writeEndObject();
+        jsonGenerator.writeEndObject();
       }
     }
   }
@@ -566,7 +566,6 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
    * @param aFlow
    * @param selectedSerialization
    * @param includeFilter
-   * @param includeJobFieldFilter
    * @throws JsonGenerationException
    * @throws IOException
    */
