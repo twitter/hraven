@@ -45,6 +45,7 @@ import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.rest.ObjectMapperProvider;
 import com.twitter.hraven.rest.ObjectMapperProvider.FlowSerializer;
 import com.twitter.hraven.rest.ObjectMapperProvider.JobDetailsSerializer;
+import com.twitter.hraven.rest.ObjectMapperProvider.TaskDetailsSerializer;
 import com.twitter.hraven.rest.RestJSONResource;
 import com.twitter.hraven.util.StringUtil;
 
@@ -353,17 +354,18 @@ public class HRavenRestClient {
   }
 
   /**
-   * Fetch details tasks of a given job for the specified fields
+   * Fetch task details of a given job for the specified fields and filter the result objects
+   * to include the specifically requested task response entries as well as the specific
+   * task counter entries.
    * @param cluster
    * @param jobId
    * @param taskResponseFilters
+   * @param taskResponseCounterFilters
    * @return
    */
   public List<TaskDetails> fetchTaskDetails(String cluster, String jobId,
-                                            List<String> taskResponseFilters,
-                                            List<String>
-                                                taskResponseCounterFilters)
-      throws IOException {
+      List<String> taskResponseFilters,
+      List<String> taskResponseCounterFilters) throws IOException {
     String taskFilters = StringUtil.buildParam("include",
         taskResponseFilters);
     String taskCounterFilters = StringUtil.buildParam("includeCounter",
@@ -374,10 +376,7 @@ public class HRavenRestClient {
     return retrieveTaskDetailsFromUrl(urlString);
   }
 
-  private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL)
-      throws IOException {
-  private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL)
-      throws IOException {
+  private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL) throws IOException {
     if (LOG.isInfoEnabled()) {
       LOG.info("Requesting task history from " + endpointURL);
     }
@@ -458,7 +457,7 @@ public class HRavenRestClient {
         taskResponseFilters = Arrays.asList(taskFilters.split(","));
         continue;
       } else if("-q".equals(args[i])) {
-        String taskCounterFilters =  args[++i];
+        String taskCounterFilters = args[++i];
         taskCounterResponseFilters = Arrays.asList(taskCounterFilters.split(","));
         continue;
       } else if("-y".equals(args[i])) {
@@ -506,16 +505,17 @@ public class HRavenRestClient {
       HRavenRestClient client =
           new HRavenRestClient(apiHostname, 100000, 100000);
 
+      // the 3 calls below are examples of how you can use the hraven client api to retrieve flows
       // use this call to call flows without configs
       flows = client.fetchFlows(cluster, username, batchDesc, signature,
           flowResponseFilters, jobResponseFilters, limit);
+
       // use this call to call flows with configs
-      flows =
-          client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+      flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
               limit, flowResponseFilters, jobResponseFilters, configFields);
+
       // use this call to call flows with config patterns
-      flows =
-          client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+      flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
               limit, flowResponseFilters, jobResponseFilters, configFields);
 
       if (hydrateTasks) {
