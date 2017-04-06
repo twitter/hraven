@@ -16,23 +16,38 @@ class UrlDataLoader<T> {
 
     private static final Log LOG = LogFactory.getLog(UrlDataLoader.class);
 
+    private static final String ACCEPT_ENCODING = "Accept-Encoding";
+
     private String endpointURL;
     private TypeReference typeRef;
     private int connectTimeout;
     private int readTimeout;
+    private boolean useCompression;
 
     /**
-     * Constructor.
+     * Constructor, defaults to using compression (gzip / deflate).
      * @param endpointUrl
      * @param t TypeReference for json deserialization, should be TypeReference<List<T>>.
      * @throws java.io.IOException
      */
     public UrlDataLoader(String endpointUrl, TypeReference t, int connectTimeout, int readTimeout)
         throws IOException {
+      this(endpointUrl, t, connectTimeout, readTimeout, true);
+    }
+
+    /**
+     * Constructor.
+     * @param endpointUrl
+     * @param t TypeReference for json deserialization, should be TypeReference<List<T>>.
+     * @throws java.io.IOException
+    */
+    public UrlDataLoader(String endpointUrl, TypeReference t, int connectTimeout, int readTimeout,
+                         boolean useCompression) throws IOException {
       this.endpointURL = endpointUrl;
       this.typeRef = t;
       this.connectTimeout = connectTimeout;
       this.readTimeout = readTimeout;
+      this.useCompression = useCompression;
     }
 
     @SuppressWarnings("unchecked")
@@ -43,6 +58,9 @@ class UrlDataLoader<T> {
         URLConnection connection = url.openConnection();
         connection.setConnectTimeout(connectTimeout);
         connection.setReadTimeout(readTimeout);
+        if (useCompression) {
+          connection.setRequestProperty(ACCEPT_ENCODING, "gzip, deflate");
+        }
         input = connection.getInputStream();
         return (List<T>) JSONUtil.readJson(input, typeRef);
       } finally {
