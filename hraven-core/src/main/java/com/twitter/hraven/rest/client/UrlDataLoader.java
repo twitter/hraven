@@ -2,12 +2,16 @@ package com.twitter.hraven.rest.client;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.List;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.codehaus.jackson.type.TypeReference;
 
 import com.twitter.hraven.util.JSONUtil;
@@ -15,8 +19,6 @@ import com.twitter.hraven.util.JSONUtil;
 class UrlDataLoader<T> {
 
     private static final Log LOG = LogFactory.getLog(UrlDataLoader.class);
-
-    private static final String ACCEPT_ENCODING = "Accept-Encoding";
 
     private String endpointURL;
     private TypeReference typeRef;
@@ -53,25 +55,32 @@ class UrlDataLoader<T> {
     @SuppressWarnings("unchecked")
     public List<T> load() throws IOException {
       InputStream input = null;
+
+      RequestConfig requestConfig =
+          RequestConfig.custom()
+              .setConnectTimeout(connectTimeout)
+              .setConnectionRequestTimeout(connectTimeout)
+              .setSocketTimeout(readTimeout).build();
+      HttpClientBuilder httpClientBuilder =
+          HttpClientBuilder.create().setDefaultRequestConfig(requestConfig);
+
+      if (! useCompression) {
+        LOG.info("Not using compression!");
+        httpClientBuilder.disableContentCompression();
+      } else {
+        LOG.info("Using compression by default! Trying gzip, deflate");
+      }
+
+      CloseableHttpClient httpClient = httpClientBuilder.build();
+      HttpGet httpGet = new HttpGet(endpointURL);
+      HttpResponse response = httpClient.execute(httpGet);
+
       try {
-        URL url = new URL(endpointURL);
-        URLConnection connection = url.openConnection();
-        connection.setConnectTimeout(connectTimeout);
-        connection.setReadTimeout(readTimeout);
-        if (useCompression) {
-          connection.setRequestProperty(ACCEPT_ENCODING, "gzip, deflate");
-        }
-        input = connection.getInputStream();
+        input = response.getEntity().getContent();
         return (List<T>) JSONUtil.readJson(input, typeRef);
       } finally {
-        if (input != null) {
-          try {
-            input.close();
-          } catch (IOException e) {
-            LOG.warn(e);
-          }
-        }
+        IOUtils.closeQuietly(input);
+        IOUtils.closeQuietly(httpClient);
       }
     }
 }
-
