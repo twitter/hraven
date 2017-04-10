@@ -334,14 +334,14 @@
       <version>${jackson.version}</version>
     </dependency>
 
-    <!-- Test dependencies 
+    <!-- Test dependencies
     <dependency>
       <groupId>org.apache.hadoop</groupId>
    #TODO dogpiledays   <artifactId>hadoop-test</artifactId>
       <version>${hadoop.version}</version>
       <scope>test</scope>
     </dependency>
-   --> 
+   -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-client</artifactId>

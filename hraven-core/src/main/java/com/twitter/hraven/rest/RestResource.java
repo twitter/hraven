@@ -104,16 +104,23 @@ public class RestResource {
   @Produces(MediaType.APPLICATION_JSON)
   public JobDetails getJobById(@PathParam("cluster") String cluster,
       @PathParam("jobId") String jobId,
-      @QueryParam("include") List<String> includeFields) throws IOException {
+      @QueryParam("include") List<String> includeFields,
+      @QueryParam("includeCounter") List<String> includeCounters) throws IOException {
     LOG.info("Fetching JobDetails for jobId=" + jobId);
     Stopwatch timer = new Stopwatch().start();
     Predicate<String> includeFilter = null;
     if (includeFields != null && !includeFields.isEmpty()) {
       includeFilter = new SerializationContext.FieldNameFilter(includeFields);
     }
+
+    Predicate<String> includeCountersFilter = null;
+    if (includeCounters != null && !includeCounters.isEmpty()) {
+      includeCountersFilter = new SerializationContext.FieldNameFilter(includeCounters);
+    }
+
     serializationContext.set(
         new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
-            null, null, includeFilter, null));
+            null, null, includeFilter, null, includeCountersFilter));
     JobHistoryService jobHistoryService =
         new JobHistoryService(HBASE_CONF, HBASE_CONNECTION);
     JobDetails jobDetails = jobHistoryService.getJobByJobID(cluster, jobId);
@@ -122,12 +129,14 @@ public class RestResource {
       LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster
           + SLASH + jobId + "&"
           + StringUtil.buildParam("include", includeFields)
+          + StringUtil.buildParam("includeCounter", includeCounters)
           + " fetched jobDetails for " + jobDetails.getJobName() + " in "
           + timer);
     } else {
       LOG.info("For job/{cluster}/{jobId} with input query:" + " job/" + cluster
           + SLASH + jobId + "&"
           + StringUtil.buildParam("include", includeFields)
+          + StringUtil.buildParam("includeCounter", includeCounters)
           + " No jobDetails found, but spent " + timer);
     }
     // export latency metrics
@@ -143,7 +152,8 @@ public class RestResource {
   @Produces(MediaType.APPLICATION_JSON)
   public List<TaskDetails> getJobTasksById(@PathParam("cluster") String cluster,
       @PathParam("jobId") String jobId,
-      @QueryParam("include") List<String> includeFields) throws IOException {
+      @QueryParam("include") List<String> includeFields,
+      @QueryParam("includeCounter") List<String> includeCounters) throws IOException {
     LOG.info("Fetching tasks info for jobId=" + jobId);
     Stopwatch timer = new Stopwatch().start();
 
@@ -151,9 +161,15 @@ public class RestResource {
     if (includeFields != null && !includeFields.isEmpty()) {
       includeFilter = new SerializationContext.FieldNameFilter(includeFields);
     }
+
+    Predicate<String> includeCountersFilter = null;
+    if (includeCounters != null && !includeCounters.isEmpty()) {
+      includeCountersFilter = new SerializationContext.FieldNameFilter(includeCounters);
+    }
+
     serializationContext.set(
         new SerializationContext(SerializationContext.DetailLevel.EVERYTHING,
-            null, null, null, includeFilter));
+            null, null, null, includeFilter, includeCountersFilter));
 
     JobHistoryService jobHistoryService =
         new JobHistoryService(HBASE_CONF, HBASE_CONNECTION);
@@ -164,11 +180,13 @@ public class RestResource {
 
     if (tasks != null && !tasks.isEmpty()) {
       LOG.info("For endpoint /tasks/" + cluster + "/" + jobId + "?"
-          + StringUtil.buildParam("include", includeFields) + " fetched "
+          + StringUtil.buildParam("include", includeFields)
+          + StringUtil.buildParam("includeCounter", includeCounters) + " fetched "
           + tasks.size() + " tasks, spent time " + timer);
     } else {
       LOG.info("For endpoint /tasks/" + cluster + "/" + jobId + "?"
           + StringUtil.buildParam("include", includeFields)
+          + StringUtil.buildParam("includeCounter", includeCounters)
           + ", found no tasks, spent time " + timer);
     }
     return tasks;

@@ -18,6 +18,8 @@ package com.twitter.hraven.rest;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.ArrayList;
+
 
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
@@ -136,8 +138,13 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       SerializationContext context = RestResource.serializationContext
           .get();
       Predicate<String> includeFilter = context.getTaskFilter();
+      Predicate<String> includeCounterFilter = context.getCounterFilter();
 
-      if (includeFilter == null) {
+      if(includeCounterFilter != null && includeFilter == null) {
+        includeFilter = new SerializationContext.FieldNameFilter(new ArrayList<String>());
+      }
+
+      if (includeFilter == null && includeCounterFilter == null) {
         // should generate the json for everything in the task details object
         ObjectMapper om = new ObjectMapper();
         om.registerModule(addJobMappings(createhRavenModule()));
@@ -157,8 +164,8 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
         filteredWrite("taskType", includeFilter, td.getType(), jsonGenerator);
         filteredWrite("status", includeFilter, td.getStatus(), jsonGenerator);
         filteredWrite("splits", includeFilter, td.getSplits(), jsonGenerator);
-        filteredWrite("counters", includeFilter, td.getCounters(),
-            jsonGenerator);
+        filteredCounterWrite("counters", includeFilter, includeCounterFilter,
+            td.getCounters(), jsonGenerator);
         filteredWrite("taskAttemptId", includeFilter, td.getTaskAttemptId(),
             jsonGenerator);
         filteredWrite("trackerName", includeFilter, td.getTrackerName(),
@@ -190,8 +197,13 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
       SerializationContext context = RestResource.serializationContext
           .get();
       Predicate<String> includeFilter = context.getJobFilter();
+      Predicate<String> includeCounterFilter = context.getCounterFilter();
 
-      if (includeFilter == null) {
+      if (includeCounterFilter != null && includeFilter == null) {
+        includeFilter = new SerializationContext.FieldNameFilter(new ArrayList<String>());
+      }
+
+      if (includeFilter == null && includeCounterFilter == null) {
         ObjectMapper om = new ObjectMapper();
         om.registerModule(addJobMappings(createhRavenModule()));
         om.writeValue(jsonGenerator, jd);
@@ -249,14 +261,14 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
         filteredWrite("megabyteMillis", includeFilter, jd.getMegabyteMillis(),
             jsonGenerator);
         filteredWrite("cost", includeFilter, jd.getCost(), jsonGenerator);
-        filteredWrite("counters", includeFilter, jd.getCounters(),
-            jsonGenerator);
-        filteredWrite("mapCounters", includeFilter, jd.getMapCounters(),
-            jsonGenerator);
-        filteredWrite("reduceCounters", includeFilter, jd.getReduceCounters(),
-            jsonGenerator);
-        filteredWrite("cost", includeFilter, jd.getCost(), jsonGenerator);
         filteredWrite("configuration", includeFilter, jd.getConfiguration(), jsonGenerator);
+
+        filteredCounterWrite("counters", includeFilter, includeCounterFilter,
+            jd.getCounters(), jsonGenerator);
+        filteredCounterWrite("mapCounters", includeFilter, includeCounterFilter,
+            jd.getMapCounters(), jsonGenerator);
+        filteredCounterWrite("reduceCounters", includeFilter, includeCounterFilter,
+            jd.getReduceCounters(), jsonGenerator);
         jsonGenerator.writeEndObject();
       }
     }
@@ -467,13 +479,93 @@ public class ObjectMapperProvider implements ContextResolver<ObjectMapper> {
   }
 
   /**
+   * checks if the member is to be filtered out or no if filter itself is
+   * null, writes out that member as a String
+   *
+   * @param member
+   * @param includeFilter
+   * @param taskObject
+   * @param jsonGenerator
+   * @throws JsonGenerationException
+   * @throws IOException
+   */
+  public static void filteredWrite(String member, Predicate<String> includeFilter,
+      String taskObject, JsonGenerator jsonGenerator)
+      throws JsonGenerationException, IOException {
+    if (includeFilter != null) {
+      if (includeFilter.apply(member)) {
+        jsonGenerator.writeFieldName(member);
+        jsonGenerator.writeString(taskObject);
+      }
+    } else {
+      jsonGenerator.writeFieldName(member);
+      jsonGenerator.writeString(taskObject);
+    }
+  }
+
+
+  /**
+   * checks if the member is to be filtered out or no if filter itself is
+   * null, writes out that member
+   *
+   * @param member
+   * @param includeFilter
+   * @param jsonGenerator
+   * @throws JsonGenerationException
+   * @throws IOException
+   */
+  public static void filteredCounterWrite(String member, Predicate<String> includeFilter,
+      Predicate<String> includeCounterFilter,
+      CounterMap counterMap, JsonGenerator jsonGenerator)
+      throws IOException {
+    if (includeFilter != null && includeCounterFilter == null) {
+      if (includeFilter.apply(member)) {
+        jsonGenerator.writeFieldName(member);
+        jsonGenerator.writeObject(counterMap);
+      }
+    } else {
+      if (includeCounterFilter != null) {
+        // get group name, counter name,
+        // check if it is wanted
+        // if yes print it.
+        boolean startObjectGroupMap = false;
+        jsonGenerator.writeFieldName(member);
+
+        String fullCounterName;
+        jsonGenerator.writeStartObject();
+
+        for (String group : counterMap.getGroups()) {
+          Map<String, Counter> groupMap = counterMap.getGroup(group);
+          for (Map.Entry<String, Counter> nameCounterEntry : groupMap.entrySet()) {
+            Counter counter = nameCounterEntry.getValue();
+            fullCounterName = group + "." + counter.getKey();
+            if (includeCounterFilter.apply(fullCounterName)) {
+              if (startObjectGroupMap == false) {
+                jsonGenerator.writeFieldName(group);
+                jsonGenerator.writeStartObject();
+                startObjectGroupMap = true;
+              }
+              jsonGenerator.writeFieldName(counter.getKey());
+              jsonGenerator.writeNumber(counter.getValue());
+            }
+          }
+          if (startObjectGroupMap) {
+            jsonGenerator.writeEndObject();
+            startObjectGroupMap = false;
+          }
+        }
+        jsonGenerator.writeEndObject();
+      }
+    }
+  }
+
+  /**
    * Writes out the flow object
    *
    * @param jsonGenerator
    * @param aFlow
    * @param selectedSerialization
    * @param includeFilter
-   * @param includeJobFieldFilter
    * @throws JsonGenerationException
    * @throws IOException
    */

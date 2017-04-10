@@ -25,7 +25,6 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.util.ByteUtil;
-
 /**
  * Captures the details of tasks for a hadoop job
  */
@@ -72,6 +71,7 @@ public class TaskDetails implements Comparable<TaskDetails> {
     this.taskId = taskId;
   }
 
+  @JsonProperty("taskType")
   public String getType() {
     return type;
   }

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -44,6 +45,7 @@ import com.twitter.hraven.datasource.JobHistoryService;
 import com.twitter.hraven.rest.ObjectMapperProvider;
 import com.twitter.hraven.rest.ObjectMapperProvider.FlowSerializer;
 import com.twitter.hraven.rest.ObjectMapperProvider.JobDetailsSerializer;
+import com.twitter.hraven.rest.ObjectMapperProvider.TaskDetailsSerializer;
 import com.twitter.hraven.rest.RestJSONResource;
 import com.twitter.hraven.util.StringUtil;
 
@@ -351,8 +353,30 @@ public class HRavenRestClient {
     return retrieveTaskDetailsFromUrl(urlString);
   }
 
-  private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL)
-      throws IOException {
+  /**
+   * Fetch task details of a given job for the specified fields and filter the result objects
+   * to include the specifically requested task response entries as well as the specific
+   * task counter entries.
+   * @param cluster
+   * @param jobId
+   * @param taskResponseFilters
+   * @param taskResponseCounterFilters
+   * @return
+   */
+  public List<TaskDetails> fetchTaskDetails(String cluster, String jobId,
+      List<String> taskResponseFilters,
+      List<String> taskResponseCounterFilters) throws IOException {
+    String taskFilters = StringUtil.buildParam("include",
+        taskResponseFilters);
+    String taskCounterFilters = StringUtil.buildParam("includeCounter",
+        taskResponseCounterFilters);
+
+    String urlString = String.format("http://%s/api/v1/tasks/%s/%s?%s&%s",
+        apiHostname, cluster, jobId, taskFilters, taskCounterFilters);
+    return retrieveTaskDetailsFromUrl(urlString);
+  }
+
+  private List<TaskDetails> retrieveTaskDetailsFromUrl(String endpointURL) throws IOException {
     if (LOG.isInfoEnabled()) {
       LOG.info("Requesting task history from " + endpointURL);
     }
@@ -375,6 +399,7 @@ public class HRavenRestClient {
     boolean dumpJson = false;
     boolean hydrateTasks = false;
     List<String> taskResponseFilters = new ArrayList<String>();
+    List<String> taskCounterResponseFilters = new ArrayList<String>();
     List<String> jobResponseFilters = new ArrayList<String>();
     List<String> flowResponseFilters = new ArrayList<String>();
     List<String> configFields = new ArrayList<String>();
@@ -395,6 +420,7 @@ public class HRavenRestClient {
     usage.append(" -t - retrieve task information as well");
     usage.append(" -w - config field to be included in job response");
     usage.append(" -z - field to be included in task response");
+    usage.append(" -q - counter to be included in task response");
     usage.append(" -y - field to be included in job response");
     usage.append(" -x - field to be included in flow response");
 
@@ -430,8 +456,12 @@ public class HRavenRestClient {
         String taskFilters = args[++i];
         taskResponseFilters = Arrays.asList(taskFilters.split(","));
         continue;
-      } else if ("-y".equals(args[i])) {
-        String jobFilters = args[++i];
+      } else if("-q".equals(args[i])) {
+        String taskCounterFilters = args[++i];
+        taskCounterResponseFilters = Arrays.asList(taskCounterFilters.split(","));
+        continue;
+      } else if("-y".equals(args[i])) {
+        String jobFilters =  args[++i];
         jobResponseFilters = Arrays.asList(jobFilters.split(","));
         continue;
       } else if ("-x".equals(args[i])) {
@@ -475,24 +505,25 @@ public class HRavenRestClient {
       HRavenRestClient client =
           new HRavenRestClient(apiHostname, 100000, 100000);
 
+      // the 3 calls below are examples of how you can use the hraven client api to retrieve flows
       // use this call to call flows without configs
       flows = client.fetchFlows(cluster, username, batchDesc, signature,
           flowResponseFilters, jobResponseFilters, limit);
+
       // use this call to call flows with configs
-      flows =
-          client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+      flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
               limit, flowResponseFilters, jobResponseFilters, configFields);
+
       // use this call to call flows with config patterns
-      flows =
-          client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
+      flows = client.fetchFlowsWithConfig(cluster, username, batchDesc, signature,
               limit, flowResponseFilters, jobResponseFilters, configFields);
 
       if (hydrateTasks) {
         for (Flow flow : flows) {
           for (JobDetails jd : flow.getJobs()) {
             String jobId = jd.getJobId();
-            List<TaskDetails> td =
-                client.fetchTaskDetails(cluster, jobId, taskResponseFilters);
+            List<TaskDetails> td = client.fetchTaskDetails(cluster, jobId, taskResponseFilters,
+                taskCounterResponseFilters);
             jd.addTasks(td);
           }
         }
@@ -505,6 +536,7 @@ public class HRavenRestClient {
           new SimpleModule("hRavenModule", new Version(0, 4, 0, null));
       module.addSerializer(Flow.class, new FlowSerializer());
       module.addSerializer(JobDetails.class, new JobDetailsSerializer());
+      module.addSerializer(TaskDetails.class, new TaskDetailsSerializer());
       om.registerModule(module);
       if (flows.size() > 0) {
         System.out.println(om.writeValueAsString(flows.get(0)));
