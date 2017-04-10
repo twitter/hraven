@@ -68,7 +68,7 @@ class UrlDataLoader<T> {
         LOG.info("Not using compression!");
         httpClientBuilder.disableContentCompression();
       } else {
-        LOG.info("Using compression by default! Trying gzip, deflate");
+        LOG.debug("Using compression by default! Trying gzip, deflate");
       }
 
       CloseableHttpClient httpClient = httpClientBuilder.build();
