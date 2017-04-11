@@ -175,7 +175,10 @@ public class RestResource {
         new JobHistoryService(HBASE_CONF, HBASE_CONNECTION);
     JobDetails jobDetails =
         jobHistoryService.getJobByJobID(cluster, jobId, true);
-    List<TaskDetails> tasks = jobDetails.getTasks();
+    List<TaskDetails> tasks = null;
+    if (jobDetails != null) {
+      tasks = jobDetails.getTasks();
+    }
     timer.stop();
 
     if (tasks != null && !tasks.isEmpty()) {
