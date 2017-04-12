@@ -16,7 +16,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.1</version>
   <name>hRaven Project</name>
   <url>https://github.com/twitter/hraven</url>
   <description>
@@ -52,6 +52,7 @@
     <connection>scm:git:https://github.com/twitter/hraven.git</connection>
     <developerConnection>scm:git:https://github.com/twitter/hraven.git</developerConnection>
     <url>https://github.com/twitter/hraven</url>
+    <tag>v1.0.1</tag>
   </scm>
 
   <developers>
