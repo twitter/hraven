@@ -20,8 +20,10 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.Cell;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.util.ByteUtil;
@@ -95,18 +97,26 @@ public class RunMatchFilter extends FilterBase {
     return seenCount > maxCount;
   }
 
-  @Override
+// TODO dogpile days check override  @Override
   public void write(DataOutput out) throws IOException {
     out.writeInt(appId.length);
     out.write(appId);
     out.writeInt(maxCount);
   }
 
-  @Override
+//TODO dogpile days check override   @Override
   public void readFields(DataInput in) throws IOException {
     int appIdLength = in.readInt();
     this.appId = new byte[appIdLength];
     in.readFully(appId);
     this.maxCount = in.readInt();
   }
+
+  @Override
+  public Filter.ReturnCode filterKeyValue(Cell cell)
+  throws IOException {
+    //TODO dogpiledays
+    return Filter.ReturnCode.SKIP;
+  }
+  
 }

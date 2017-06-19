@@ -16,9 +16,7 @@ limitations under the License.
 package com.twitter.hraven.etl;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.twitter.hraven.HistoryFileType;
@@ -28,23 +26,6 @@ import com.twitter.hraven.HistoryFileType;
  * 
  */
 public class TestJobHistoryFileParserFactory {
-
-	@Test
-	public void testCreateJobHistoryFileParserCorrectCreation() {
-
-		String jHist = "Meta VERSION=\"1\" .\n"
-				+ "Job JOBID=\"job_201301010000_12345\"";
-		JobHistoryFileParser historyFileParser = JobHistoryFileParserFactory
-				.createJobHistoryFileParser(jHist.getBytes(), null, HistoryFileType.ONE);
-
-		assertNotNull(historyFileParser);
-
-		/*
-		 * confirm that we get back an object that can parse hadoop 1.0 files
-		 */
-		assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop1);
-
-	}
 
 	/**
 	 * check the versions in history files across hadoop 1 and hadoop 2

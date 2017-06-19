@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,6 +43,8 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.mapreduce.MultiTableOutputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
@@ -56,22 +58,21 @@ import org.apache.log4j.Logger;
 import com.twitter.hraven.AggregationConstants;
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.datasource.JobHistoryRawService;
-import com.twitter.hraven.etl.ProcessRecordService;
 import com.twitter.hraven.datasource.RowKeyParseException;
 import com.twitter.hraven.mapreduce.JobFileTableMapper;
 
 /**
  * Used to process one ProcessingRecord at at time. For each record an HBase job
  * is created to scan the corresponding rows in the raw
- * 
+ *
  */
 public class JobFileProcessor extends Configured implements Tool {
 
   final static String NAME = JobFileProcessor.class.getSimpleName();
   private static Log LOG = LogFactory.getLog(JobFileProcessor.class);
 
-  private final String startTimestamp = Constants.TIMESTAMP_FORMAT
-      .format(new Date(System.currentTimeMillis()));
+  private final String startTimestamp =
+      Constants.TIMESTAMP_FORMAT.format(new Date(System.currentTimeMillis()));
 
   private final AtomicInteger jobCounter = new AtomicInteger(0);
 
@@ -89,7 +90,7 @@ public class JobFileProcessor extends Configured implements Tool {
 
   /**
    * Used for injecting confs while unit testing
-   * 
+   *
    * @param conf
    */
   public JobFileProcessor(Configuration conf) {
@@ -99,9 +100,8 @@ public class JobFileProcessor extends Configured implements Tool {
 
   /**
    * Parse command-line arguments.
-   * 
-   * @param args
-   *          command line arguments passed to program.
+   *
+   * @param args command line arguments passed to program.
    * @return parsed command line.
    * @throws ParseException
    */
@@ -116,30 +116,21 @@ public class JobFileProcessor extends Configured implements Tool {
     options.addOption(o);
 
     // Whether to skip existing files or not.
-    o = new Option(
-        "r",
-        "reprocess",
-        false,
+    o = new Option("r", "reprocess", false,
         "Reprocess only those records that have been marked to be reprocessed. Otherwise process all rows indicated in the processing records, but successfully processed job files are skipped.");
     o.setRequired(false);
     options.addOption(o);
 
     // Whether to aggregate or not.
     // if re-process is on, need to consider turning aggregation off
-    o = new Option(
-        "a",
-        "aggregate",
-        true,
+    o = new Option("a", "aggregate", true,
         "Whether to aggreagate job details or not.");
     o.setArgName("aggreagte");
     o.setRequired(false);
     options.addOption(o);
 
     // Whether to force re-aggregation or not.
-    o = new Option(
-        "ra",
-        "re-aggregate",
-        true,
+    o = new Option("ra", "re-aggregate", true,
         "Whether to re-aggreagate job details or not.");
     o.setArgName("re-aggreagte");
     o.setRequired(false);
@@ -153,19 +144,13 @@ public class JobFileProcessor extends Configured implements Tool {
     o.setRequired(false);
     options.addOption(o);
 
-    o = new Option(
-        "t",
-        "threads",
-        true,
+    o = new Option("t", "threads", true,
         "Number of parallel threads to use to run Hadoop jobs simultaniously. Default = 1");
     o.setArgName("thread-count");
     o.setRequired(false);
     options.addOption(o);
 
-    o = new Option(
-        "p",
-        "processFileSubstring",
-        true,
+    o = new Option("p", "processFileSubstring", true,
         "use only those process records where the process file path contains the provided string. Useful when processing production jobs in parallel to historic loads.");
     o.setArgName("processFileSubstring");
     o.setRequired(false);
@@ -174,14 +159,15 @@ public class JobFileProcessor extends Configured implements Tool {
     // Debugging
     options.addOption("d", "debug", false, "switch on DEBUG log level");
 
-    o = new Option("zf", "costFile", true, "The cost properties file location on HDFS");
+    o = new Option("zf", "costFile", true,
+        "The cost properties file location on HDFS");
     o.setArgName("costfile_loc");
     o.setRequired(true);
     options.addOption(o);
 
     // Machine type
     o = new Option("m", "machineType", true,
-      "The type of machine this job ran on");
+        "The type of machine this job ran on");
     o.setArgName("machinetype");
     o.setRequired(true);
     options.addOption(o);
@@ -209,7 +195,7 @@ public class JobFileProcessor extends Configured implements Tool {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see org.apache.hadoop.util.Tool#run(java.lang.String[])
    */
   public int run(String[] args) throws Exception {
@@ -217,8 +203,8 @@ public class JobFileProcessor extends Configured implements Tool {
     Configuration hbaseConf = HBaseConfiguration.create(getConf());
 
     // Grab input args and allow for -Dxyz style arguments
-    String[] otherArgs = new GenericOptionsParser(hbaseConf, args)
-        .getRemainingArgs();
+    String[] otherArgs =
+        new GenericOptionsParser(hbaseConf, args).getRemainingArgs();
 
     // Grab the arguments we're looking for.
     CommandLine commandLine = parseArgs(otherArgs);
@@ -235,7 +221,8 @@ public class JobFileProcessor extends Configured implements Tool {
       } catch (NumberFormatException nfe) {
         throw new IllegalArgumentException(
             "Provided thread-count argument (-t) is not a number: "
-                + commandLine.getOptionValue("t"), nfe);
+                + commandLine.getOptionValue("t"),
+            nfe);
       }
       if (threadCount < 1) {
         throw new IllegalArgumentException(
@@ -256,7 +243,8 @@ public class JobFileProcessor extends Configured implements Tool {
       } catch (NumberFormatException nfe) {
         throw new IllegalArgumentException(
             "batch size option -b is is not a valid number: "
-                + commandLine.getOptionValue("b"), nfe);
+                + commandLine.getOptionValue("b"),
+            nfe);
       }
       // Additional check
       if (batchSize < 1) {
@@ -272,7 +260,8 @@ public class JobFileProcessor extends Configured implements Tool {
 
     String costFilePath = commandLine.getOptionValue("zf");
     LOG.info("cost properties file on hdfs=" + costFilePath);
-    if (costFilePath == null) costFilePath = Constants.COST_PROPERTIES_HDFS_DIR;
+    if (costFilePath == null)
+      costFilePath = Constants.COST_PROPERTIES_HDFS_DIR;
     Path hdfsPath = new Path(costFilePath + Constants.COST_PROPERTIES_FILENAME);
     // add to distributed cache
     DistributedCache.addCacheFile(hdfsPath.toUri(), hbaseConf);
@@ -293,13 +282,16 @@ public class JobFileProcessor extends Configured implements Tool {
       // hRaven jobProcessor can access it in the mapper
       if (StringUtils.isNotBlank(reaggregateFlag)) {
         LOG.info(" reaggregateFlag is: " + reaggregateFlag);
-        if (StringUtils.equalsIgnoreCase(reaggregateFlag, Boolean.TRUE.toString())) {
+        if (StringUtils.equalsIgnoreCase(reaggregateFlag,
+            Boolean.TRUE.toString())) {
           reAggregateFlagValue = true;
         }
       }
     }
-    LOG.info(AggregationConstants.RE_AGGREGATION_FLAG_NAME +"=" + reAggregateFlagValue);
-    hbaseConf.setBoolean(AggregationConstants.RE_AGGREGATION_FLAG_NAME, reAggregateFlagValue);
+    LOG.info(AggregationConstants.RE_AGGREGATION_FLAG_NAME + "="
+        + reAggregateFlagValue);
+    hbaseConf.setBoolean(AggregationConstants.RE_AGGREGATION_FLAG_NAME,
+        reAggregateFlagValue);
 
     // set aggregation to off by default
     boolean aggFlagValue = false;
@@ -309,19 +301,21 @@ public class JobFileProcessor extends Configured implements Tool {
       // hRaven jobProcessor can access it in the mapper
       if (StringUtils.isNotBlank(aggregateFlag)) {
         LOG.info(" aggregateFlag is: " + aggregateFlag);
-        if (StringUtils.equalsIgnoreCase(aggregateFlag, Boolean.TRUE.toString())) {
+        if (StringUtils.equalsIgnoreCase(aggregateFlag,
+            Boolean.TRUE.toString())) {
           aggFlagValue = true;
-        } 
+        }
       }
     }
-    if(reprocess) {
+    if (reprocess) {
       // turn off aggregation if reprocessing is true
       // we don't want to inadvertently aggregate again while re-processing
       // re-aggregation needs to be a conscious setting
       aggFlagValue = false;
     }
-    LOG.info(AggregationConstants.AGGREGATION_FLAG_NAME +"=" + aggFlagValue);
-    hbaseConf.setBoolean(AggregationConstants.AGGREGATION_FLAG_NAME, aggFlagValue);
+    LOG.info(AggregationConstants.AGGREGATION_FLAG_NAME + "=" + aggFlagValue);
+    hbaseConf.setBoolean(AggregationConstants.AGGREGATION_FLAG_NAME,
+        aggFlagValue);
 
     String processFileSubstring = null;
     if (commandLine.hasOption("p")) {
@@ -337,11 +331,22 @@ public class JobFileProcessor extends Configured implements Tool {
     hbaseConf.setStrings(Constants.CLUSTER_JOB_CONF_KEY, cluster);
 
     boolean success = false;
-    if (reprocess) {
-      success = reProcessRecords(hbaseConf, cluster, batchSize, threadCount);
-    } else {
-      success = processRecords(hbaseConf, cluster, batchSize, threadCount,
-          processFileSubstring);
+    Connection hbaseConnection = null;
+    try {
+      hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
+      if (reprocess) {
+        success = reProcessRecords(hbaseConf, hbaseConnection, cluster,
+            batchSize, threadCount);
+      } else {
+        success = processRecords(hbaseConf, hbaseConnection, cluster, batchSize,
+            threadCount, processFileSubstring);
+      }
+    } finally {
+      if (hbaseConnection == null) {
+        success = false;
+      } else {
+        hbaseConnection.close();
+      }
     }
 
     // Return the status
@@ -351,38 +356,33 @@ public class JobFileProcessor extends Configured implements Tool {
   /**
    * Pick up the ranges of jobs to process from ProcessRecords. Skip raw rows
    * that have already been processed.
-   * 
-   * @param conf
-   *          used to contact HBase and to run jobs against
-   * @param cluster
-   *          for which to process records.
-   * @param batchSize
-   *          the total number of jobs to process in a batch (a MR job scanning
-   *          these many records in the raw table).
-   * @param threadCount
-   *          how many parallel threads should be used to run Hadoop jobs in
-   *          parallel.
-   * @param processFileSubstring
-   *          Use only process records where the process file path contains this
-   *          string. If <code>null</code> or empty string, then no filtering is
-   *          applied.
+   *
+   * @param conf used to contact HBase and to run jobs against
+   * @param hbaseConnection
+   * @param cluster for which to process records.
+   * @param batchSize the total number of jobs to process in a batch (a MR job
+   *          scanning these many records in the raw table).
+   * @param threadCount how many parallel threads should be used to run Hadoop
+   *          jobs in parallel.
+   * @param processFileSubstring Use only process records where the process file
+   *          path contains this string. If <code>null</code> or empty string,
+   *          then no filtering is applied.
    * @return whether all job files for all processRecords were properly
    *         processed.
    * @throws IOException
-   * @throws ClassNotFoundException
-   *           when problems occur setting up the job.
+   * @throws ClassNotFoundException when problems occur setting up the job.
    * @throws InterruptedException
-   * @throws ExecutionException
-   *           when at least one of the jobs could not be scheduled.
+   * @throws ExecutionException when at least one of the jobs could not be
+   *           scheduled.
    * @throws RowKeyParseException
    */
-  boolean processRecords(Configuration conf, String cluster, int batchSize,
-      int threadCount, String processFileSubstring) throws IOException,
-      InterruptedException, ClassNotFoundException, ExecutionException,
-      RowKeyParseException {
+  boolean processRecords(Configuration conf, Connection hbaseConnection,
+      String cluster, int batchSize, int threadCount,
+      String processFileSubstring) throws IOException, InterruptedException,
+      ClassNotFoundException, ExecutionException, RowKeyParseException {
 
-    List<ProcessRecord> processRecords = getProcessRecords(conf, cluster,
-        processFileSubstring);
+    List<ProcessRecord> processRecords =
+        getProcessRecords(conf, hbaseConnection, cluster, processFileSubstring);
 
     // Bail out early if needed
     if ((processRecords == null) || (processRecords.size() == 0)) {
@@ -397,44 +397,41 @@ public class JobFileProcessor extends Configured implements Tool {
       minMaxJobFileTracker.track(processRecord.getMaxJobId());
     }
 
-    List<JobRunner> jobRunners = getJobRunners(conf, cluster, false, batchSize,
+    List<JobRunner> jobRunners = getJobRunners(conf, hbaseConnection, cluster, false, batchSize,
         minMaxJobFileTracker.getMinJobId(), minMaxJobFileTracker.getMaxJobId());
 
     boolean success = runJobs(threadCount, jobRunners);
     if (success) {
-      updateProcessRecords(conf, processRecords);
+      updateProcessRecords(conf, hbaseConnection, processRecords);
     }
 
     return success;
   }
 
   /**
-   * @param conf
-   *          used to contact HBase and to run jobs against
-   * @param cluster
-   *          for which to process records.
-   * @param batchSize
-   *          the total number of jobs to process in a batch (a MR job scanning
-   *          these many records in the raw table).
-   * @param threadCount
-   *          how many parallel threads should be used to run Hadoop jobs in
-   *          parallel.
+   * @param conf used to contact HBase and to run jobs against
+   * @param hbaseConnection
+   * @param cluster for which to process records.
+   * @param batchSize the total number of jobs to process in a batch (a MR job
+   *          scanning these many records in the raw table).
+   * @param threadCount how many parallel threads should be used to run Hadoop
+   *          jobs in parallel.
    * @return whether all job files for all processRecords were properly
    *         processed.
    * @throws IOException
-   * @throws ClassNotFoundException
-   *           when problems occur setting up the job.
+   * @throws ClassNotFoundException when problems occur setting up the job.
    * @throws InterruptedException
-   * @throws ExecutionException
-   *           when at least one of the jobs could not be scheduled.
+   * @throws ExecutionException when at least one of the jobs could not be
+   *           scheduled.
    * @throws RowKeyParseException
    */
-  boolean reProcessRecords(Configuration conf, String cluster, int batchSize,
-      int threadCount) throws IOException, InterruptedException,
-      ClassNotFoundException, ExecutionException, RowKeyParseException {
+  boolean reProcessRecords(Configuration conf, Connection hbaseConnection,
+      String cluster, int batchSize, int threadCount)
+      throws IOException, InterruptedException, ClassNotFoundException,
+      ExecutionException, RowKeyParseException {
 
-    List<JobRunner> jobRunners = getJobRunners(conf, cluster, true, batchSize,
-        null, null);
+    List<JobRunner> jobRunners =
+        getJobRunners(conf, hbaseConnection, cluster, true, batchSize, null, null);
 
     boolean success = runJobs(threadCount, jobRunners);
     return success;
@@ -442,16 +439,13 @@ public class JobFileProcessor extends Configured implements Tool {
 
   /**
    * Run the jobs and wait for all of them to complete.
-   * 
-   * @param threadCount
-   *          up to how many jobs to run in parallel
-   * @param jobRunners
-   *          the list of jobs to run.
+   *
+   * @param threadCount up to how many jobs to run in parallel
+   * @param jobRunners the list of jobs to run.
    * @return whether all jobs completed successfully or not.
-   * @throws InterruptedException
-   *           when interrupted while running jobs.
-   * @throws ExecutionException
-   *           when at least one of the jobs could not be scheduled.
+   * @throws InterruptedException when interrupted while running jobs.
+   * @throws ExecutionException when at least one of the jobs could not be
+   *           scheduled.
    */
   private boolean runJobs(int threadCount, List<JobRunner> jobRunners)
       throws InterruptedException, ExecutionException {
@@ -483,8 +477,8 @@ public class JobFileProcessor extends Configured implements Tool {
       // Shut down the executor so that the JVM can exit.
       List<Runnable> neverRan = execSvc.shutdownNow();
       if (neverRan != null && neverRan.size() > 0) {
-        System.err
-            .println("Interrupted run. Currently running Hadoop jobs will continue unless cancelled. "
+        System.err.println(
+            "Interrupted run. Currently running Hadoop jobs will continue unless cancelled. "
                 + neverRan + " jobs never scheduled.");
       }
     }
@@ -492,160 +486,105 @@ public class JobFileProcessor extends Configured implements Tool {
   }
 
   /**
-   * @param conf
-   *          to be used to connect to HBase
-   * @param cluster
-   *          for which we're finding processRecords.
-   * @param processFileSubstring
-   *          if specified, this string must be part of the processFile path to
-   *          limit which records we want to process.
+   * @param conf to be used to connect to HBase
+   * @param hbaseConnection
+   * @param cluster for which we're finding processRecords.
+   * @param processFileSubstring if specified, this string must be part of the
+   *          processFile path to limit which records we want to process.
    * @return a list of processRecords in {@link ProcessState#LOADED} stqte that
    *         still need to be processed.
    * @throws IOException
    */
   private List<ProcessRecord> getProcessRecords(Configuration conf,
-      String cluster, String processFileSubstring) throws IOException {
-    ProcessRecordService processRecordService = new ProcessRecordService(conf);
-    IOException caught = null;
+      Connection hbaseConnection, String cluster, String processFileSubstring)
+      throws IOException {
+    ProcessRecordService processRecordService =
+        new ProcessRecordService(conf, hbaseConnection);
     List<ProcessRecord> processRecords = null;
-    try {
-      // Grab all records.
-      processRecords = processRecordService.getProcessRecords(cluster, LOADED,
-          Integer.MAX_VALUE, processFileSubstring);
+    // Grab all records.
+    processRecords = processRecordService.getProcessRecords(cluster, LOADED,
+        Integer.MAX_VALUE, processFileSubstring);
 
-      LOG.info("Processing " + processRecords.size() + " for: " + cluster);
-    } catch (IOException ioe) {
-      caught = ioe;
-    } finally {
-      try {
-        processRecordService.close();
-      } catch (IOException ioe) {
-        if (caught == null) {
-          caught = ioe;
-        }
-      }
-      if (caught != null) {
-        throw caught;
-      }
-    }
+    LOG.info("Processing " + processRecords.size() + " for: " + cluster);
+
     return processRecords;
   }
 
   /**
-   * @param conf
-   *          to be used to connect to HBase
-   * @param cluster
-   *          for which we're finding processRecords.
-   * @param processFileSubstring
-   *          if specified, this string must be part of the processFile path to
-   *          limit which records we want to process.
-   * @return a list of processRecords in {@link ProcessState#LOADED} stqte that
-   *         still need to be processed.
+   * @param conf to be used to connect to HBase
+   * @param processRecords Set the list of ProcessRecord to PROCESSED.
    * @throws IOException
    */
   private void updateProcessRecords(Configuration conf,
-      List<ProcessRecord> processRecords) throws IOException {
-    ProcessRecordService processRecordService = new ProcessRecordService(conf);
+      Connection hbaseConnection, List<ProcessRecord> processRecords)
+      throws IOException {
+    ProcessRecordService processRecordService =
+        new ProcessRecordService(conf, hbaseConnection);
+
     IOException caught = null;
-    try {
-
-      for (ProcessRecord processRecord : processRecords) {
-        // Even if we get an exception, still try to set the other records
-        try {
-          processRecordService.setProcessState(processRecord, PROCESSED);
-        } catch (IOException ioe) {
-          caught = ioe;
-        }
-      }
-
-    } finally {
+    for (ProcessRecord processRecord : processRecords) {
+      // Even if we get an exception, still try to set the other records
       try {
-        processRecordService.close();
+        processRecordService.setProcessState(processRecord, PROCESSED);
       } catch (IOException ioe) {
-        if (caught == null) {
-          caught = ioe;
-        }
-      }
-      if (caught != null) {
-        throw caught;
+        caught = ioe;
       }
     }
+    if (caught != null) {
+      throw caught;
+    }
+
   }
 
   /**
-   * @param conf
-   *          used to connect to HBAse
-   * @param cluster
-   *          for which we are processing
-   * @param reprocess
-   *          Reprocess those records that may have been processed already.
-   *          Otherwise successfully processed job files are skipped.
-   * @param reprocessOnly
-   *          process only those raw records that were marked to be reprocessed.
-   *          When true then reprocess argument is ignored and is assumed to be
-   *          true.
-   * @param batchSize
-   *          the total number of jobs to process in a batch (a MR job scanning
-   *          these many records in the raw table).
-   * @param minJobId
-   *          used to start the scan. If null then there is no min limit on
-   *          JobId.
-   * @param maxJobId
-   *          used to end the scan (inclusive). If null then there is no max
-   *          limit on jobId.
+   * @param conf used to communicate arguments to the running jobs.
+   * @param hbaseConnection used to create Table references connecting to HBase.
+   * @param cluster for which we are processing
+   * @param reprocess Reprocess those records that may have been processed
+   *          already. Otherwise successfully processed job files are skipped.
+   * @param batchSize the total number of jobs to process in a batch (a MR job
+   *          scanning these many records in the raw table).
+   * @param minJobId used to start the scan. If null then there is no min limit
+   *          on JobId.
+   * @param maxJobId used to end the scan (inclusive). If null then there is no
+   *          max limit on jobId.
    * @throws IOException
    * @throws InterruptedException
    * @throws ClassNotFoundException
    * @throws ExecutionException
    * @throws RowKeyParseException
    */
-  private List<JobRunner> getJobRunners(Configuration conf, String cluster,
+  private List<JobRunner> getJobRunners(Configuration conf, Connection hbaseConnection, String cluster,
       boolean reprocess, int batchSize, String minJobId, String maxJobId)
       throws IOException, InterruptedException, ClassNotFoundException,
       RowKeyParseException {
     List<JobRunner> jobRunners = new LinkedList<JobRunner>();
 
-    JobHistoryRawService jobHistoryRawService = new JobHistoryRawService(conf);
-    try {
+    JobHistoryRawService jobHistoryRawService = new JobHistoryRawService(hbaseConnection);
 
-      // Bind all MR jobs together with one runID.
-      long now = System.currentTimeMillis();
-      conf.setLong(Constants.MR_RUN_CONF_KEY, now);
+    // Bind all MR jobs together with one runID.
+    long now = System.currentTimeMillis();
+    conf.setLong(Constants.MR_RUN_CONF_KEY, now);
 
-      List<Scan> scanList = jobHistoryRawService.getHistoryRawTableScans(
-          cluster, minJobId, maxJobId, reprocess, batchSize);
+    List<Scan> scanList = jobHistoryRawService.getHistoryRawTableScans(cluster,
+        minJobId, maxJobId, reprocess, batchSize);
 
-      for (Scan scan : scanList) {
-        Job job = getProcessingJob(conf, scan, scanList.size());
+    for (Scan scan : scanList) {
+      Job job = getProcessingJob(conf, scan, scanList.size());
 
-        JobRunner jobRunner = new JobRunner(job, null);
-        jobRunners.add(jobRunner);
-      }
-
-    } finally {
-      IOException caught = null;
-      try {
-        jobHistoryRawService.close();
-      } catch (IOException ioe) {
-        caught = ioe;
-      }
-
-      if (caught != null) {
-        throw caught;
-      }
+      JobRunner jobRunner = new JobRunner(job, null);
+      jobRunners.add(jobRunner);
     }
+
     return jobRunners;
 
   }
 
   /**
-   * @param conf
-   *          to use to create and run the job
-   * @param scan
-   *          to be used to scan the raw table.
-   * @param totalJobCount
-   *          the total number of jobs that need to be run in this batch. Used
-   *          in job name.
+   * @param conf to use to create and run the job
+   * @param scan to be used to scan the raw table.
+   * @param totalJobCount the total number of jobs that need to be run in this
+   *          batch. Used in job name.
    * @return The job to be submitted to the cluster.
    * @throws IOException
    * @throws InterruptedException
@@ -676,9 +615,8 @@ public class JobFileProcessor extends Configured implements Tool {
   }
 
   /**
-   * @param totalJobCount
-   *          how many jobs there will be in total. Used as indicator in the
-   *          name how far along this job is.
+   * @param totalJobCount how many jobs there will be in total. Used as
+   *          indicator in the name how far along this job is.
    * @return the name to use for each consecutive Hadoop job to launch.
    */
   private synchronized String getJobName(int totalJobCount) {

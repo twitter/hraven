@@ -432,7 +432,7 @@ public class JobDetails implements Comparable<JobDetails> {
   }
 
   /**
-   * return an enum value from the NavigableMap for history file type
+   * return an enum value from the NavigableMap for hadoop version
    * @param key
    * @param infoValues
    * @return value as a enum or default of hadoop ONE
@@ -509,7 +509,7 @@ public class JobDetails implements Comparable<JobDetails> {
         infoValues);
 
     // populate stats from counters for this job based on
-    // history file type
+    // hadoop version
     if (this.historyFileType == HistoryFileType.TWO) {
       // map file bytes read
       this.mapFileBytesRead = getCounterValueAsLong(this.mapCounters, 

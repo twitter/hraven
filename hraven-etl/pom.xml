@@ -21,12 +21,12 @@
   <parent>
     <groupId>com.twitter.hraven</groupId>
     <artifactId>hraven</artifactId>
-    <version>0.9.17.t06-SNAPSHOT</version>
+    <version>1.0.2.t01-SNAPSHOT</version>
     <relativePath>../</relativePath>
   </parent>
   <groupId>com.twitter.hraven</groupId>
   <artifactId>hraven-etl</artifactId>
-  <version>0.9.17.t06-SNAPSHOT</version>
+  <version>1.0.2.t01-SNAPSHOT</version>
   <name>hRaven - etl</name>
   <packaging>jar</packaging>
   <description>ETL map reduce jobs and supporting components for data loading</description>
@@ -63,7 +63,10 @@
         </plugin>
         <plugin>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>2.6.1</version>
+            <version>2.10.4</version>
+            <configuration>
+             <additionalparam>-Xdoclint:none</additionalparam>
+            </configuration>
         </plugin>
         <plugin>
           <artifactId>maven-clean-plugin</artifactId>
@@ -162,13 +165,13 @@
     <dependency>
       <groupId>com.twitter.hraven</groupId>
       <artifactId>hraven-core</artifactId>
-      <version>0.9.17.t06-SNAPSHOT</version>
+      <version>${hraven.version}</version>
     </dependency>
 
     <dependency>
       <groupId>com.twitter.hraven</groupId>
       <artifactId>hraven-core</artifactId>
-      <version>0.9.17.t06-SNAPSHOT</version>
+      <version>${hraven.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
@@ -215,7 +218,7 @@
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-core</artifactId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -243,7 +246,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase</artifactId>
+      <artifactId>hbase-client</artifactId>
       <version>${hbase.version}</version>
       <scope>provided</scope>
       <exclusions>
@@ -280,6 +283,18 @@
           <artifactId>slf4j-log4j12</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-server</artifactId>
+      <version>${hbase.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-testing-util</artifactId>
+      <version>${hbase.version}</version>
+      <scope>provided</scope>
     </dependency>
 
     <!-- REST API third party dependencies -->
@@ -324,16 +339,17 @@
       <version>${jackson.version}</version>
     </dependency>
 
-    <!-- Test dependencies -->
+    <!-- Test dependencies
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-test</artifactId>
+   #TODO dogpiledays   <artifactId>hadoop-test</artifactId>
       <version>${hadoop.version}</version>
       <scope>test</scope>
     </dependency>
+   -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase</artifactId>
+      <artifactId>hbase-client</artifactId>
       <version>${hbase.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>

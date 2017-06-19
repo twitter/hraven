@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package com.twitter.hraven;
 
 import java.text.SimpleDateFormat;
 import java.util.TimeZone;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -24,7 +25,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 public class Constants {
 
   public static final String PROJECT_NAME = "hraven";
-  
+
   // HBase constants
 
   // separator character used between key components
@@ -45,35 +46,22 @@ public class Constants {
 
   /* **** Table names **** */
   public static String HISTORY_TABLE = PREFIX + "job_history";
-  public static byte[] HISTORY_TABLE_BYTES = Bytes.toBytes(HISTORY_TABLE);
 
   public static String HISTORY_TASK_TABLE = HISTORY_TABLE + "_task";
-  public static byte[] HISTORY_TASK_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_TASK_TABLE);
 
   public static String HISTORY_BY_JOBID_TABLE = HISTORY_TABLE + "-by_jobId";
-  public static byte[] HISTORY_BY_JOBID_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_BY_JOBID_TABLE);
 
   public static String HISTORY_APP_VERSION_TABLE = HISTORY_TABLE
       + "_app_version";
-  public static byte[] HISTORY_APP_VERSION_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_APP_VERSION_TABLE);
 
   public static String HISTORY_RAW_TABLE = HISTORY_TABLE + "_raw";
-  public static byte[] HISTORY_RAW_TABLE_BYTES = Bytes
-      .toBytes(HISTORY_RAW_TABLE);
 
   public static final String JOB_FILE_PROCESS_TABLE = PREFIX
       + "job_history_process";
-  public static final byte[] JOB_FILE_PROCESS_TABLE_BYTES = Bytes
-      .toBytes(JOB_FILE_PROCESS_TABLE);
 
   public static final String FLOW_QUEUE_TABLE = PREFIX + "flow_queue";
-  public static final byte[] FLOW_QUEUE_TABLE_BYTES = Bytes.toBytes(FLOW_QUEUE_TABLE);
 
   public static final String FLOW_EVENT_TABLE = PREFIX + "flow_event";
-  public static final byte[] FLOW_EVENT_TABLE_BYTES = Bytes.toBytes(FLOW_EVENT_TABLE);
 
   public static final String INFO_FAM = "i";
   public static final byte[] INFO_FAM_BYTES = Bytes.toBytes(INFO_FAM);
@@ -164,11 +152,11 @@ public class Constants {
   public static final String FRAMEWORK_COLUMN = "framework";
   public static final byte[] FRAMEWORK_COLUMN_BYTES = Bytes
       .toBytes(FRAMEWORK_COLUMN);
-  
+
   public static final String MIN_JOB_ID_COLUMN = "min_jobid";
   public static final byte[] MIN_JOB_ID_COLUMN_BYTES = Bytes
       .toBytes(MIN_JOB_ID_COLUMN);
-  
+
   public static final String MAX_JOB_ID_COLUMN = "max_jobid";
   public static final byte[] MAX_JOB_ID_COLUMN_BYTES = Bytes
       .toBytes(MAX_JOB_ID_COLUMN);
@@ -203,7 +191,7 @@ public class Constants {
   public static final String JOB_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.JobCounter";
   public static final String TASK_COUNTER_HADOOP2 = "org.apache.hadoop.mapreduce.TaskCounter";
 
-  
+
   /**
    * Indicator whether a job has been processed successfully from the RAW table
    * to the history and index tables. Used to skip this job from the RAW table
@@ -344,7 +332,7 @@ public class Constants {
   public static final String CASCADING_VERSION_CONF_KEY = "scalding.flow.class.signature";
   public static final String CASCADING_RUN_CONF_KEY = "scalding.flow.submitted.timestamp";
   public static final String CASCADING_APP_ID_CONF_KEY = "cascading.app.id";
-  
+
   public static final String MR_RUN_CONF_KEY = "mapred.app.submitted.timestamp";
 
   public static final String FRAMEWORK_CONF_KEY = "mapreduce.framework.name";
@@ -368,7 +356,7 @@ public class Constants {
    * hadoop1 memory conf keys
    */
   public static final String JAVA_CHILD_OPTS_CONF_KEY = "mapred.child.java.opts";
-  /** default xmx size is 1 GB as per 
+  /** default xmx size is 1 GB as per
    * http://docs.oracle.com/javase/6/docs/technotes/guides/vm/gc-ergonomics.html
    */
   public static final Long DEFAULT_XMX_SETTING = 1024L;
@@ -430,7 +418,7 @@ public class Constants {
    * Used to pass the cluster name from the tool to the RecordReader.
    */
   public static final String CLUSTER_JOB_CONF_KEY = "jobhistory.cluster";
-  
+
   /**
    * Used to pass boolean to mappers to indicate that items are to be reprocessed.
    */

@@ -13,12 +13,12 @@ and analysis over time.
 Requirements
 --------------------
 
-* Apache HBase (0.94+) - a running HBase cluster is required for the hRaven
+* Apache HBase (1.1.3) - a running HBase cluster is required for the hRaven
   data storage
 * Apache Hadoop - hRaven current supports collection of job data on specific
   versions of Hadoop:
-  * CDH upto CDH3u5, Hadoop 1.x upto MAPREDUCE-1016
-  * Hadoop 1.x post MAPREDUCE-1016 and Hadoop 2.0 are supported in versions 0.9.4 onwards
+  * Hadoop 2.6+ post hRaven 1.0.0 Hadoop 1 will no longer be supported
+* JRE 8 - As of hRaven 1.0.0 Java 8 jars are generated. Use hRaven 0.9.x for Java 7 runtimes.
 
 Quick start
 --------------------
@@ -133,6 +133,11 @@ Optional QS params:
 *Note:* This endpoint duplicates functionality from the "/flow/" endpoint and
  maybe be combined back in to it in the future.
 
+### Get Tasks
+
+Path: `/tasks/<cluster>/[jobId]`
+
+Returns: task details of that single job
 
 ### Get App Versions
 
@@ -142,6 +147,17 @@ Optional QS params:
 
 * `limit` - max results to return
 
+### Get New Jobs
+
+Path: `/newJobs/<cluster>/`
+
+Returns: list of apps with only minimal stats
+
+Optional params:
+ * `startTime` (epoch timestamp in milliseconds)
+ * `endTime` (epoch timestamp in milliseconds)
+ * `limit` (max rows to return)
+ * `user` (user name to filter it by)
 
 Project Resources
 --------------------
@@ -172,6 +188,6 @@ Known Issues
 
 Copyright and License
 ---------------------
-Copyright 2013 Twitter, Inc. and other contributors
+Copyright 2016 Twitter, Inc. and other contributors
 
 Licensed under the Apache License Version 2.0: http://www.apache.org/licenses/LICENSE-2.0

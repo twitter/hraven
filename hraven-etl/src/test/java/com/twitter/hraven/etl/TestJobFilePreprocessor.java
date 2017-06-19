@@ -11,6 +11,8 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.util.ToolRunner;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -77,9 +79,11 @@ public class TestJobFilePreprocessor {
       // can't check for exact filename since it includes the current timestamp
       fs = hdfs.listStatus(procPath);
       assertEquals(1, fs.length);
+      Connection hbaseConnection =
+          ConnectionFactory.createConnection(UTIL.getConfiguration());
       // ensure that hbase table contains the process record
       ProcessRecordService processRecordService = new ProcessRecordService(
-        UTIL.getConfiguration());
+        UTIL.getConfiguration(), hbaseConnection);
       ProcessRecord pr = processRecordService.getLastSuccessfulProcessRecord(cluster);
       assertNotNull(pr);
       assertEquals(pr.getMaxJobId(), pr.getMinJobId());
