@@ -113,7 +113,7 @@ public class HadoopCompat {
   }
 
   /**
-   * Invokes a method and rethrows any exception as runtime excetpions.
+   * Invokes a method and rethrows any exception as runtime exceptions.
    */
   private static Object invoke(Method method, Object obj, Object... args) {
     try {
