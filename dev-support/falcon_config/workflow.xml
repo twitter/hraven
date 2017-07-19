@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<workflow-app xmlns="uri:oozie:workflow:0.3" name="hraven-workflow">
+	<start to="hraven-jobfilepreprocessor-action" />
+
+	<action name="hraven-jobfilepreprocessor-action"
+		retry-max="3" retry-interval="60">
+		<java>
+			<job-tracker>${jobTracker}</job-tracker>
+			<name-node>${nameNode}</name-node>
+			<configuration>
+				<property>
+					<name>mapred.job.queue.name</name>
+					<value>${queueName}</value>
+				</property>
+				<property>
+					<name>mapred.task.timeout</name>
+					<value>1800000</value>
+				</property>
+			</configuration>
+			<main-class>com.twitter.hraven.etl.JobFilePreprocessor</main-class>
+			<arg>-Dmapred.child.java.opts=-Xmx4G</arg>
+			<arg>-Dhbase.zookeeper.quorum=hb4105.grid.cluster.com,hb4104.grid.cluster.com,hb4103.grid.cluster.com,hb4102.grid.cluster.com,hb4106.grid.cluster.com</arg>
+			<arg>-i</arg>
+			<arg>${historypath}</arg>
+			<arg>-bi</arg>
+			<arg>${basepath}</arg>
+			<arg>-o</arg>
+			<arg>${processingDirectory}</arg>
+			<arg>-c</arg>
+			<arg>UA2</arg>
+			<arg>-b</arg>
+			<arg>5000</arg>
+			<arg>-s</arg>
+			<arg>524288000</arg>
+			<arg>-ex</arg>
+			<arg>IVORY_FEED_REPLICATION,distcp,FALCON_FEED_RETENTION,IVORY_FEED_RETENTION</arg>
+			<arg>-ix</arg>
+			<arg>rmcuser,JobFileProcessor,hraven</arg>
+			<arg>-zm</arg>
+		</java>
+		<ok to="hraven-jobfilerawloader-action" />
+		<error to="failjob" />
+	</action>
+
+	<action name="hraven-jobfilerawloader-action" retry-max="3"
+		retry-interval="60">
+		<java>
+			<job-tracker>${jobTracker}</job-tracker>
+			<name-node>${nameNode}</name-node>
+			<configuration>
+				<property>
+					<name>mapred.job.queue.name</name>
+					<value>${queueName}</value>
+				</property>
+				<property>
+					<name>mapred.task.timeout</name>
+					<value>1800000</value>
+				</property>
+			</configuration>
+			<main-class>com.twitter.hraven.etl.JobFileRawLoader</main-class>
+			<arg>-Dmapred.max.split.size=204800</arg>
+			<arg>-Dhbase.zookeeper.quorum=hb4105.grid.cluster.com,hb4104.grid.cluster.com,hb4103.grid.cluster.com,hb4102.grid.cluster.com,hb4106.grid.cluster.com</arg>
+			<arg>-Dhraven.conf.libpath=${libpath}</arg>
+			<arg>-c</arg>
+			<arg>UA2</arg>
+			<arg>-p</arg>
+			<arg>${processingDirectory}</arg>
+		</java>
+		<ok to="hraven-jobfileprocessor-action" />
+		<error to="failjob" />
+	</action>
+
+	<action name="hraven-jobfileprocessor-action" retry-max="3"
+		retry-interval="60">
+		<java>
+			<job-tracker>${jobTracker}</job-tracker>
+			<name-node>${nameNode}</name-node>
+			<configuration>
+				<property>
+					<name>mapred.job.queue.name</name>
+					<value>${queueName}</value>
+				</property>
+				<property>
+					<name>mapred.task.timeout</name>
+					<value>1800000</value>
+				</property>
+			</configuration>
+			<main-class>com.twitter.hraven.etl.JobFileProcessor</main-class>
+			<arg>-Dhraven.sink.graphite.prefix=HRAVEN</arg>
+			<arg>-Dhraven.sink.graphite.host=graphite.grid.cluster.com </arg>
+			<arg>-Dhraven.sink.graphite.port=2003</arg>
+			<arg>-Dhraven.sink.graphite.userfilter=includethisuser</arg>
+			<arg>-Dhraven.sink.graphite.queuefilter=includethisqueue</arg>
+			<arg>-Dhraven.sink.graphite.excludedcomponents=MultiInputCounters</arg>
+			<arg>-Dhraven.sink.graphite.donotexcludeapps=hraven</arg>
+			<arg>-Dhbase.zookeeper.quorum=hb4105.grid.cluster.com,hb4104.grid.cluster.com,hb4103.grid.cluster.com,hb4102.grid.cluster.com,hb4106.grid.cluster.com</arg>
+			<arg>-Dhraven.conf.libpath=${libpath}</arg>
+			<arg>-p</arg>
+			<arg>${processingDirectory}</arg>
+			<arg>-c</arg>
+			<arg>UA2</arg>
+			<arg>-b</arg>
+			<arg>5000</arg>
+			<arg>-t</arg>
+			<arg>20</arg>
+			<arg>-m</arg>
+			<arg>default</arg>
+			<arg>-zf</arg>
+			<arg>/hraven/processing/</arg>
+			<arg>-s</arg>
+			<arg>GRAPHITE,HBASE</arg>
+			<arg>-tt</arg>
+			<arg>false</arg>
+		</java>
+		<ok to="end" />
+		<error to="failjob" />
+	</action>
+
+	<kill name="failjob">
+		<message>The hraven-workflow job has failed.
+			message[${wf:errorMessage(wf:lastErrorNode())}]
+		</message>
+	</kill>
+
+	<end name="end" />
+</workflow-app>
