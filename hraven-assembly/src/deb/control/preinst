@@ -1,0 +1,8 @@
+#! /bin/bash
+set -e;
+
+HRAVEN_HOME="/opt/hraven"
+
+if [ -d "$HRAVEN_HOME" ]; then
+   rm -rf $HRAVEN_HOME 
+fi
