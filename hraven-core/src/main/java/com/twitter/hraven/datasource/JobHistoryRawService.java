@@ -219,7 +219,8 @@ public class JobHistoryRawService {
 
       // Add one to the jobSequence of the maximum JobId.
       JobId maximumJobId = new JobId(maxJobId);
-      JobId oneBiggerThanMaxJobId = new JobId(maximumJobId.getJobEpoch(),
+      JobId oneBiggerThanMaxJobId = new JobId(maximumJobId.getJobPrefix(),
+          maximumJobId.getJobEpoch(),
           maximumJobId.getJobSequence() + 1);
       stopRow =
           idConv.toBytes(new QualifiedJobId(cluster, oneBiggerThanMaxJobId));
