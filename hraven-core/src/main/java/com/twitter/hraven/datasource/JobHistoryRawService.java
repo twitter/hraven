@@ -124,7 +124,10 @@ public class JobHistoryRawService {
         JobId qualifiedJobId = getQualifiedJobIdFromResult(result);
         orderedJobIds.add(qualifiedJobId);
       }
-    } finally {
+    } catch(Exception e) {
+      LOG.error("caught " + e);
+    }
+    finally {
       try {
         if (scanner != null) {
           scanner.close();
@@ -283,6 +286,12 @@ public class JobHistoryRawService {
 
     scan.setMaxVersions(1);
 
+    try {
+      LOG.info("scan = " + scan.toJSON());
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
     return scan;
   }
 
