@@ -15,6 +15,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -75,7 +77,7 @@ public class TestJobHistoryFileParserSpark {
     // check history file type
     boolean foundVersion2 = false;
     for (Put p : jobPuts) {
-      List<KeyValue> kv2 = p.get(Constants.INFO_FAM_BYTES,
+      List<Cell> kv2 = p.get(Constants.INFO_FAM_BYTES,
           Bytes.toBytes(JobHistoryKeys.hadoopversion.toString()));
       if (kv2.size() == 0) {
         // we are interested in hadoop version put only
@@ -87,7 +89,7 @@ public class TestJobHistoryFileParserSpark {
       for (List<KeyValue> lkv : d.values()) {
         for (KeyValue kv : lkv) {
         // ensure we have a hadoop2 version as the value
-        assertEquals(Bytes.toString(kv.getValue()), 
+        assertEquals(Bytes.toString(CellUtil.cloneValue(kv)), 
             HistoryFileType.SPARK.toString()); 
 
           // ensure we don't see the same put twice
@@ -103,7 +105,7 @@ public class TestJobHistoryFileParserSpark {
     // check job status
     boolean foundJobStatus = false;
     for (Put p : jobPuts) {
-      List<KeyValue> kv2 =
+      List<Cell> kv2 =
           p.get(Constants.INFO_FAM_BYTES,
             Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase()));
       if (kv2.size() == 0) {
@@ -113,9 +115,9 @@ public class TestJobHistoryFileParserSpark {
       }
       assertEquals(1, kv2.size());
 
-      for (KeyValue kv : kv2) {
+      for (Cell kv : kv2) {
         // ensure we have a job status value as the value
-        assertEquals(Bytes.toString(kv.getValue()),
+        assertEquals(Bytes.toString(CellUtil.cloneValue(kv)),
           JobHistoryFileParserHadoop2.JOB_STATUS_SUCCEEDED);
 
         // ensure we don't see the same put twice

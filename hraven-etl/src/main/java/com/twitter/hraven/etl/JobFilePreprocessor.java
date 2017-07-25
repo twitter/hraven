@@ -1,5 +1,5 @@
 /*
-Copyright 2012 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +36,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileSystem.Statistics;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.io.SequenceFile.Writer;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.Tool;
@@ -45,10 +47,7 @@ import org.apache.log4j.Logger;
 
 import com.twitter.hraven.Constants;
 import com.twitter.hraven.datasource.ProcessingException;
-import com.twitter.hraven.etl.ProcessRecordService;
 import com.twitter.hraven.util.BatchUtil;
-import com.twitter.hraven.etl.FileLister;
-import com.twitter.hraven.etl.JobFileModifiedRangePathFilter;
 
 /**
  * Command line tool that can be run on a periodic basis (like daily, hourly, or
@@ -59,7 +58,7 @@ import com.twitter.hraven.etl.JobFileModifiedRangePathFilter;
  * successfully updated. The run start time will be recorded in as
  * {@link ProcessRecord#getMaxModificationTimeMillis()} so it can be used as the
  * starting mark for the next run if the previous run is successful.
- * 
+ *
  * Given the sloooow copying of 100k little files in Hadoop (pull from HDFS,
  * push back in) we need to run this as multiple mappers. - Pull the last
  * process date from HBase. - Insert a new record into HBase with the last date
@@ -69,7 +68,7 @@ import com.twitter.hraven.etl.JobFileModifiedRangePathFilter;
  * have a combiner that combines keys/values - then pick up the result from the
  * smallest number - Then update record in HBase with the processing date to
  * mark that processing finished (or not).
- * 
+ *
  */
 public class JobFilePreprocessor extends Configured implements Tool {
 
@@ -100,7 +99,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
   /**
    * Used for injecting confs while unit testing
-   * 
+   *
    * @param conf
    */
   public JobFilePreprocessor(Configuration conf) {
@@ -109,9 +108,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
   /**
    * Parse command-line arguments.
-   * 
-   * @param args
-   *          command line arguments passed to program.
+   *
+   * @param args command line arguments passed to program.
    * @return parsed command line.
    * @throws ParseException
    */
@@ -133,10 +131,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
     options.addOption(o);
 
     // Input
-    o = new Option(
-        "i",
-        "input",
-        true,
+    o = new Option("i", "input", true,
         "input directory in hdfs. Default is mapred.job.tracker.history.completed.location.");
     o.setArgName("input-path");
     o.setRequired(false);
@@ -159,10 +154,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
     options.addOption(o);
 
     // Force
-    o = new Option(
-        "f",
-        "forceAllFiles",
-        false,
+    o = new Option("f", "forceAllFiles", false,
         "Force all files in a directory to be processed, no matter the previous processingRecord. Default: false. Usefull for batch loads.");
     o.setRequired(false);
     options.addOption(o);
@@ -192,7 +184,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
   /*
    * Do the actual work.
-   * 
+   *
    * @see org.apache.hadoop.util.Tool#run(java.lang.String[])
    */
   @Override
@@ -205,8 +197,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
     Configuration hbaseConf = HBaseConfiguration.create(getConf());
 
     // Grab input args and allow for -Dxyz style arguments
-    String[] otherArgs = new GenericOptionsParser(hbaseConf, args)
-        .getRemainingArgs();
+    String[] otherArgs =
+        new GenericOptionsParser(hbaseConf, args).getRemainingArgs();
 
     // Grab the arguments we're looking for.
     CommandLine commandLine = parseArgs(otherArgs);
@@ -221,8 +213,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
     FileStatus outputFileStatus = hdfs.getFileStatus(outputPath);
 
     if (!outputFileStatus.isDir()) {
-      throw new IOException("Output is not a directory"
-          + outputFileStatus.getPath().getName());
+      throw new IOException(
+          "Output is not a directory" + outputFileStatus.getPath().getName());
     }
 
     // Grab the input path argument
@@ -242,7 +234,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
       } catch (NumberFormatException nfe) {
         throw new IllegalArgumentException(
             "batch size option -b is is not a valid number: "
-                + commandLine.getOptionValue("b"), nfe);
+                + commandLine.getOptionValue("b"),
+            nfe);
       }
       // Additional check
       if (batchSize < 1) {
@@ -261,8 +254,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
     FileStatus inputFileStatus = hdfs.getFileStatus(inputPath);
 
     if (!inputFileStatus.isDir()) {
-      throw new IOException("Input is not a directory"
-          + inputFileStatus.getPath().getName());
+      throw new IOException(
+          "Input is not a directory" + inputFileStatus.getPath().getName());
     }
 
     // Grab the cluster argument
@@ -270,56 +263,43 @@ public class JobFilePreprocessor extends Configured implements Tool {
     LOG.info("cluster=" + cluster);
 
     /**
-     * Grab the size of huge files to be moved argument
-     * hbase cell can't store files bigger than
-     * maxFileSize, hence no need to consider them for rawloading
-     * Reference:
-     * {@link https://github.com/twitter/hraven/issues/59}
+     * Grab the size of huge files to be moved argument hbase cell can't store
+     * files bigger than maxFileSize, hence no need to consider them for
+     * rawloading Reference: {@link https://github.com/twitter/hraven/issues/59}
      */
+    String maxFileSizeStr = commandLine.getOptionValue("s");
+    LOG.info("maxFileSize=" + maxFileSizeStr);
     long maxFileSize = DEFAULT_RAW_FILE_SIZE_LIMIT;
-    if (commandLine.hasOption("s")) {
-      String maxFileSizeStr = commandLine.getOptionValue("s");
-      LOG.info("maxFileSize=" + maxFileSizeStr);
-      try {
-        maxFileSize = Long.parseLong(maxFileSizeStr);
-      } catch (NumberFormatException nfe) {
-        throw new ProcessingException("Caught NumberFormatException during conversion "
-            + " of maxFileSize to long", nfe);
-      }
+    try {
+      maxFileSize = Long.parseLong(maxFileSizeStr);
+    } catch (NumberFormatException nfe) {
+      throw new ProcessingException(
+          "Caught NumberFormatException during conversion "
+              + " of maxFileSize to long",
+          nfe);
     }
 
-    ProcessRecordService processRecordService = new ProcessRecordService(
-        hbaseConf);
-
     boolean success = true;
+
+    Connection hbaseConnection = null;
     try {
+      hbaseConnection = ConnectionFactory.createConnection(hbaseConf);
+      ProcessRecordService processRecordService =
+          new ProcessRecordService(hbaseConf, hbaseConnection);
 
       // Figure out where we last left off (if anywhere at all)
       ProcessRecord lastProcessRecord = null;
 
       if (!forceAllFiles) {
-        // need to pass in the output dir since there may be multiple
-        // process records for the same cluster, e.g.
-        // mapreduce and spark
-        lastProcessRecord = processRecordService
-            .getLastSuccessfulProcessRecord(cluster, output);
-        if (lastProcessRecord != null) {
-          LOG.info("Fetched last process record for"
-              + " processFileSubString=" + output + " details are "
-              + " key=" + lastProcessRecord.getKey()
-              + " processFile=" + lastProcessRecord.getProcessFile()
-              + " cluster=" + lastProcessRecord.getCluster()
-              + " maxJobId=" + lastProcessRecord.getMaxJobId()
-              + " minJobId=" + lastProcessRecord.getMinJobId()
-              + " processState=" + lastProcessRecord.getProcessState());
-        }
+        lastProcessRecord =
+            processRecordService.getLastSuccessfulProcessRecord(cluster);
       }
 
       long minModificationTimeMillis = 0;
       if (lastProcessRecord != null) {
         // Start of this time period is the end of the last period.
-        minModificationTimeMillis = lastProcessRecord
-            .getMaxModificationTimeMillis();
+        minModificationTimeMillis =
+            lastProcessRecord.getMaxModificationTimeMillis();
       }
 
       // Do a sanity check. The end time of the last scan better not be later
@@ -332,42 +312,47 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
       // Accept only jobFiles and only those that fall in the desired range of
       // modification time.
-      JobFileModifiedRangePathFilter jobFileModifiedRangePathFilter = new JobFileModifiedRangePathFilter(
-          hbaseConf, minModificationTimeMillis);
+      JobFileModifiedRangePathFilter jobFileModifiedRangePathFilter =
+          new JobFileModifiedRangePathFilter(hbaseConf,
+              minModificationTimeMillis);
 
-      String timestamp = Constants.TIMESTAMP_FORMAT.format(new Date(
-          minModificationTimeMillis));
+      String timestamp = Constants.TIMESTAMP_FORMAT
+          .format(new Date(minModificationTimeMillis));
 
       ContentSummary contentSummary = hdfs.getContentSummary(inputPath);
-      LOG.info("Listing / filtering ("
-          + contentSummary.getFileCount() + ") files in: " + inputPath
-          + " that are modified since " + timestamp);
+      LOG.info("Listing / filtering (" + contentSummary.getFileCount()
+          + ") files in: " + inputPath + " that are modified since "
+          + timestamp);
 
       // get the files in the done folder,
       // need to traverse dirs under done recursively for versions
       // that include MAPREDUCE-323: on/after hadoop 0.20.203.0
       // on/after cdh3u5
-      FileStatus[] jobFileStatusses = FileLister.getListFilesToProcess(maxFileSize, true,
-            hdfs, inputPath, jobFileModifiedRangePathFilter);
+      FileStatus[] jobFileStatusses = FileLister.getListFilesToProcess(
+          maxFileSize, true, hdfs, inputPath, jobFileModifiedRangePathFilter);
 
       LOG.info("Sorting " + jobFileStatusses.length + " job files.");
 
       Arrays.sort(jobFileStatusses, new FileStatusModificationComparator());
 
       // Process these files in batches at a time.
-      int batchCount = BatchUtil.getBatchCount(jobFileStatusses.length, batchSize);
+      int batchCount =
+          BatchUtil.getBatchCount(jobFileStatusses.length, batchSize);
       LOG.info("Batch count: " + batchCount);
       for (int b = 0; b < batchCount; b++) {
         processBatch(jobFileStatusses, b, batchSize, processRecordService,
             cluster, outputPath);
       }
-
     } finally {
-      processRecordService.close();
+      if (hbaseConnection == null) {
+        success = false;
+      } else {
+        hbaseConnection.close();
+      }
     }
 
-    Statistics statistics = FileSystem.getStatistics(inputPath.toUri()
-        .getScheme(), hdfs.getClass());
+    Statistics statistics = FileSystem
+        .getStatistics(inputPath.toUri().getScheme(), hdfs.getClass());
     if (statistics != null) {
       LOG.info("HDFS bytes read: " + statistics.getBytesRead());
       LOG.info("HDFS bytes written: " + statistics.getBytesWritten());
@@ -380,22 +365,15 @@ public class JobFilePreprocessor extends Configured implements Tool {
     return success ? 0 : 1;
   }
 
-
-
   /**
-   * @param jobFileStatusses
-   *          statusses sorted by modification time.
-   * @param batch
-   *          which batch needs to be processed (used to calculate offset in
+   * @param jobFileStatusses statusses sorted by modification time.
+   * @param batch which batch needs to be processed (used to calculate offset in
    *          jobFileStatusses.
-   * @param batchSize
-   *          process up to length items (or less as to not exceed the length of
-   *          jobFileStatusses
-   * @param processRecordService
-   *          to be used to access create ProcessRecords.
-   * @throws IOException
-   *           when the index file cannot be written or moved, or when the HBase
-   *           records cannot be created.
+   * @param batchSize process up to length items (or less as to not exceed the
+   *          length of jobFileStatusses
+   * @param processRecordService to be used to access create ProcessRecords.
+   * @throws IOException when the index file cannot be written or moved, or when
+   *           the HBase records cannot be created.
    */
   private void processBatch(FileStatus jobFileStatusses[], int batch,
       int batchSize, ProcessRecordService processRecordService, String cluster,
@@ -403,8 +381,7 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
     int startIndex = batch * batchSize;
 
-    LOG.info("Batch startIndex: " + startIndex + " batchSize: "
-        + batchSize);
+    LOG.info("Batch startIndex: " + startIndex + " batchSize: " + batchSize);
 
     // Some protection against over and under runs.
     if ((jobFileStatusses == null) || (startIndex < 0)
@@ -414,14 +391,14 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
     MinMaxJobFileTracker minMaxJobFileTracker = new MinMaxJobFileTracker();
 
-    Path initialProcesFile = processRecordService.getInitialProcessFile(
-        cluster, batch);
-    Writer processFileWriter = processRecordService
-        .createProcessFileWriter(initialProcesFile);
+    Path initialProcesFile =
+        processRecordService.getInitialProcessFile(cluster, batch);
+    Writer processFileWriter =
+        processRecordService.createProcessFileWriter(initialProcesFile);
 
     // Make sure we don't run off the end of the array
-    int endIndexExclusive = Math.min((startIndex + batchSize),
-        jobFileStatusses.length);
+    int endIndexExclusive =
+        Math.min((startIndex + batchSize), jobFileStatusses.length);
     try {
       for (int i = startIndex; i < endIndexExclusive; i++) {
         FileStatus fileStatus = jobFileStatusses[i];
@@ -438,8 +415,8 @@ public class JobFilePreprocessor extends Configured implements Tool {
       processFileWriter.close();
     }
 
-    Path processFile = processRecordService.moveProcessFile(initialProcesFile,
-        outputPath);
+    Path processFile =
+        processRecordService.moveProcessFile(initialProcesFile, outputPath);
 
     int processedJobFiles = endIndexExclusive - startIndex;
 
@@ -458,10 +435,9 @@ public class JobFilePreprocessor extends Configured implements Tool {
 
   /**
    * DoIt.
-   * 
-   * @param args
-   *          the arguments to do it with
-   * @throws Exception 
+   *
+   * @param args the arguments to do it with
+   * @throws Exception
    */
   public static void main(String[] args) throws Exception {
     ToolRunner.run(new JobFilePreprocessor(), args);

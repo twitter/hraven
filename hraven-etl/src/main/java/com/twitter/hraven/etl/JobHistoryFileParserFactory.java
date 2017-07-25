@@ -106,9 +106,6 @@ public class JobHistoryFileParserFactory {
     }
 
     switch (historyFileType) {
-    case ONE:
-      return new JobHistoryFileParserHadoop1(jobConf);
-
     case TWO:
       return new JobHistoryFileParserHadoop2(jobConf);
 

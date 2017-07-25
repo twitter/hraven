@@ -15,6 +15,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -56,7 +57,7 @@ public class TestJobHistoryFileParserHadoop2 {
 
     JobHistoryFileParser historyFileParser =
         JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf,
-          HistoryFileType.TWO);
+            HistoryFileType.TWO);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
@@ -75,7 +76,7 @@ public class TestJobHistoryFileParserHadoop2 {
     // check hadoop version
     boolean foundVersion2 = false;
     for (Put p : jobPuts) {
-    	List<KeyValue> kv2 = p.get(Constants.INFO_FAM_BYTES,
+    	List<Cell> kv2 = p.get(Constants.INFO_FAM_BYTES,
     			Bytes.toBytes(JobHistoryKeys.hadoopversion.toString()));
     	if (kv2.size() == 0) {
     	  // we are interested in hadoop version put only
@@ -103,7 +104,7 @@ public class TestJobHistoryFileParserHadoop2 {
     // check job status
     boolean foundJobStatus = false;
     for (Put p : jobPuts) {
-      List<KeyValue> kv2 =
+      List<Cell> kv2 =
           p.get(Constants.INFO_FAM_BYTES,
             Bytes.toBytes(JobHistoryKeys.JOB_STATUS.toString().toLowerCase()));
       if (kv2.size() == 0) {
@@ -113,7 +114,7 @@ public class TestJobHistoryFileParserHadoop2 {
       }
       assertEquals(1, kv2.size());
 
-      for (KeyValue kv : kv2) {
+      for (Cell kv : kv2) {
         // ensure we have a job status value as the value
         assertEquals(Bytes.toString(kv.getValue()),
           JobHistoryFileParserHadoop2.JOB_STATUS_SUCCEEDED);
@@ -182,7 +183,7 @@ public class TestJobHistoryFileParserHadoop2 {
     byte[] contents = Files.toByteArray(jobHistoryfile);
     JobHistoryFileParser historyFileParser =
         JobHistoryFileParserFactory.createJobHistoryFileParser(contents, null,
-          HistoryFileType.TWO);
+            HistoryFileType.TWO);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.0 files
@@ -277,7 +278,7 @@ public class TestJobHistoryFileParserHadoop2 {
 
     JobHistoryFileParser historyFileParser =
         JobHistoryFileParserFactory.createJobHistoryFileParser(contents, jobConf,
-          HistoryFileType.TWO);
+            HistoryFileType.TWO);
     assertNotNull(historyFileParser);
 
     // confirm that we get back an object that can parse hadoop 2.x files
@@ -292,7 +293,7 @@ public class TestJobHistoryFileParserHadoop2 {
     // it's part of the JobQueueChange object in the history file
     boolean foundQueue = false;
     for (Put p : jobPuts) {
-      List<KeyValue> kv2 =
+      List<Cell> kv2 =
           p.get(Constants.INFO_FAM_BYTES,
             Bytes.toBytes(JobHistoryKeys.JOB_QUEUE.toString().toLowerCase()));
       if (kv2.size() == 0) {
@@ -300,7 +301,7 @@ public class TestJobHistoryFileParserHadoop2 {
         // hence continue
         continue;
       } else {
-        for (KeyValue kv : kv2) {
+        for (Cell kv : kv2) {
           // ensure we have a hadoop2 version as the value
           assertEquals(Bytes.toString(kv.getValue()), "root.someQueueName");
           // ensure we don't see the same put twice
@@ -314,35 +315,6 @@ public class TestJobHistoryFileParserHadoop2 {
     }
     // ensure that we got the hadoop2 version put
     assertTrue(foundQueue);
-  }
-
-  @Test
-  public void testCreateJobHistoryFileParserJobError() throws IOException {
-    final String JOB_HISTORY_FILE_NAME = "src/test/resources/" +
-        "job_1300307629410_0001-1393307687476-user1-Example+job-1393307723835-0-0-ERROR-default-1393307693920.jhist";
-
-    File jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
-    byte[] contents = Files.toByteArray(jobHistoryfile);
-
-    JobHistoryFileParser historyFileParser =
-        JobHistoryFileParserFactory.createJobHistoryFileParser(contents, new Configuration(),
-          HistoryFileType.TWO);
-    assertNotNull(historyFileParser);
-
-    // confirm that we get back an object that can parse hadoop 2.0 files
-    assertTrue(historyFileParser instanceof JobHistoryFileParserHadoop2);
-
-    JobKey jobKey = new JobKey("cluster1", "user1", "Example job", 1, "job_1300307629410_0001");
-    // this would throw an exception when JOB_ERROR was not added as a record type
-    // check that processing goes ahead
-    historyFileParser.parse(contents, jobKey);
-    List<Put> jobPuts = historyFileParser.getJobPuts();
-    assertEquals(6, jobPuts.size());
-
-    JobKeyConverter jobKeyConv = new JobKeyConverter();
-    assertEquals("cluster1!user1!Example job!1!job_1300307629410_0001",
-      jobKeyConv.fromBytes(jobPuts.get(0).getRow()).toString());
-
   }
 
 }

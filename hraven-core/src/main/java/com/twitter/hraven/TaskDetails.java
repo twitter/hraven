@@ -72,6 +72,7 @@ public class TaskDetails implements Comparable<TaskDetails> {
     this.taskId = taskId;
   }
 
+  @JsonProperty("taskType")
   public String getType() {
     return type;
   }

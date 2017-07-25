@@ -122,6 +122,7 @@ public class SerializationContext {
   private final Predicate<String> configFilter;
   private final Predicate<String> flowFilter;
   private final Predicate<String> jobFilter;
+  private final Predicate<String> counterFilter;
   private final Predicate<String> taskFilter;
 
   public SerializationContext(DetailLevel serializationLevel) {
@@ -129,6 +130,7 @@ public class SerializationContext {
     this.configFilter = null;
     this.flowFilter = null;
     this.jobFilter = null;
+    this.counterFilter = null;
     this.taskFilter = null;
   }
 
@@ -149,6 +151,30 @@ public class SerializationContext {
     this.flowFilter = flowFilter;
     this.jobFilter = jobFilter;
     this.taskFilter = taskFilter;
+    this.counterFilter = null;
+  }
+
+  /**
+   * constructor to set the config filter, job filter,
+   * task filter & counter filter
+   * @param serializationLevel
+   * @param configFilter
+   * @param jobFilter
+   * @param taskFilter
+   * @param counterFilter
+   */
+  public SerializationContext(DetailLevel serializationLevel,
+                              Predicate<String> configFilter,
+                              Predicate<String> flowFilter,
+                              Predicate<String> jobFilter,
+                              Predicate<String> taskFilter,
+                              Predicate<String> counterFilter) {
+    this.level = serializationLevel;
+    this.configFilter = configFilter;
+    this.flowFilter = flowFilter;
+    this.jobFilter = jobFilter;
+    this.taskFilter = taskFilter;
+    this.counterFilter = counterFilter;
   }
 
   public DetailLevel getLevel() {
@@ -170,4 +196,9 @@ public class SerializationContext {
   public Predicate<String> getTaskFilter() {
     return taskFilter;
   }
+
+  public Predicate<String> getCounterFilter() {
+    return counterFilter;
+  }
+
 }

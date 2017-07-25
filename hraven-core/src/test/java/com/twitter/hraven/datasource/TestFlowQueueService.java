@@ -15,21 +15,25 @@ limitations under the License.
 */
 package com.twitter.hraven.datasource;
 
-import com.twitter.hraven.Flow;
-import com.twitter.hraven.FlowQueueKey;
-import com.twitter.hraven.datasource.FlowQueueService;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-import com.twitter.hraven.rest.PaginatedResult;
+import java.util.List;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.List;
-
-import static org.junit.Assert.*;
+import com.twitter.hraven.Flow;
+import com.twitter.hraven.FlowQueueKey;
+import com.twitter.hraven.rest.PaginatedResult;
 
 /**
  */
@@ -39,22 +43,33 @@ public class TestFlowQueueService {
   private static final String TEST_CLUSTER = "test@test";
   private static final String TEST_USER = "testuser";
   private static final String TEST_USER2 = "testuser2";
+  private static Connection hbaseConnection = null;
 
   @BeforeClass
   public static void setupBeforeClass() throws Exception {
     UTIL = new HBaseTestingUtility();
     UTIL.startMiniCluster();
     HRavenTestUtil.createFlowQueueTable(UTIL);
+    hbaseConnection =
+        ConnectionFactory.createConnection(UTIL.getConfiguration());
   }
 
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
-    UTIL.shutdownMiniCluster();
+    try {
+      if (hbaseConnection != null) {
+        hbaseConnection.close();
+      }
+    } finally {
+      if (UTIL != null) {
+        UTIL.shutdownMiniCluster();
+      }
+    }
   }
 
   @Test
   public void testFlowQueueReadWrite() throws Exception {
-    FlowQueueService service = new FlowQueueService(UTIL.getConfiguration());
+    FlowQueueService service = new FlowQueueService(hbaseConnection);
 
     // add a couple of test flows
     Flow flow1 = createFlow(service, TEST_USER, 1);
@@ -63,13 +78,14 @@ public class TestFlowQueueService {
     FlowQueueKey key2 = flow2.getQueueKey();
 
     // read back one flow
-    Flow flow1Retrieved = service.getFlowFromQueue(key1.getCluster(), key1.getTimestamp(),
-        key1.getFlowId());
+    Flow flow1Retrieved = service.getFlowFromQueue(key1.getCluster(),
+        key1.getTimestamp(), key1.getFlowId());
     assertNotNull(flow1Retrieved);
     assertFlowEquals(key1, flow1, flow1Retrieved);
 
     // try reading both flows back
-    List<Flow> running = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.RUNNING, 10);
+    List<Flow> running =
+        service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.RUNNING, 10);
     assertNotNull(running);
     assertEquals(2, running.size());
 
@@ -80,14 +96,15 @@ public class TestFlowQueueService {
     assertFlowEquals(key2, flow2, result2);
 
     // move both flows to successful status
-    FlowQueueKey newKey1 = new FlowQueueKey(key1.getCluster(), Flow.Status.SUCCEEDED,
-        key1.getTimestamp(), key1.getFlowId());
+    FlowQueueKey newKey1 = new FlowQueueKey(key1.getCluster(),
+        Flow.Status.SUCCEEDED, key1.getTimestamp(), key1.getFlowId());
     service.moveFlow(key1, newKey1);
-    FlowQueueKey newKey2 = new FlowQueueKey(key2.getCluster(), Flow.Status.SUCCEEDED,
-        key2.getTimestamp(), key2.getFlowId());
+    FlowQueueKey newKey2 = new FlowQueueKey(key2.getCluster(),
+        Flow.Status.SUCCEEDED, key2.getTimestamp(), key2.getFlowId());
     service.moveFlow(key2, newKey2);
 
-    List<Flow> succeeded = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED, 10);
+    List<Flow> succeeded =
+        service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED, 10);
     assertNotNull(succeeded);
     assertEquals(2, succeeded.size());
     // results should still be in reverse order by timestamp
@@ -107,19 +124,20 @@ public class TestFlowQueueService {
     assertFlowEquals(key3, flow3, running.get(0));
 
     // move flow3 to succeeded
-    FlowQueueKey newKey3 = new FlowQueueKey(key3.getCluster(), Flow.Status.SUCCEEDED,
-        key3.getTimestamp(), key3.getFlowId());
+    FlowQueueKey newKey3 = new FlowQueueKey(key3.getCluster(),
+        Flow.Status.SUCCEEDED, key3.getTimestamp(), key3.getFlowId());
     service.moveFlow(key3, newKey3);
 
-    succeeded = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED, 10);
+    succeeded =
+        service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED, 10);
     assertNotNull(succeeded);
     assertEquals(3, succeeded.size());
     Flow result3 = succeeded.get(0);
     assertFlowEquals(newKey3, flow3, result3);
 
     // test filtering by user name
-    succeeded = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED, 10,
-        TEST_USER2, null);
+    succeeded = service.getFlowsForStatus(TEST_CLUSTER, Flow.Status.SUCCEEDED,
+        10, TEST_USER2, null);
     assertNotNull(succeeded);
     assertEquals(1, succeeded.size());
     assertFlowEquals(newKey3, flow3, succeeded.get(0));
@@ -148,12 +166,14 @@ public class TestFlowQueueService {
     assertNull(page3.getNextStartRow());
     assertEquals(1, pageValues.size());
     assertFlowEquals(newKey1, flow1, pageValues.get(0));
+
   }
 
-  protected void assertFlowEquals(FlowQueueKey expectedKey, Flow expectedFlow, Flow resultFlow) {
+  protected void assertFlowEquals(FlowQueueKey expectedKey, Flow expectedFlow,
+      Flow resultFlow) {
     assertNotNull(resultFlow.getQueueKey());
     LOG.info("Expected queue key is " + expectedKey);
-    LOG.info("Result queue key is "+resultFlow.getQueueKey());
+    LOG.info("Result queue key is " + resultFlow.getQueueKey());
     assertTrue(expectedKey.equals(resultFlow.getQueueKey()));
     assertEquals(expectedFlow.getJobGraphJSON(), resultFlow.getJobGraphJSON());
     assertEquals(expectedFlow.getFlowName(), resultFlow.getFlowName());
@@ -161,8 +181,9 @@ public class TestFlowQueueService {
     assertEquals(expectedFlow.getProgress(), resultFlow.getProgress());
   }
 
-  protected Flow createFlow(FlowQueueService service, String user, int cnt) throws Exception {
-    String flowName = "flow"+Integer.toString(cnt);
+  protected Flow createFlow(FlowQueueService service, String user, int cnt)
+      throws Exception {
+    String flowName = "flow" + Integer.toString(cnt);
     FlowQueueKey key = new FlowQueueKey(TEST_CLUSTER, Flow.Status.RUNNING,
         System.currentTimeMillis(), flowName);
     Flow flow = new Flow(null);

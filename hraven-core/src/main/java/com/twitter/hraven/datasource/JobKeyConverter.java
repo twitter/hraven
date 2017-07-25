@@ -157,7 +157,8 @@ public class JobKeyConverter implements ByteConverter<JobKey> {
     if (lengthRest > offset) {
       jobIdOtherStuff = ByteUtil.safeCopy(remainder, offset,
         remainder.length-offset);
-      if (StringUtils.startsWith(Bytes.toString(jobIdOtherStuff), Constants.FRAMEWORK_CONF_SPARK_VALUE)) {
+      if (StringUtils.startsWith(Bytes.toString(jobIdOtherStuff),
+          Constants.FRAMEWORK_CONF_SPARK_VALUE)) {
         return Constants.SPARK_JOB_KEY_LENGTH;
       }
     }

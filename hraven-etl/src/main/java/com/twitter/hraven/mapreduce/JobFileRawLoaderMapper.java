@@ -1,5 +1,5 @@
 /*
-Copyright 2013 Twitter, Inc.
+Copyright 2016 Twitter, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,11 +25,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import com.twitter.hraven.Constants;
@@ -40,10 +41,11 @@ import com.twitter.hraven.etl.JobFile;
  * Used to read records for the processFile (referring to a JobFile). Reads said
  * file into the RAW HBase table.
  */
-public class JobFileRawLoaderMapper extends
-    Mapper<JobFile, FileStatus, ImmutableBytesWritable, Put> {
+public class JobFileRawLoaderMapper
+    extends Mapper<JobFile, FileStatus, ImmutableBytesWritable, Put> {
 
-  private static final ImmutableBytesWritable EMPTY = new ImmutableBytesWritable();
+  private static final ImmutableBytesWritable EMPTY =
+      new ImmutableBytesWritable();
   private static Log LOG = LogFactory.getLog(JobFileRawLoaderMapper.class);
 
   private long keyCount = 0;
@@ -66,29 +68,35 @@ public class JobFileRawLoaderMapper extends
   private JobHistoryRawService rawService = null;
 
   /**
+   * Used to connect to HBase
+   */
+  private Connection hbaseConnection = null;
+
+  /**
    * @return the key class for the job output data.
    */
-  public static Class<? extends Writable> getOutputKeyClass() {
+  public static Class getOutputKeyClass() {
     return ImmutableBytesWritable.class;
   }
 
   /**
    * @return the value class for the job output data.
    */
-  public static Class<? extends Writable> getOutputValueClass() {
+  public static Class getOutputValueClass() {
     return Put.class;
   }
 
   @Override
-  protected void setup(Context context) throws java.io.IOException,
-      InterruptedException {
+  protected void setup(Context context)
+      throws java.io.IOException, InterruptedException {
 
     myConf = context.getConfiguration();
     hdfs = FileSystem.get(myConf);
-    rawService = new JobHistoryRawService(myConf);
+    hbaseConnection = ConnectionFactory.createConnection(myConf);
+    rawService = new JobHistoryRawService(hbaseConnection);
 
-    forceReprocess = myConf.getBoolean(Constants.FORCE_REPROCESS_CONF_KEY,
-        false);
+    forceReprocess =
+        myConf.getBoolean(Constants.FORCE_REPROCESS_CONF_KEY, false);
     LOG.info("forceReprocess=" + forceReprocess);
 
     keyCount = 0;
@@ -164,34 +172,28 @@ public class JobFileRawLoaderMapper extends
   }
 
   /**
-   * @param puts
-   *          to add puts to
-   * @param rowKey
-   *          for the raw table
-   * @param filenameColumn
-   *          which filename this is (could be for the jobConf of jobHistory
-   *          file).
-   * @param filename
-   *          the name of the file.
+   * @param puts to add puts to
+   * @param rowKey for the raw table
+   * @param filenameColumn which filename this is (could be for the jobConf of
+   *          jobHistory file).
+   * @param filename the name of the file.
    */
   private void addFileNamePut(List<Put> puts, byte[] rowKey,
       byte[] filenameColumn, String filename) {
     Put put = new Put(rowKey);
-    put.add(Constants.INFO_FAM_BYTES, filenameColumn, Bytes.toBytes(filename));
+    put.addColumn(Constants.INFO_FAM_BYTES, filenameColumn,
+        Bytes.toBytes(filename));
     puts.add(put);
   }
 
   /**
    * Call {@link #readJobFile(FileStatus)} and add the raw bytes and the last
    * modified millis to {@code puts}
-   * 
-   * @param puts
-   *          to add puts to.
+   *
+   * @param puts to add puts to.
    * @rowkey to identify the row in the raw table.
-   * @param rawColumn
-   *          where to add the raw data in
-   * @param fileStatus
-   *          Referring to the jobFile to load.
+   * @param rawColumn where to add the raw data in
+   * @param fileStatus Referring to the jobFile to load.
    * @throws IOException
    */
   private void addRawPut(List<Put> puts, byte[] rowKey, byte[] rawColumn,
@@ -200,21 +202,20 @@ public class JobFileRawLoaderMapper extends
 
     Put raw = new Put(rowKey);
 
-    byte[] rawLastModifiedMillis = Bytes.toBytes(fileStatus
-        .getModificationTime());
+    byte[] rawLastModifiedMillis =
+        Bytes.toBytes(fileStatus.getModificationTime());
 
-    raw.add(Constants.RAW_FAM_BYTES, rawColumn, rawBytes);
-    raw.add(Constants.INFO_FAM_BYTES, lastModificationColumn,
+    raw.addColumn(Constants.RAW_FAM_BYTES, rawColumn, rawBytes);
+    raw.addColumn(Constants.INFO_FAM_BYTES, lastModificationColumn,
         rawLastModifiedMillis);
     puts.add(raw);
   }
 
   /**
    * Get the raw bytes and the last modification millis for this JobFile
-   * 
+   *
    * @return the contents of the job file.
-   * @throws IOException
-   *           when bad things happen during reading
+   * @throws IOException when bad things happen during reading
    */
   private byte[] readJobFile(FileStatus fileStatus) throws IOException {
     byte[] rawBytes = null;
@@ -232,11 +233,13 @@ public class JobFileRawLoaderMapper extends
   }
 
   @Override
-  protected void cleanup(Context context) throws IOException,
-      InterruptedException {
-    if (rawService != null) {
-      rawService.close();
+  protected void cleanup(
+      Mapper<JobFile, FileStatus, ImmutableBytesWritable, Put>.Context context)
+      throws IOException, InterruptedException {
+    if (hbaseConnection != null) {
+      hbaseConnection.close();
     }
+    super.cleanup(context);
   }
 
 }

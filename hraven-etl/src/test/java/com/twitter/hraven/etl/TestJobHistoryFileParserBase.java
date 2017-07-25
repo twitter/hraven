@@ -131,6 +131,7 @@ public class TestJobHistoryFileParserBase {
     byte[] contents = Files.toByteArray(jobHistoryfile);
     long actualts = JobHistoryFileParserBase
         .getSubmitTimeMillisFromJobHistory(HistoryFileType.TWO, contents);
+
     long expts = 1329348443227L;
     assertEquals(expts, actualts);
 
@@ -139,128 +140,10 @@ public class TestJobHistoryFileParserBase {
         "src/test/resources/job_1329348432999_0003-1329348443227-user-Sleep+job-1329348468601-10-1-SUCCEEDED-default.jhist";
     jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
     contents = Files.toByteArray(jobHistoryfile);
-    actualts = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.TWO, contents);
+    actualts = JobHistoryFileParserBase.getSubmitTimeMillisFromJobHistory(HistoryFileType.TWO,
+        contents);
     expts = 1328218696000L;
     assertEquals(expts, actualts);
-
-    // check hadoop1 submit time
-    JOB_HISTORY_FILE_NAME =
-        "src/test/resources/job_201311192236_3583_1386370578196_user1_Sleep+job";
-    jobHistoryfile = new File(JOB_HISTORY_FILE_NAME);
-    contents = Files.toByteArray(jobHistoryfile);
-    actualts = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.ONE, contents);
-    expts = 1386370578196L;
-    assertEquals(expts, actualts);
-  }
-
-  /**
-   * Confirm that we can properly find the submit timestamp for hadoop1.
-   */
-  @Test
-  public void testGetSubmitTimeMillisFromJobHistory() {
-    /**
-     * Normal example
-     */
-    final String JOB_HISTORY = "Meta VERSION=\"1\" ."
-        + "Job JOBID=\"job_201206061540_11222\""
-        + "JOBNAME=\"App1:some_project_one_day\""
-        + "USER=\"someone\" SUBMIT_TIME=\"1339063492288\"" + "JOBCONF=\"";
-
-    /**
-     * Submit time at the end of the string, but still includes quote
-     */
-    final String JOB_HISTORY2 = "Meta VERSION=\"1\" ."
-        + "Job JOBID=\"job_201206061540_11222\""
-        + "JOBNAME=\"App1:some_project_one_day\""
-        + "USER=\"someone\" SUBMIT_TIME=\"1339063492288\"";
-
-    final String BAD_JOB_HISTORY = "Meta VERSION=\"1\" . SUBMIT_TIME=\"";
-
-    final String BAD_JOB_HISTORY2 = "Meta VERSION=\"1\" . SUBMIT_TIME=\"\"";
-
-    final String BAD_JOB_HISTORY4 = "Meta VERSION=\"1\" ."
-        + "Job JOBID=\"job_201206061540_11222\""
-        + "JOBNAME=\"App1:some_project_one_day\""
-        + "USER=\"someone3\" SUBMIT_TIME=1339063492288\"";
-
-    /**
-     * Missing quote at the end
-     */
-    final String BAD_JOB_HISTORY3 = "Meta VERSION=\"1\" ."
-        + "Job JOBID=\"job_201206061540_11222\""
-        + "JOBNAME=\"App1:some_project_one_day\""
-        + "USER=\"someone2\" SUBMIT_TIME=\"1339063492288";
-
-    byte[] jobHistoryBytes = Bytes.toBytes(JOB_HISTORY);
-    long submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.ONE, jobHistoryBytes);
-    assertEquals(1339063492288L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(JOB_HISTORY2);
-    submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.ONE, jobHistoryBytes);
-    assertEquals(1339063492288L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY);
-    submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.ONE, jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY2);
-    submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.ONE, jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY3);
-    submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.ONE, jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY4);
-    submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.ONE, jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-  }
-
-  /**
-   * Confirm that we can properly find the submit timestamp for Spark.
-   */
-  @Test
-  public void testGetSubmitTimeMillisFromJobHistorySpark() {
-    /**
-     * Normal example
-     */
-    final String JOB_HISTORY =
-        "{\"appname\":" + "\"com.example.spark_history.simple_example.Main$\","
-            + "\"appid\":\"spark_1412702189634_248930\","
-            + "\"username\":\"userName1\", "
-            + "\"submit_time\":1415146248235,"
-            + "\"start_time\":1415146253739,"
-            + "\"finish_time\":1415146273227,"
-            + "\"queue\":\"defaultQueueName\","
-            + "\"megabytemillis\":1528224768,"
-            + "\"job_status\":\"SUCCEEDED\","
-            + "\"batch.desc\":\"\"}";
-
-    final String BAD_JOB_HISTORY = "{\"appname\":"
-        + "\"com.example.spark_history.simple_example.Main$\","
-        + "\"appid\":\"spark_1412702189634_248930\","
-        + "\"username\":\"userName1\", ";
-
-    byte[] jobHistoryBytes = Bytes.toBytes(JOB_HISTORY);
-    long submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.SPARK,
-          jobHistoryBytes);
-    assertEquals(1415146248235L, submitTimeMillis);
-
-    jobHistoryBytes = Bytes.toBytes(BAD_JOB_HISTORY);
-    submitTimeMillis = JobHistoryFileParserBase
-        .getSubmitTimeMillisFromJobHistory(HistoryFileType.SPARK,
-          jobHistoryBytes);
-    assertEquals(0L, submitTimeMillis);
-
   }
 
   @Test(expected=IllegalArgumentException.class)
