@@ -160,6 +160,12 @@ public class HdfsStatsService {
     scan.addColumn(HdfsConstants.DISK_INFO_FAM_BYTES,
         HdfsConstants.SPACE_QUOTA_COLUMN_BYTES);
 
+    try {
+      LOG.info("Scan with all columns = " + scan.toJSON());
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
     return scan;
   }
 
@@ -308,6 +314,49 @@ public class HdfsStatsService {
 
   }
 
+  public List<HdfsStats> getScanList(long timestamp, String cluster,
+      String pathPrefix) throws IOException
+  {
+  long encodedRunId = getEncodedRunId(timestamp);
+  int limit = 100;
+  String rowPrefixStr =
+      Long.toString(encodedRunId) + HdfsConstants.SEP + cluster;
+  if (StringUtils.isNotEmpty(pathPrefix)) {
+    // path expected to be cleansed at collection/storage time as well
+    rowPrefixStr += HdfsConstants.SEP + StringUtil.cleanseToken(pathPrefix)
+          + HdfsConstants.SEP;
+  }
+  LOG.info(" Getting all dirs for cluster " + cluster + " with pathPrefix: "
+      + pathPrefix + " for runId " + timestamp + " encodedRunId: " + encodedRunId
+      + " limit: " + limit + " row prefix : " + rowPrefixStr);
+  byte[] rowPrefix = Bytes.toBytes(rowPrefixStr);
+  Scan scan = createScanWithAllColumns();
+  scan.setStartRow(rowPrefix);
+
+  String stopRowPrefixStr =
+      Long.toString(encodedRunId) + HdfsConstants.SEP + cluster;
+  if (StringUtils.isNotEmpty(pathPrefix)) {
+    // path expected to be cleansed at collection/storage time as well
+    stopRowPrefixStr += HdfsConstants.SEP + StringUtil.cleanseToken(pathPrefix)
+          + "1" + HdfsConstants.SEP;
+  }
+  scan.setStopRow( Bytes.toBytes(stopRowPrefixStr));
+
+  // require that all rows match the prefix we're looking for
+  Filter prefixFilter = new WhileMatchFilter(new PrefixFilter(rowPrefix));
+  scan.setFilter(prefixFilter);
+  // using a large scanner caching value with a small limit can mean we scan a
+  // lot more data than
+  // necessary, so lower the caching for low limits
+  scan.setCaching(Math.min(limit, defaultScannerCaching));
+  // we need only the latest cell version
+  scan.setMaxVersions(1);
+
+  LOG.info("scan at end = " + scan.toJSON());
+  return createFromScanResults(cluster, null, scan, limit, Boolean.FALSE, 0l,
+      0l);
+}
+
   public List<HdfsStats> getHdfsTimeSeriesStats(String cluster, String path,
       int limit, long starttime, long endtime) throws IOException {
 
@@ -315,9 +364,35 @@ public class HdfsStatsService {
      * a better way to get timeseries info would be to have an aggregated stats
      * table which can be queried better for 2.0 clusters
      */
-    Scan scan = GenerateScanFuzzy(starttime, endtime, cluster, path);
-    return createFromScanResults(cluster, path, scan, limit, Boolean.TRUE,
-        starttime, endtime);
+    List<HdfsStats> list1 = getScanList(starttime, cluster, path);
+    LOG.info("list1 size = " + list1.size());
+    long time1 = Math.min(starttime, endtime);
+    long time2 = Math.max(starttime, endtime);
+    long sixHours = 6 * 60 * 60;
+    if ((time2 - time1) <= sixHours) {
+      while (time1 < time2) {
+        List<HdfsStats> list = getScanList(time1, cluster, path);
+        list1.addAll(list);
+        // add one hour
+        time1 += 1 * 60 * 60;
+      }
+    } else {
+      // divide the range into each day 4 times
+      LOG.info("time1 = " + time1 + " time2=" + time2);
+      // add 4 hours
+      long fourHours = 4 * 60 * 60;
+      time1 += fourHours;
+      while (time1 < time2) {
+        List<HdfsStats> list = getScanList(time1, cluster, path);
+        list1.addAll(list);
+        // add 4 hours
+        time1 += fourHours;
+      }
+    }
+    List<HdfsStats> list2 = getScanList(endtime, cluster, path);
+    LOG.info("list2 size = " + list2.size());
+    list1.addAll(list2);
+    return list1;
   }
 
   Scan GenerateScanFuzzy(long starttime, long endtime, String cluster,
@@ -341,16 +416,30 @@ public class HdfsStatsService {
       fuzzyInfo[i] = 0;
     }
 
-    @SuppressWarnings("unchecked")
     FuzzyRowFilter rowFilter = new FuzzyRowFilter(Arrays.asList(
         new Pair<byte[], byte[]>(Bytes.toBytesBinary(rowKey), fuzzyInfo)));
 
     scan.setFilter(rowFilter);
-    String minStartKey = Long.toString(getEncodedRunId(starttime));
-    String maxEndKey = Long.toString(getEncodedRunId(endtime));
+    String key1 = Long.toString(getEncodedRunId(starttime));
+    String key2 = Long.toString(getEncodedRunId(endtime));
+    String minStartKey = "";
+    String maxEndKey = "";
+
+    LOG.info("key1.compareTo(key2)" + key1.compareTo(key2));
+    if(key1.compareTo(key2) < 0){
+      minStartKey = key1;
+      maxEndKey = key2;
+      LOG.info("key1 is smaller " + key1 + " " + key2);
+    } else {
+      minStartKey = key2;
+      maxEndKey = key1;
+      LOG.info("key1 is NOT smaller " + key1 + " " + key2);
+    }
+    maxEndKey = maxEndKey + "0";
     LOG.info(
         starttime + " " + getEncodedRunId(starttime) + " min " + minStartKey
-            + " " + endtime + " " + maxEndKey + " " + getEncodedRunId(endtime));
+            + " " + endtime + " " + maxEndKey + " " + getEncodedRunId(endtime)
+            + " long max value=" + Long.MAX_VALUE);
     scan.setStartRow(Bytes.toBytes(minStartKey + rowKeySuffix));
     scan.setStopRow(Bytes.toBytes(maxEndKey + rowKeySuffix));
 
