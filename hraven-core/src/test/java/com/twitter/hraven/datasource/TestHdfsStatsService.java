@@ -238,7 +238,7 @@ public class TestHdfsStatsService {
       long encodedRunId, long fc, long dc, String owner, long sc, long ac,
       Table ht) throws IOException {
     HdfsStatsKey key =
-        new HdfsStatsKey(cluster1, StringUtil.cleanseToken(path), encodedRunId);
+        new HdfsStatsKey(cluster1, StringUtil.cleanseToken(path), "namespace", encodedRunId);
 
     HdfsStatsKeyConverter hkc = new HdfsStatsKeyConverter();
     Put p = new Put(hkc.toBytes(key));
@@ -297,15 +297,17 @@ public class TestHdfsStatsService {
     HdfsStatsService hs = null;
     hs = new HdfsStatsService(UTIL.getConfiguration(), hbaseConnection);
     List<HdfsStats> h3 = hs.getHdfsTimeSeriesStats(cluster1, pathPrefix,
-        Integer.MAX_VALUE, startts + 7200 * 3 + 1, startts - 3600);
-    assertEquals(4, h3.size());
+        Integer.MAX_VALUE, startts + (7200 * numberStatsExpected), startts);
+    // expecting 3 back
+    assertEquals(3, h3.size());
 
     HdfsStatsService hs2 =
         new HdfsStatsService(UTIL.getConfiguration(), hbaseConnection);
 
     List<HdfsStats> h5 = hs2.getHdfsTimeSeriesStats(cluster3, pathPrefix3,
-        Integer.MAX_VALUE, endts3, startts - 3600);
-    assertEquals(numberStatsExpected3, h5.size());
+        Integer.MAX_VALUE, endts3, startts);
+    // expecting 3 back
+    assertEquals(3, h5.size());
   }
 
   @AfterClass
