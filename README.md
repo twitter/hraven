@@ -1,5 +1,9 @@
-hRaven [![Build Status](https://travis-ci.org/twitter/hraven.png)](https://travis-ci.org/twitter/hraven) [![Coverage Status](https://coveralls.io/repos/twitter/hraven/badge.png?branch=master)](https://coveralls.io/r/twitter/hraven?branch=master)
-==========
+hRaven
+======
+
+[![status: retired](https://opensource.twitter.dev/status/retired.svg)](https://opensource.twitter.dev/status/#retired)
+[![Build Status](https://travis-ci.org/twitter/hraven.png)](https://travis-ci.org/twitter/hraven) 
+[![Coverage Status](https://coveralls.io/repos/twitter/hraven/badge.png?branch=master)](https://coveralls.io/r/twitter/hraven?branch=master)
 
 hRaven collects run time data and statistics from map reduce jobs running on
 Hadoop clusters and stores the collected job history in an easily queryable
