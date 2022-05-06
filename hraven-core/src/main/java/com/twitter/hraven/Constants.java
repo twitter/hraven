@@ -42,7 +42,7 @@ public class Constants {
   public static final String UNKNOWN = "";
 
   public static boolean IS_DEV = false;
-  public static String PREFIX = IS_DEV ? "dev." : "";
+  public static String PREFIX = IS_DEV ? "dev." : PROJECT_NAME + ".";
 
   /* **** Table names **** */
   public static String HISTORY_TABLE = PREFIX + "job_history";
