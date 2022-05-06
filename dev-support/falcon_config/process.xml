@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<process name="hraven-process" xmlns="uri:falcon:process:0.1">
+	<clusters>
+		<cluster name="prod-global">
+			<validity start="2014-05-01T00:00Z" end="2032-01-09T04:00Z" />
+		</cluster>
+	</clusters>
+	<parallel>1</parallel>
+	<order>FIFO</order>
+	<frequency>days(1)</frequency>
+	<timezone>UTC</timezone>
+	<properties>
+		<property name="queueName" value="reports" />
+		<property name="historypath" value="/user/mapred/history/done/*/${formatTime(instanceTime(), 'yyyy')}/${formatTime(instanceTime(), 'MM')}/${formatTime(dateOffset(instanceTime(), -1,'DAY'), 'dd')}/*/*" />
+		<property name="basepath" value="/user/mapred/history/done" />
+		<property name="processingDirectory" value="/hraven/processing/${formatTime(instanceTime(), 'yyyy')}/${formatTime(instanceTime(), 'MM')}/${formatTime(dateOffset(instanceTime(), -1,'DAY'), 'dd')}" />
+		<property name="libpath" value="/falcon/hraven/lib" />
+	</properties>
+	<workflow engine="oozie" path="/falcon/hraven/hraven/"
+		lib="/falcon/hraven/lib" />
+</process>
