@@ -284,6 +284,9 @@ public class JobFileRawLoader extends Configured implements Tool {
     // Note: must be BEFORE the job construction with the new mapreduce API.
     myHBaseConf.setBoolean("mapred.map.tasks.speculative.execution", false);
 
+    // Set tmpjars for hadoop to be able to find hraven-core and other required libs
+    HadoopUtil.setTmpJars(Constants.HRAVEN_HDFS_LIB_PATH_CONF, myHBaseConf);
+    
     // Set up job
     Job job = new Job(myHBaseConf, getJobName(totalJobCount));
     job.setJarByClass(JobFileRawLoader.class);
